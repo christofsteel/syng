@@ -29,3 +29,12 @@ class Source:
 
     async def skip_current(self) -> None:
         pass
+
+    def init_server(self) -> None:
+        pass
+
+    def init_client(self) -> None:
+        pass
+
+
+available_sources = {}

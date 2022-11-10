@@ -9,7 +9,7 @@ from aiohttp import web
 import socketio
 
 from .entry import Entry
-from .sources import YoutubeSource
+from .sources import configure_sources
 
 # socketio = SocketIO(app, cors_allowed_origins='*')
 # sio = socketio.AsyncServer()
@@ -17,12 +17,10 @@ from .sources import YoutubeSource
 sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=True)
 app = web.Application()
 sio.attach(app)
-sources = {"youtube": YoutubeSource()}
 
-admins = set()
 admin_secrets = ["admin"]
 client_secrets = ["test"]
-clients = set()
+sources = {}
 
 
 class Queue(deque):
@@ -57,6 +55,7 @@ async def handle_state(sid, data: dict[str, Any]):
 
 @sio.on("append")
 async def handle_append(sid, data: dict[str, Any]):
+
     print(f"append: {data}")
     source_obj = sources[data["source"]]
     entry = await Entry.from_source(data["performer"], data["id"], source_obj)
@@ -66,39 +65,63 @@ async def handle_append(sid, data: dict[str, Any]):
 
 @sio.on("get-next")
 async def handle_next(sid, data: dict[str, Any]):
-    if sid in clients:
-        print(f"get-next request from client {sid}")
-        current = await queue.popleft()
-        print(f"Sending {current} to client {sid}")
-        print(f"new state: {queue.to_dict()}")
-        await sio.emit("next", current.to_dict(), room=sid)
+    async with sio.session(sid) as session:
+        if "client" in session and session["client"]:
+            print(f"get-next request from client {sid}")
+            current = await queue.popleft()
+            print(f"Sending {current} to client {sid}")
+            print(f"new state: {queue.to_dict()}")
+            await sio.emit("next", current.to_dict(), room=sid)
 
 
 @sio.on("register-client")
 async def handle_register_client(sid, data: dict[str, Any]):
     if data["secret"] in client_secrets:
         print(f"Registerd new client {sid}")
-        clients.add(sid)
-        await sio.emit("register-client", {"success": True}, room=sid)
+        await sio.save_session(sid, {"client": True})
+        sio.enter_room(sid, "clients")
+        await sio.emit("client-registered", {"success": True}, room=sid)
     else:
-        await sio.emit("register-client", {"success": False}, room=sid)
+        await sio.emit("client-registered", {"success": False}, room=sid)
+
+
+@sio.on("config")
+async def handle_config(sid, data):
+    async with sio.session(sid) as session:
+        if "client" in session and session["client"]:
+            sources.update(configure_sources(data["sources"], client=False))
+            print(f"Updated Config: {sources}")
 
 
 @sio.on("register-admin")
 async def handle_register_admin(sid, data: dict[str, str]):
     if data["secret"] in admin_secrets:
         print(f"Registerd new admin {sid}")
-        admins.add(sid)
+        await sio.save_session(sid, {"admin": True})
         await sio.emit("register-admin", {"success": True}, room=sid)
     else:
         await sio.emit("register-admin", {"success": False}, room=sid)
 
 
+@sio.on("get-config")
+async def handle_config(sid, data):
+    async with sio.session(sid) as session:
+        if "admin" in session and session["admin"]:
+            await sio.emit("config", list(sources.keys()))
+
+
 @sio.on("skip")
 async def handle_skip(sid, data={}):
-    if sid in admins:
-        for client in clients:
-            await sio.emit("skip", room=client)
+    async with sio.session(sid) as session:
+        if "admin" in session and session["admin"]:
+            await sio.emit("skip", room="client")
+
+
+@sio.on("disconnect")
+async def handle_disconnect(sid, data={}):
+    async with sio.session(sid) as session:
+        if "client" in session and session["client"]:
+            sio.leave_room(sid, "clients")
 
 
 @sio.on("search")

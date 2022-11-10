@@ -5,28 +5,29 @@ from functools import partial
 from pytube import YouTube, Search, Channel, innertube
 from mpv import MPV
 
-from .source import Source, async_in_thread
+from .source import Source, async_in_thread, available_sources
 from ..entry import Entry
 from ..result import Result
 
 
 class YoutubeSource(Source):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self.innertube_client = innertube.InnerTube(client="WEB")
-        self.channels = ["/c/CCKaraoke"]
+        self.channels = config["channels"] if "channels" in config else []
 
     @async_in_thread
     def play(self, ident: str) -> None:
-        self.player = MPV(
+        player = MPV(
             input_default_bindings=True,
             input_vo_keyboard=True,
             osc=True,
             ytdl=True,
             script_opts="ytdl_hook-ytdl_path=yt-dlp",
         )
-        self.player.play(ident)
-        self.player.wait_for_playback()
+        player.play(ident)
+        player.wait_for_playback()
+        del player
 
     async def skip_current(self) -> None:
         loop = asyncio.get_event_loop()
@@ -112,3 +113,6 @@ class YoutubeSource(Source):
             except KeyError:
                 pass
         return list_of_videos
+
+
+available_sources["youtube"] = YoutubeSource

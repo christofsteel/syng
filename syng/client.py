@@ -1,13 +1,17 @@
 import asyncio
 import socketio
 from traceback import print_exc
+from json import load
 
-from .sources import YoutubeSource
+from .sources import Source, configure_sources
 from .entry import Entry
+
 
 sio = socketio.AsyncClient()
 
-sources = {"youtube": YoutubeSource()}
+with open("./syng-client.json") as f:
+    source_config = load(f)
+sources = configure_sources(source_config, client=True)
 
 currentLock = asyncio.Semaphore(0)
 state = {
@@ -78,10 +82,11 @@ async def handle_connect():
     await sio.emit("register-client", {"secret": "test"})
 
 
-@sio.on("register-client")
+@sio.on("client-registered")
 async def handle_register(data):
     if data["success"]:
         print("Registered")
+        await sio.emit("config", {"sources": source_config})
         asyncio.create_task(playerTask())
         asyncio.create_task(bufferTask())
     else:
