@@ -17,7 +17,7 @@ sources: dict[str, Source] = configure_sources(source_config)
 currentLock = asyncio.Semaphore(0)
 state = {
     "current": None,
-    "all_entries": {},
+    "queue": [],
 }
 
 
@@ -29,13 +29,19 @@ async def handle_skip():
 
 @sio.on("state")
 async def handle_state(data):
-    state["all_entries"] = {entry["uuid"]: Entry(**entry) for entry in data}
+    state["queue"] = [Entry(**entry) for entry in data]
 
 
 @sio.on("connect")
 async def handle_connect():
     print("Connected to server")
-    await sio.emit("register-client", {"secret": "test"})
+    await sio.emit(
+        "register-client",
+        {
+            "secret": "test",
+            "queue": [entry.to_dict() for entry in state["queue"]],
+        },
+    )
 
 
 @sio.on("buffer")
@@ -56,6 +62,7 @@ async def handle_play(data):
         await sources[entry.source].play(entry)
     except Exception:
         print_exc()
+    print("Finished, waiting for next")
     await sio.emit("pop-then-get-next")
 
 
@@ -64,7 +71,8 @@ async def handle_register(data):
     if data["success"]:
         print("Registered")
         await sio.emit("sources", {"sources": list(source_config.keys())})
-        await sio.emit("get-first")
+        if state["current"] is None:
+            await sio.emit("get-first")
     else:
         print("Registration failed")
         await sio.disconnect()

@@ -26,39 +26,6 @@ async def handle_state(data):
 @sio.on("connect")
 async def handle_connect():
     print("Connected")
-    # await sio.emit("search", {"query": "Linkin Park"})
-    # await sio.emit(
-    #     "append",
-    #     {
-    #         "performer": "Hammy",
-    #         "source": "youtube",
-    #         "id": "https://www.youtube.com/watch?v=rqZqHXJm-UA",  # https://youtube.com/watch?v=x5bM5Bdizi4",
-    #     },
-    # )
-    # await sio.emit(
-    #     "append",
-    #     {
-    #         "performer": "Hammy",
-    #         "source": "s3",
-    #         "id": "Sunfly Gold/SFGD034 - Linkin Park & Limp Bizkit/Linkin Park - Pushing Me Away - Sunfly Gold 34.cdg",
-    #     },
-    # )
-    # await sio.emit(
-    #     "append",
-    #     {
-    #         "performer": "Hammy",
-    #         "source": "s3",
-    #         "id": "Sunfly Gold/SFGD034 - Linkin Park & Limp Bizkit/Linkin Park - Pushing Me Away - Sunfly Gold 34.cdg",
-    #     },
-    # )
-    # await sio.emit(
-    #     "append",
-    #     {
-    #         "performer": "Hammy",
-    #         "source": "s3",
-    #         "id": "Sunfly Gold/SFGD034 - Linkin Park & Limp Bizkit/Linkin Park - Pushing Me Away - Sunfly Gold 34.cdg",
-    #     },
-    # )
 
 
 @sio.on("register-admin")
@@ -94,8 +61,9 @@ class SyngShell(aiocmd.PromptToolkitCmd):
     async def do_admin(self, data):
         await sio.emit("register-admin", {"secret": data})
 
-    async def do_connect(self):
+    async def do_connect(self, short):
         await sio.connect("http://127.0.0.1:8080")
+        await sio.emit("register-web", {"short": short})
 
     async def do_skip(self):
         await sio.emit("skip")
