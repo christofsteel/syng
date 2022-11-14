@@ -5,6 +5,7 @@ from .entry import Entry
 from aiocmd import aiocmd
 
 sio = socketio.AsyncClient()
+state = {}
 
 
 @sio.on("search-results")
@@ -26,6 +27,7 @@ async def handle_state(data):
 @sio.on("connect")
 async def handle_connect():
     print("Connected")
+    await sio.emit("register-web", {"room": state["room"]})
 
 
 @sio.on("register-admin")
@@ -61,9 +63,9 @@ class SyngShell(aiocmd.PromptToolkitCmd):
     async def do_admin(self, data):
         await sio.emit("register-admin", {"secret": data})
 
-    async def do_connect(self, short):
+    async def do_connect(self, room):
+        state["room"] = room
         await sio.connect("http://127.0.0.1:8080")
-        await sio.emit("register-web", {"short": short})
 
     async def do_skip(self):
         await sio.emit("skip")

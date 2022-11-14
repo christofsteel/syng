@@ -5,6 +5,7 @@ import asyncio
 from dataclasses import dataclass
 import string
 import random
+import logging
 
 from aiohttp import web
 import socketio
@@ -12,42 +13,48 @@ import socketio
 from .entry import Entry
 from .sources import Source, available_sources
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=True)
+sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=False)
 app = web.Application()
 sio.attach(app)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 clients = {}
 
 
-class Queue(deque):
-    def __init__(self, iterable=[]):
-        super().__init__(iterable)
+class Queue:
+    def __init__(self, *args, **kwargs):
+        self._queue = deque(*args, **kwargs)
 
-        self.num_of_entries_sem = asyncio.Semaphore(len(iterable))
+        self.num_of_entries_sem = asyncio.Semaphore(len(self._queue))
         self.readlock = asyncio.Lock()
 
-    async def append(self, item: Entry) -> None:
-        super().append(item)
+    def append(self, x: Entry) -> None:
+        self._queue.append(x)
         self.num_of_entries_sem.release()
 
     async def peek(self) -> Entry:
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
-            item = super().popleft()
-            super().appendleft(item)
+            item = self._queue[0]
             self.num_of_entries_sem.release()
         return item
 
     async def popleft(self) -> Entry:
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
-            item = super().popleft()
-            await sio.emit("state", self.to_dict())
+            item = self._queue.popleft()
         return item
 
     def to_dict(self) -> list[dict[str, Any]]:
-        return [item.to_dict() for item in self]
+        return [item.to_dict() for item in self._queue]
+
+    def update(self, locator, updater):
+        for item in self._queue:
+            if locator(item):
+                updater(item)
 
 
 @dataclass
@@ -62,8 +69,8 @@ class State:
 @sio.on("get-state")
 async def handle_state(sid, data: dict[str, Any] = {}):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     await sio.emit("state", state.queue.to_dict(), room=sid)
 
@@ -71,40 +78,43 @@ async def handle_state(sid, data: dict[str, Any] = {}):
 @sio.on("append")
 async def handle_append(sid, data: dict[str, Any]):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
-    print(f"append: {data}")
     source_obj = state.sources[data["source"]]
     entry = await Entry.from_source(data["performer"], data["id"], source_obj)
-    await state.queue.append(entry)
-    await sio.emit("state", state.queue.to_dict(), room=short)
+    state.queue.append(entry)
+    await sio.emit("state", state.queue.to_dict(), room=room)
 
     await sio.emit(
         "buffer",
         entry.to_dict(),
-        room=clients[short].sid,
+        room=clients[room].sid,
     )
 
 
 @sio.on("meta-info")
 async def handle_meta_info(sid, data):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
-    for item in state.queue:
-        if str(item.uuid) == data["uuid"]:
-            item.update(**data["meta"])
+    state.queue.update(
+        lambda item: str(item.uuid) == data["uuid"],
+        lambda item: item.update(**data["meta"]),
+    )
+    # for item in state.queue:
+    #     if str(item.uuid) == data["uuid"]:
+    #         item.update(**data["meta"])
 
-    await sio.emit("state", state.queue.to_dict(), room=short)
+    await sio.emit("state", state.queue.to_dict(), room=room)
 
 
 @sio.on("get-first")
 async def handle_get_first(sid, data={}):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     current = await state.queue.peek()
 
@@ -114,13 +124,13 @@ async def handle_get_first(sid, data={}):
 @sio.on("pop-then-get-next")
 async def handle_pop_then_get_next(sid, data={}):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     await state.queue.popleft()
     current = await state.queue.peek()
 
-    await sio.emit("state", state.queue.to_dict(), room=short)
+    await sio.emit("state", state.queue.to_dict(), room=room)
     await sio.emit("play", current.to_dict(), room=sid)
 
 
@@ -133,29 +143,30 @@ def gen_id(length=4) -> str:
 
 @sio.on("register-client")
 async def handle_register_client(sid, data: dict[str, Any]):
-    print(f"Registerd new client {sid}")
-    short = data["short"] if "short" in data else gen_id()
+    room = data["room"] if "room" in data and data["room"] else gen_id()
     async with sio.session(sid) as session:
-        session["short"] = short
+        session["room"] = room
 
-    print(f"short id: {short}")
-    if data["short"] in clients:
-        old_state = clients[short]
+    if room in clients:
+        old_state = clients[room]
         if data["secret"] == old_state.secret:
+            logger.info("Got new client connection for %s", room)
             old_state.sid = sid
-            sio.enter_room(sid, short)
+            sio.enter_room(sid, room)
             await sio.emit(
-                "client-registered", {"success": True, "short": short}, room=sid
+                "client-registered", {"success": True, "room": room}, room=sid
             )
         else:
+            logger.warning("Got wrong secret for %s", room)
             await sio.emit(
-                "client-registered", {"success": False, "short": short}, room=sid
+                "client-registered", {"success": False, "room": room}, room=sid
             )
     else:
+        logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
-        clients[short] = State(data["secret"], {}, [], Queue(initial_entries), sid)
-        sio.enter_room(sid, short)
-        await sio.emit("client-registered", {"success": True, "short": short}, room=sid)
+        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), sid)
+        sio.enter_room(sid, room)
+        await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
 
 
 @sio.on("sources")
@@ -166,8 +177,8 @@ async def handle_sources(sid, data):
     sources and query for a config for all uninitialized sources
     """
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     unused_sources = state.sources.keys() - data["sources"]
     new_sources = data["sources"] - state.sources.keys()
@@ -184,10 +195,11 @@ async def handle_sources(sid, data):
 @sio.on("config-chunk")
 async def handle_config_chung(sid, data):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     if not data["source"] in state.sources:
+        logger.info("Added source %s", data["source"])
         state.sources[data["source"]] = available_sources[data["source"]](
             data["config"]
         )
@@ -198,19 +210,19 @@ async def handle_config_chung(sid, data):
 @sio.on("config")
 async def handle_config(sid, data):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     state.sources[data["source"]] = available_sources[data["source"]](data["config"])
-    print(f"Added source {data['source']}")
+    logger.info("Added source %s", data["source"])
 
 
 @sio.on("register-web")
 async def handle_register_web(sid, data):
     async with sio.session(sid) as session:
-        session["short"] = data["short"]
-        sio.enter_room(sid, session["short"])
-    state = clients[session["short"]]
+        session["room"] = data["room"]
+        sio.enter_room(sid, session["room"])
+    state = clients[session["room"]]
 
     await sio.emit("state", state.queue.to_dict(), room=sid)
 
@@ -218,8 +230,8 @@ async def handle_register_web(sid, data):
 @sio.on("register-admin")
 async def handle_register_admin(sid, data: dict[str, str]):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     is_admin = data["secret"] == state.secret
     async with sio.session(sid) as session:
@@ -230,9 +242,9 @@ async def handle_register_admin(sid, data: dict[str, str]):
 @sio.on("get-config")
 async def handle_get_config(sid, data):
     async with sio.session(sid) as session:
-        short = session["short"]
+        room = session["room"]
         is_admin = session["admin"]
-    state = clients[short]
+    state = clients[room]
 
     if is_admin:
         await sio.emit(
@@ -244,24 +256,24 @@ async def handle_get_config(sid, data):
 @sio.on("skip")
 async def handle_skip(sid, data={}):
     async with sio.session(sid) as session:
-        short = session["short"]
+        room = session["room"]
         is_admin = session["admin"]
 
     if is_admin:
-        await sio.emit("skip", room=clients[short].sid)
+        await sio.emit("skip", room=clients[room].sid)
 
 
 @sio.on("disconnect")
 async def handle_disconnect(sid, data={}):
     async with sio.session(sid) as session:
-        sio.leave_room(sid, session["short"])
+        sio.leave_room(sid, session["room"])
 
 
 @sio.on("search")
 async def handle_search(sid, data: dict[str, str]):
     async with sio.session(sid) as session:
-        short = session["short"]
-    state = clients[short]
+        room = session["room"]
+    state = clients[room]
 
     query = data["query"]
     result_futures = []
@@ -276,7 +288,6 @@ async def handle_search(sid, data: dict[str, str]):
         for result_future in result_futures
         for search_result in await result_future
     ]
-    print(f"Found {len(results)} results")
     await sio.emit("search-results", [result.to_dict() for result in results], room=sid)
 
 
