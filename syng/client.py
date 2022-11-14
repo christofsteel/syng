@@ -1,7 +1,8 @@
 import asyncio
-import socketio
 from traceback import print_exc
 from json import load
+
+import socketio
 
 from .sources import Source, configure_sources
 from .entry import Entry
@@ -9,9 +10,9 @@ from .entry import Entry
 
 sio = socketio.AsyncClient()
 
-with open("./syng-client.json") as f:
+with open("./syng-client.json", encoding="utf8") as f:
     source_config = load(f)
-sources = configure_sources(source_config, client=True)
+sources: dict[str, Source] = configure_sources(source_config)
 
 currentLock = asyncio.Semaphore(0)
 state = {
@@ -20,55 +21,10 @@ state = {
 }
 
 
-async def playerTask():
-    """
-    This task loops forever, and plays the first item in the queue in the appropriate player. Then it removes the first item in the queue and starts over. If no element is in the queue, it waits
-    """
-
-    while True:
-        await sio.emit("get-next", {})
-        print("Waiting for current")
-        await currentLock.acquire()
-        try:
-            await sources[state["current"].source].play(state["current"].id)
-        except Exception:
-            print_exc()
-        print("Finished playing")
-
-
-async def bufferTask():
-    pass
-
-
-# class BufferThread(Thread):
-#    """
-#    This thread tries to buffer the first not-yet buffered entry in the queue in a loop.
-#    """
-#    def run(self):
-#        while (True):
-#            for entry in self.queue:
-#                if entry.ready.is_set():
-#                    continue
-#                try:
-#                    entry.source.buffer(entry.id)
-#                except Exception:
-#                    print_exc()
-#                    entry.failed = True
-#                entry.ready.set()
-#
-
-
 @sio.on("skip")
 async def handle_skip():
     print("Skipping current")
-    await sources[state["current"].source].skip_current()
-
-
-@sio.on("next")
-async def handle_next(data):
-    state["current"] = Entry(**data)
-    currentLock.release()
-    print("released lock")
+    await state["current"].skip_current()
 
 
 @sio.on("state")
@@ -82,16 +38,56 @@ async def handle_connect():
     await sio.emit("register-client", {"secret": "test"})
 
 
+@sio.on("buffer")
+async def handle_buffer(data):
+    source = sources[data["source"]]
+    meta_info = await source.buffer(Entry(**data))
+    await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
+
+
+@sio.on("play")
+async def handle_play(data):
+    entry = Entry(**data)
+    print(f"Playing {entry}")
+    try:
+        meta_info = await sources[entry.source].buffer(entry)
+        await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
+        state["current"] = sources[entry.source]
+        await sources[entry.source].play(entry)
+    except Exception:
+        print_exc()
+    await sio.emit("pop-then-get-next")
+
+
 @sio.on("client-registered")
 async def handle_register(data):
     if data["success"]:
         print("Registered")
-        await sio.emit("config", {"sources": source_config})
-        asyncio.create_task(playerTask())
-        asyncio.create_task(bufferTask())
+        await sio.emit("sources", {"sources": list(source_config.keys())})
+        await sio.emit("get-first")
     else:
         print("Registration failed")
         await sio.disconnect()
+
+
+@sio.on("request-config")
+async def handle_request_config(data):
+    if data["source"] in sources:
+        config = await sources[data["source"]].get_config()
+        if isinstance(config, list):
+            num_chunks = len(config)
+            for current, chunk in enumerate(config):
+                await sio.emit(
+                    "config-chunk",
+                    {
+                        "source": data["source"],
+                        "config": chunk,
+                        "number": current + 1,
+                        "total": num_chunks,
+                    },
+                )
+        else:
+            await sio.emit("config", {"source": data["source"], "config": config})
 
 
 async def main():

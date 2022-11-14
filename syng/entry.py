@@ -1,18 +1,18 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-import uuid
+from uuid import uuid4, UUID
 
 
 @dataclass
 class Entry:
-    id: str | int
+    id: str
     source: str
     duration: int
     title: str
     artist: str
     performer: str
     failed: bool = False
-    uuid: UUID = field(default_factory=uuid.uuid4)
+    uuid: UUID = field(default_factory=uuid4)
 
     @staticmethod
     async def from_source(performer: str, ident: str, source: Source) -> Entry:
@@ -32,3 +32,6 @@ class Entry:
     @staticmethod
     def from_dict(entry_dict):
         return Entry(**entry_dict)
+
+    def update(self, **kwargs):
+        self.__dict__.update(kwargs)

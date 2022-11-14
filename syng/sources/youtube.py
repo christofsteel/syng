@@ -15,19 +15,24 @@ class YoutubeSource(Source):
         super().__init__()
         self.innertube_client = innertube.InnerTube(client="WEB")
         self.channels = config["channels"] if "channels" in config else []
+        self.player = None
+
+    async def get_config(self):
+        return {"channels": self.channels}
 
     @async_in_thread
-    def play(self, ident: str) -> None:
-        player = MPV(
+    def play(self, entry: Entry) -> None:
+        self.player = MPV(
             input_default_bindings=True,
             input_vo_keyboard=True,
             osc=True,
             ytdl=True,
             script_opts="ytdl_hook-ytdl_path=yt-dlp",
+            fullscreen=True,
         )
-        player.play(ident)
-        player.wait_for_playback()
-        del player
+        self.player.play(entry.id)
+        self.player.wait_for_playback()
+        self.player.terminate()
 
     async def skip_current(self) -> None:
         loop = asyncio.get_event_loop()
@@ -56,24 +61,28 @@ class YoutubeSource(Source):
         return 1 - (hits / len(queries))
 
     @async_in_thread
-    def search(self, query: str) -> list[Result]:
+    def search(self, result_future: asyncio.Future, query: str) -> None:
+        results = []
         for channel in self.channels:
-            results = self._channel_search(query, channel)
+            results += self._channel_search(query, channel)
         results += Search(query + " karaoke").results
 
         results.sort(key=partial(self._contains_index, query))
 
-        return [
-            Result(
-                id=result.watch_url,
-                source="youtube",
-                title=result.title,
-                artist=result.author,
-            )
-            for result in results
-        ]
+        result_future.set_result(
+            [
+                Result(
+                    id=result.watch_url,
+                    source="youtube",
+                    title=result.title,
+                    artist=result.author,
+                    album="YouTube",
+                )
+                for result in results
+            ]
+        )
 
-    def _channel_search(self, query, channel):
+    def _channel_search(self, query, channel) -> list:
         browseID = Channel(f"https://www.youtube.com{channel}").channel_id
         endpoint = f"{self.innertube_client.base_url}/browse"
 

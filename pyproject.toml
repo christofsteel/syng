@@ -13,8 +13,16 @@ aiohttp = "^3.8.3"
 python-mpv = "^1.0.1"
 python-socketio = "^5.7.2"
 minio = "^7.1.12"
+colored = "^1.4.4"
+mutagen = "^1.46.0"
+aiocmd = "^0.1.5"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pyright]
+exclude = [ ".venv" ]
+venvPath = "."
+venv = ".venv"
