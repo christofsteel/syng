@@ -27,7 +27,7 @@ class YoutubeSource(Source):
             input_vo_keyboard=True,
             osc=True,
             ytdl=True,
-            script_opts="ytdl_hook-ytdl_path=yt-dlp",
+            script_opts="ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
             ytdl_format="bestvideo[height<=720]+bestaudio/best[height<=720]",
             fullscreen=True,
         )

@@ -128,9 +128,9 @@ async def handle_pop_then_get_next(sid, data={}):
     state = clients[room]
 
     await state.queue.popleft()
+    await sio.emit("state", state.queue.to_dict(), room=room)
     current = await state.queue.peek()
 
-    await sio.emit("state", state.queue.to_dict(), room=room)
     await sio.emit("play", current.to_dict(), room=sid)
 
 
