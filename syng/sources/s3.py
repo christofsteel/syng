@@ -1,4 +1,4 @@
-from json import load
+from json import load, dump
 from time import sleep, perf_counter
 from itertools import zip_longest
 from threading import Event, Lock
@@ -39,6 +39,7 @@ class S3Source(Source):
                 id=filename,
                 source="s3",
                 duration=180,
+                album=res.album,
                 title=res.title,
                 artist=res.artist,
                 performer=performer,
@@ -80,6 +81,8 @@ class S3Source(Source):
             #     obj.object_name
             #     for obj in self.minio.list_objects(self.bucket, recursive=True)
             # ]
+            # with open("s3_files", "w") as f:
+            #     dump(self.index, f)
             with open("s3_files", "r") as f:
                 self.index = [item for item in load(f) if item.endswith(".cdg")]
             print(len(self.index))

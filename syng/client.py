@@ -57,7 +57,7 @@ async def handle_buffer(data):
 @sio.on("play")
 async def handle_play(data):
     entry = Entry(**data)
-    logging.info("Playing %s", entry)
+    print(f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}")
     try:
         meta_info = await sources[entry.source].buffer(entry)
         await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
@@ -107,17 +107,18 @@ async def main():
     parser = ArgumentParser()
 
     parser.add_argument("--room", "-r")
-    parser.add_argument("config")
+    parser.add_argument("--config-file", "-C", default="syng-client.json")
+    parser.add_argument("server")
 
     args = parser.parse_args()
 
-    with open(args.config, encoding="utf8") as file:
+    with open(args.config_file, encoding="utf8") as file:
         source_config = load(file)
     sources.update(configure_sources(source_config))
     if args.room:
         state["room"] = args.room
 
-    await sio.connect("http://127.0.0.1:8080")
+    await sio.connect(args.server)
     await sio.wait()
 
 

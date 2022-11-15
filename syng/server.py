@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import string
 import random
 import logging
+from argparse import ArgumentParser
+
 
 from aiohttp import web
 import socketio
@@ -13,7 +15,8 @@ import socketio
 from .entry import Entry
 from .sources import Source, available_sources
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=False)
+sio = socketio.AsyncServer(cors_allowed_origins="*",
+                           logger=True, engineio_logger=False)
 app = web.Application()
 sio.attach(app)
 
@@ -103,9 +106,6 @@ async def handle_meta_info(sid, data):
         lambda item: str(item.uuid) == data["uuid"],
         lambda item: item.update(**data["meta"]),
     )
-    # for item in state.queue:
-    #     if str(item.uuid) == data["uuid"]:
-    #         item.update(**data["meta"])
 
     await sio.emit("state", state.queue.to_dict(), room=room)
 
@@ -135,7 +135,8 @@ async def handle_pop_then_get_next(sid, data={}):
 
 
 def gen_id(length=4) -> str:
-    client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
+    client_id = "".join([random.choice(string.ascii_letters)
+                        for _ in range(length)])
     if client_id in clients:
         client_id = gen_id(length + 1)
     return client_id
@@ -164,7 +165,8 @@ async def handle_register_client(sid, data: dict[str, Any]):
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
-        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), sid)
+        clients[room] = State(data["secret"], {}, [],
+                              Queue(initial_entries), sid)
         sio.enter_room(sid, room)
         await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
 
@@ -213,7 +215,8 @@ async def handle_config(sid, data):
         room = session["room"]
     state = clients[room]
 
-    state.sources[data["source"]] = available_sources[data["source"]](data["config"])
+    state.sources[data["source"]] = available_sources[data["source"]](
+        data["config"])
     logger.info("Added source %s", data["source"])
 
 
@@ -249,7 +252,8 @@ async def handle_get_config(sid, data):
     if is_admin:
         await sio.emit(
             "config",
-            {name: source.get_config() for name, source in state.sources.items()},
+            {name: source.get_config()
+             for name, source in state.sources.items()},
         )
 
 
@@ -292,7 +296,11 @@ async def handle_search(sid, data: dict[str, str]):
 
 
 def main() -> None:
-    web.run_app(app, port=8080)
+    parser = ArgumentParser()
+    parser.add_argument("--host", "-H", default="localhost")
+    parser.add_argument("--port", "-p", default="8080")
+    args = parser.parse_args()
+    web.run_app(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

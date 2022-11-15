@@ -28,6 +28,7 @@ class YoutubeSource(Source):
             osc=True,
             ytdl=True,
             script_opts="ytdl_hook-ytdl_path=yt-dlp",
+            ytdl_format="bestvideo[height<=720]+bestaudio/best[height<=720]",
             fullscreen=True,
         )
         self.player.play(entry.id)
@@ -44,6 +45,7 @@ class YoutubeSource(Source):
         return Entry(
             id=url,
             source="youtube",
+            album="YouTube",
             duration=yt.length,
             title=yt.title,
             artist=yt.author,

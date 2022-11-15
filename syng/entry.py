@@ -10,6 +10,7 @@ class Entry:
     duration: int
     title: str
     artist: str
+    album: str
     performer: str
     failed: bool = False
     uuid: UUID = field(default_factory=uuid4)
@@ -26,6 +27,7 @@ class Entry:
             "duration": self.duration,
             "title": self.title,
             "artist": self.artist,
+            "album": self.album,
             "performer": self.performer,
         }
 
