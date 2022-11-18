@@ -15,10 +15,10 @@ import socketio
 from .entry import Entry
 from .sources import Source, available_sources
 
-sio = socketio.AsyncServer(cors_allowed_origins="*",
-                           logger=True, engineio_logger=False)
+sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=False)
 app = web.Application()
 sio.attach(app)
+app.add_routes([web.static("/", "syng/static/")])
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -135,8 +135,7 @@ async def handle_pop_then_get_next(sid, data={}):
 
 
 def gen_id(length=4) -> str:
-    client_id = "".join([random.choice(string.ascii_letters)
-                        for _ in range(length)])
+    client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
     if client_id in clients:
         client_id = gen_id(length + 1)
     return client_id
@@ -165,8 +164,7 @@ async def handle_register_client(sid, data: dict[str, Any]):
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
-        clients[room] = State(data["secret"], {}, [],
-                              Queue(initial_entries), sid)
+        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), sid)
         sio.enter_room(sid, room)
         await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
 
@@ -215,8 +213,7 @@ async def handle_config(sid, data):
         room = session["room"]
     state = clients[room]
 
-    state.sources[data["source"]] = available_sources[data["source"]](
-        data["config"])
+    state.sources[data["source"]] = available_sources[data["source"]](data["config"])
     logger.info("Added source %s", data["source"])
 
 
@@ -252,8 +249,7 @@ async def handle_get_config(sid, data):
     if is_admin:
         await sio.emit(
             "config",
-            {name: source.get_config()
-             for name, source in state.sources.items()},
+            {name: source.get_config() for name, source in state.sources.items()},
         )
 
 

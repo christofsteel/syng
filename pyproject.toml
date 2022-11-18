@@ -5,6 +5,12 @@ description = ""
 authors = ["Christoph Stahl <christoph.stahl@tu-dortmund.de>"]
 license = "GPL3"
 readme = "README.md"
+include = ["syng/static"]
+
+[tool.poetry.scripts]
+syng-client = "syng.client:main"
+syng-server = "syng.server:main"
+syng-shell = "syng.webclientmockup:main"
 
 [tool.poetry.dependencies]
 python = "^3.7"

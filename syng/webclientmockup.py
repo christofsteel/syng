@@ -74,9 +74,9 @@ class SyngShell(aiocmd.PromptToolkitCmd):
         await sio.emit("get-state")
 
 
-async def main():
-    await sio.connect("http://127.0.0.1:8080")
+def main():
+    asyncio.run(SyngShell().run())
 
 
 if __name__ == "__main__":
-    asyncio.run(SyngShell().run())
+    main()

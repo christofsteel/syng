@@ -57,7 +57,9 @@ async def handle_buffer(data):
 @sio.on("play")
 async def handle_play(data):
     entry = Entry(**data)
-    print(f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}")
+    print(
+        f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}"
+    )
     try:
         meta_info = await sources[entry.source].buffer(entry)
         await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
@@ -103,7 +105,7 @@ async def handle_request_config(data):
             await sio.emit("config", {"source": data["source"], "config": config})
 
 
-async def main():
+async def aiomain():
     parser = ArgumentParser()
 
     parser.add_argument("--room", "-r")
@@ -122,5 +124,9 @@ async def main():
     await sio.wait()
 
 
+def main():
+    asyncio.run(aiomain())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
