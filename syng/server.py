@@ -219,12 +219,15 @@ async def handle_config(sid, data):
 
 @sio.on("register-web")
 async def handle_register_web(sid, data):
-    async with sio.session(sid) as session:
-        session["room"] = data["room"]
-        sio.enter_room(sid, session["room"])
-    state = clients[session["room"]]
-
-    await sio.emit("state", state.queue.to_dict(), room=sid)
+    if data["room"] in clients:
+        async with sio.session(sid) as session:
+            session["room"] = data["room"]
+            sio.enter_room(sid, session["room"])
+        state = clients[session["room"]]
+        await sio.emit("state", state.queue.to_dict(), room=sid)
+        return True
+    else:
+        return False
 
 
 @sio.on("register-admin")
