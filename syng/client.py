@@ -5,6 +5,7 @@ import logging
 from argparse import ArgumentParser
 
 import socketio
+import pyqrcode
 
 from .sources import Source, configure_sources
 from .entry import Entry
@@ -16,11 +17,7 @@ sources: dict[str, Source] = {}
 
 
 currentLock = asyncio.Semaphore(0)
-state = {
-    "current": None,
-    "queue": [],
-    "room": None,
-}
+state = {"current": None, "queue": [], "room": None, "server": ""}
 
 
 @sio.on("skip")
@@ -31,7 +28,7 @@ async def handle_skip():
 
 @sio.on("state")
 async def handle_state(data):
-    state["queue"] = [Entry(**entry) for entry in data]
+    state["queue"] = [Entry(**entry) for entry in data["queue"]]
 
 
 @sio.on("connect")
@@ -75,7 +72,10 @@ async def handle_play(data):
 async def handle_register(data):
     if data["success"]:
         logging.info("Registered")
-        print(f"Join using code: {data['room']}")
+        print(f"Join here: {state['server']}/{data['room']}")
+        print(
+            pyqrcode.create(f"{state['server']}/{data['room']}").terminal(quiet_zone=1)
+        )
         state["room"] = data["room"]
         await sio.emit("sources", {"sources": list(sources.keys())})
         if state["current"] is None:
@@ -119,6 +119,8 @@ async def aiomain():
     sources.update(configure_sources(source_config))
     if args.room:
         state["room"] = args.room
+
+    state["server"] = args.server
 
     await sio.connect(args.server)
     await sio.wait()

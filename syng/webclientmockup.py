@@ -19,7 +19,11 @@ async def handle_search_results(data):
 @sio.on("state")
 async def handle_state(data):
     print("New Queue")
-    for raw_item in data:
+    for raw_item in data["queue"]:
+        item = Entry(**raw_item)
+        print(f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})")
+    print("Recent")
+    for raw_item in data["recent"]:
         item = Entry(**raw_item)
         print(f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})")
 

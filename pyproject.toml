@@ -22,6 +22,7 @@ minio = "^7.1.12"
 colored = "^1.4.4"
 mutagen = "^1.46.0"
 aiocmd = "^0.1.5"
+pyqrcode = "^1.2.1"
 
 
 [build-system]

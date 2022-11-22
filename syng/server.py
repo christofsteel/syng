@@ -18,7 +18,16 @@ from .sources import Source, available_sources
 sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=False)
 app = web.Application()
 sio.attach(app)
-app.add_routes([web.static("/", "syng/static/")])
+
+
+async def root_handler(request):
+    return web.FileResponse("syng/static/index.html")
+
+
+app.add_routes([web.static("/assets/", "syng/static/assets/")])
+app.router.add_route("*", "/", root_handler)
+app.router.add_route("*", "/{room}", root_handler)
+app.router.add_route("*", "/{room}/", root_handler)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -66,6 +75,7 @@ class State:
     sources: dict[str, Source]
     sources_prio: list[str]
     queue: Queue
+    recent: list[Entry]
     sid: str
 
 
@@ -75,7 +85,14 @@ async def handle_state(sid, data: dict[str, Any] = {}):
         room = session["room"]
     state = clients[room]
 
-    await sio.emit("state", state.queue.to_dict(), room=sid)
+    await sio.emit(
+        "state",
+        {
+            "queue": state.queue.to_dict(),
+            "recent": [entry.to_dict() for entry in state.recent],
+        },
+        room=sid,
+    )
 
 
 @sio.on("append")
@@ -87,7 +104,14 @@ async def handle_append(sid, data: dict[str, Any]):
     source_obj = state.sources[data["source"]]
     entry = await Entry.from_source(data["performer"], data["id"], source_obj)
     state.queue.append(entry)
-    await sio.emit("state", state.queue.to_dict(), room=room)
+    await sio.emit(
+        "state",
+        {
+            "queue": state.queue.to_dict(),
+            "recent": [entry.to_dict() for entry in state.recent],
+        },
+        room=sid,
+    )
 
     await sio.emit(
         "buffer",
@@ -107,7 +131,14 @@ async def handle_meta_info(sid, data):
         lambda item: item.update(**data["meta"]),
     )
 
-    await sio.emit("state", state.queue.to_dict(), room=room)
+    await sio.emit(
+        "state",
+        {
+            "queue": state.queue.to_dict(),
+            "recent": [entry.to_dict() for entry in state.recent],
+        },
+        room=sid,
+    )
 
 
 @sio.on("get-first")
@@ -127,8 +158,16 @@ async def handle_pop_then_get_next(sid, data={}):
         room = session["room"]
     state = clients[room]
 
-    await state.queue.popleft()
-    await sio.emit("state", state.queue.to_dict(), room=room)
+    old_entry = await state.queue.popleft()
+    state.recent.append(old_entry)
+    await sio.emit(
+        "state",
+        {
+            "queue": state.queue.to_dict(),
+            "recent": [entry.to_dict() for entry in state.recent],
+        },
+        room=sid,
+    )
     current = await state.queue.peek()
 
     await sio.emit("play", current.to_dict(), room=sid)
@@ -164,7 +203,7 @@ async def handle_register_client(sid, data: dict[str, Any]):
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
-        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), sid)
+        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), [], sid)
         sio.enter_room(sid, room)
         await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
 
@@ -224,7 +263,14 @@ async def handle_register_web(sid, data):
             session["room"] = data["room"]
             sio.enter_room(sid, session["room"])
         state = clients[session["room"]]
-        await sio.emit("state", state.queue.to_dict(), room=sid)
+        await sio.emit(
+            "state",
+            {
+                "queue": state.queue.to_dict(),
+                "recent": [entry.to_dict() for entry in state.recent],
+            },
+            room=sid,
+        )
         return True
     else:
         return False
