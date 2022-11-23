@@ -110,7 +110,7 @@ async def handle_append(sid, data: dict[str, Any]):
             "queue": state.queue.to_dict(),
             "recent": [entry.to_dict() for entry in state.recent],
         },
-        room=sid,
+        room=room,
     )
 
     await sio.emit(
@@ -137,7 +137,7 @@ async def handle_meta_info(sid, data):
             "queue": state.queue.to_dict(),
             "recent": [entry.to_dict() for entry in state.recent],
         },
-        room=sid,
+        room=room,
     )
 
 
@@ -166,7 +166,7 @@ async def handle_pop_then_get_next(sid, data={}):
             "queue": state.queue.to_dict(),
             "recent": [entry.to_dict() for entry in state.recent],
         },
-        room=sid,
+        room=room,
     )
     current = await state.queue.peek()
 
