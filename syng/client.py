@@ -1,4 +1,6 @@
 import asyncio
+import string
+import secrets
 from traceback import print_exc
 from json import load
 import logging
@@ -17,7 +19,7 @@ sources: dict[str, Source] = {}
 
 
 currentLock = asyncio.Semaphore(0)
-state = {"current": None, "queue": [], "room": None, "server": ""}
+state = {"current": None, "queue": [], "recent": [], "room": None, "server": "", "secret": ""}
 
 
 @sio.on("skip")
@@ -29,6 +31,7 @@ async def handle_skip():
 @sio.on("state")
 async def handle_state(data):
     state["queue"] = [Entry(**entry) for entry in data["queue"]]
+    state["recent"] = [Entry(**entry) for entry in data["recent"]]
 
 
 @sio.on("connect")
@@ -37,8 +40,9 @@ async def handle_connect():
     await sio.emit(
         "register-client",
         {
-            "secret": "test",
+            "secret": state["secret"],
             "queue": [entry.to_dict() for entry in state["queue"]],
+            "recent": [entry.to_dict() for entry in state["recent"]],
             "room": state["room"],
         },
     )
@@ -109,6 +113,7 @@ async def aiomain():
     parser = ArgumentParser()
 
     parser.add_argument("--room", "-r")
+    parser.add_argument("--secret", "-s")
     parser.add_argument("--config-file", "-C", default="syng-client.json")
     parser.add_argument("server")
 
@@ -119,6 +124,12 @@ async def aiomain():
     sources.update(configure_sources(source_config))
     if args.room:
         state["room"] = args.room
+
+    if args.secret:
+        state["secret"] = args.secret
+    else:
+        state["secret"] = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        print(f"Generated secret: {state['secret']}")
 
     state["server"] = args.server
 

@@ -67,9 +67,9 @@ class SyngShell(aiocmd.PromptToolkitCmd):
     async def do_admin(self, data):
         await sio.emit("register-admin", {"secret": data})
 
-    async def do_connect(self, room):
+    async def do_connect(self, server, room):
         state["room"] = room
-        await sio.connect("http://127.0.0.1:8080")
+        await sio.connect(server)
 
     async def do_skip(self):
         await sio.emit("skip")

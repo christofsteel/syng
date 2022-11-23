@@ -203,7 +203,8 @@ async def handle_register_client(sid, data: dict[str, Any]):
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
-        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), [], sid)
+        initial_recent = [Entry(**entry) for entry in data["recent"]]
+        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), initial_recent, sid)
         sio.enter_room(sid, room)
         await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
 
