@@ -6,10 +6,11 @@ from asyncio import Future
 import os
 
 from minio import Minio
-from mpv import MPV
+
 import mutagen
 
 from .source import Source, async_in_thread, available_sources
+from .common import play_mpv, kill_mpv
 from ..result import Result
 from ..entry import Entry
 
@@ -46,31 +47,23 @@ class S3Source(Source):
             )
         raise RuntimeError(f"Could not parse {filename}")
 
-    @async_in_thread
-    def play(self, entry) -> None:
+    async def play(self, entry) -> None:
         while not entry.uuid in self.downloaded_files:
             sleep(0.1)
 
         self.downloaded_files[entry.uuid]["lock"].wait()
 
-        self.player = MPV(
-            input_default_bindings=True,
-            input_vo_keyboard=True,
-            osc=True,
-            fullscreen=True,
-        )
-
         cdg_file = self.downloaded_files[entry.uuid]["cdg"]
         mp3_file = self.downloaded_files[entry.uuid]["mp3"]
 
-        self.player.loadfile(
-            cdg_file,
-            mode="replace",
-            audio_file=mp3_file,
-            scale="oversample",
+        self.player = await play_mpv(
+            cdg_file, mp3_file, ["--scale=oversample", "--fullscreen"]
         )
-        self.player.wait_for_playback()
-        self.player.terminate()
+
+        await self.player.wait()
+
+    async def skip_current(self) -> None:
+        await self.player.kill()
 
     @async_in_thread
     def get_config(self):

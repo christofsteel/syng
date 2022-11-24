@@ -3,8 +3,8 @@ import shlex
 from functools import partial
 
 from pytube import YouTube, Search, Channel, innertube
-from mpv import MPV
 
+from .common import play_mpv, kill_mpv
 from .source import Source, async_in_thread, available_sources
 from ..entry import Entry
 from ..result import Result
@@ -15,29 +15,25 @@ class YoutubeSource(Source):
         super().__init__()
         self.innertube_client = innertube.InnerTube(client="WEB")
         self.channels = config["channels"] if "channels" in config else []
-        self.player = None
+        self.player: None | asyncio.subprocess.Process = None
 
     async def get_config(self):
         return {"channels": self.channels}
 
-    @async_in_thread
-    def play(self, entry: Entry) -> None:
-        self.player = MPV(
-            input_default_bindings=True,
-            input_vo_keyboard=True,
-            osc=True,
-            ytdl=True,
-            script_opts="ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
-            ytdl_format="bestvideo[height<=720]+bestaudio/best[height<=720]",
-            fullscreen=True,
+    async def play(self, entry: Entry) -> None:
+        self.player = await play_mpv(
+            entry.id,
+            None,
+            [
+                "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
+                "--ytdl-format=bestvideo[height<=720]+bestaudio/best[height<=720]",
+                "--fullscreen",
+            ],
         )
-        self.player.play(entry.id)
-        self.player.wait_for_playback()
-        self.player.terminate()
+        await self.player.wait()
 
     async def skip_current(self) -> None:
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.player.terminate)
+        await self.player.kill()
 
     @async_in_thread
     def get_entry(self, performer: str, url: str) -> Entry:
