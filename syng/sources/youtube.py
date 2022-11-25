@@ -1,6 +1,7 @@
 import asyncio
 import shlex
 from functools import partial
+from threading import Event, Lock
 
 from pytube import YouTube, Search, Channel, innertube
 
@@ -15,24 +16,36 @@ class YoutubeSource(Source):
         super().__init__()
         self.innertube_client = innertube.InnerTube(client="WEB")
         self.channels = config["channels"] if "channels" in config else []
+        self.tmp_dir = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
         self.player: None | asyncio.subprocess.Process = None
+        self.downloaded_files = {}
+        self.masterlock = Lock()
 
     async def get_config(self):
         return {"channels": self.channels}
 
     async def play(self, entry: Entry) -> None:
-        self.player = await play_mpv(
-            entry.id,
-            None,
-            [
-                "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
-                "--ytdl-format=bestvideo[height<=720]+bestaudio/best[height<=720]",
-                "--fullscreen",
-            ],
-        )
+
+        if entry.uuid in self.downloaded_files and "video" in self.downloaded_files[entry.uuid]:
+            print("playing locally")
+            video_file = self.downloaded_files[entry.uuid]["video"]
+            audio_file = self.downloaded_files[entry.uuid]["audio"]
+            self.player = await play_mpv(video_file, audio_file)
+        else:
+            print("streaming")
+            self.player = await play_mpv(
+                entry.id,
+                None,
+                [
+                    "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
+                    "--ytdl-format=bestvideo[height<=720]+bestaudio/best[height<=720]",
+                    "--fullscreen",
+                ],
+            )
+
         await self.player.wait()
 
-    async def skip_current(self) -> None:
+    async def skip_current(self, entry) -> None:        
         await self.player.kill()
 
     @async_in_thread
@@ -120,6 +133,40 @@ class YoutubeSource(Source):
             except KeyError:
                 pass
         return list_of_videos
+
+    @async_in_thread
+    def buffer(self, entry: Entry) -> dict:
+        print(f"Buffering {entry}")
+        with self.masterlock:
+            if entry.uuid in self.downloaded_files:
+                print(f"Already buffering {entry}")
+                return {}
+            self.downloaded_files[entry.uuid] = {}
+
+        yt = YouTube(entry.id)
+
+        streams = yt.streams
+    
+        video_streams = streams.filter(
+                type="video", 
+                custom_filter_functions=[lambda s: int(s.resolution[:-1]) <= 1080]
+                )
+        audio_streams = streams.filter(only_audio=True)
+
+        best_720_stream = sorted(video_streams, key=lambda s: int(s.resolution[:-1]) + (1 if s.is_progressive else 0))[-1]
+        best_audio_stream = sorted(audio_streams, key=lambda s: int(s.abr[:-4]))[-1]
+
+        print(best_720_stream)
+        print(best_audio_stream)
+
+        if not best_720_stream.is_progressive:
+            self.downloaded_files[entry.uuid]["audio"] = best_audio_stream.download(output_path=self.tmp_dir, filename_prefix=f"{entry.uuid}-audio")
+        else:
+            self.downloaded_files[entry.uuid]["audio"] = None
+
+        self.downloaded_files[entry.uuid]["video"] = best_720_stream.download(output_path=self.tmp_dir, filename_prefix=entry.uuid)
+
+        return {}
 
 
 available_sources["youtube"] = YoutubeSource

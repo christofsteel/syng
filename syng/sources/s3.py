@@ -57,12 +57,12 @@ class S3Source(Source):
         mp3_file = self.downloaded_files[entry.uuid]["mp3"]
 
         self.player = await play_mpv(
-            cdg_file, mp3_file, ["--scale=oversample", "--fullscreen"]
+            cdg_file, mp3_file, ["--scale=oversample"]
         )
 
         await self.player.wait()
 
-    async def skip_current(self) -> None:
+    async def skip_current(self, entry) -> None:
         await self.player.kill()
 
     @async_in_thread

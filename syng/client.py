@@ -25,7 +25,7 @@ state = {"current": None, "queue": [], "recent": [], "room": None, "server": "",
 @sio.on("skip")
 async def handle_skip():
     logger.info("Skipping current")
-    await state["current"].skip_current()
+    await state["current"].skip_current(state["queue"][0])
 
 
 @sio.on("state")
@@ -55,6 +55,11 @@ async def handle_buffer(data):
     await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
 
 
+async def buffer_and_report(entry):
+    meta_info = await sources[entry.source].buffer(entry)
+    await sio.emit("meta-info", {"uuid": entry.uuid, "meta": meta_info})
+
+
 @sio.on("play")
 async def handle_play(data):
     entry = Entry(**data)
@@ -62,9 +67,8 @@ async def handle_play(data):
         f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}"
     )
     try:
-        meta_info = await sources[entry.source].buffer(entry)
-        await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
         state["current"] = sources[entry.source]
+        asyncio.create_task(buffer_and_report(entry))
         await sources[entry.source].play(entry)
     except Exception:
         print_exc()

@@ -29,7 +29,7 @@ class Source:
     async def play(self, entry: Entry) -> None:
         raise NotImplementedError
 
-    async def skip_current(self) -> None:
+    async def skip_current(self, entry: Entry) -> None:
         pass
 
     async def init_server(self) -> None:
