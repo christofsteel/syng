@@ -1,43 +1,42 @@
 from json import load, dump
 from time import sleep, perf_counter
 from itertools import zip_longest
-from threading import Event, Lock
-from asyncio import Future
+import asyncio
 import os
+from typing import Tuple, Optional
 
 from minio import Minio
 
 import mutagen
 
-from .source import Source, async_in_thread, available_sources
-from .common import play_mpv, kill_mpv
+from .source import Source, available_sources
 from ..result import Result
 from ..entry import Entry
 
 
 class S3Source(Source):
     def __init__(self, config):
-        super().__init__()
+        super().__init__(config)
 
         if "endpoint" in config and "access_key" in config and "secret_key" in config:
-            self.minio = Minio(
+            self.minio: Minio = Minio(
                 config["endpoint"],
                 access_key=config["access_key"],
                 secret_key=config["secret_key"],
             )
-            self.bucket = config["bucket"]
-            self.tmp_dir = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            self.bucket: str = config["bucket"]
+            self.tmp_dir: str = (
+                config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            )
 
-        self.index = [] if "index" not in config else config["index"]
-        self.downloaded_files = {}
-        self.player = None
-        self.masterlock = Lock()
+        self.index: list[str] = [] if "index" not in config else config["index"]
+        self.extra_mpv_arguments = ["--scale=oversample"]
 
-    async def get_entry(self, performer: str, filename: str) -> Entry:
-        res = Result.from_filename(filename, "s3")
+    async def get_entry(self, performer: str, ident: str) -> Entry:
+        res: Optional[Result] = Result.from_filename(ident, "s3")
         if res is not None:
             return Entry(
-                id=filename,
+                id=ident,
                 source="s3",
                 duration=180,
                 album=res.album,
@@ -45,96 +44,83 @@ class S3Source(Source):
                 artist=res.artist,
                 performer=performer,
             )
-        raise RuntimeError(f"Could not parse {filename}")
+        raise RuntimeError(f"Could not parse {ident}")
 
-    async def play(self, entry) -> None:
-        while not entry.uuid in self.downloaded_files:
-            sleep(0.1)
+    async def get_config(self) -> dict | list[dict]:
+        def _get_config() -> dict | list[dict]:
+            if not self.index:
+                print(f"Indexing {self.bucket}")
+                # self.index = [
+                #     obj.object_name
+                #     for obj in self.minio.list_objects(self.bucket, recursive=True)
+                # ]
+                # with open("s3_files", "w") as f:
+                #     dump(self.index, f)
+                with open("s3_files", "r") as f:
+                    self.index = [item for item in load(f) if item.endswith(".cdg")]
 
-        self.downloaded_files[entry.uuid]["lock"].wait()
+            chunked = zip_longest(*[iter(self.index)] * 1000, fillvalue="")
+            return [
+                {"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked
+            ]
 
-        cdg_file = self.downloaded_files[entry.uuid]["cdg"]
-        mp3_file = self.downloaded_files[entry.uuid]["mp3"]
+        return await asyncio.to_thread(_get_config)
 
-        self.player = await play_mpv(
-            cdg_file, mp3_file, ["--scale=oversample"]
-        )
-
-        await self.player.wait()
-
-    async def skip_current(self, entry) -> None:
-        await self.player.kill()
-
-    @async_in_thread
-    def get_config(self):
-        if not self.index:
-            print("Start indexing")
-            start = perf_counter()
-            # self.index = [
-            #     obj.object_name
-            #     for obj in self.minio.list_objects(self.bucket, recursive=True)
-            # ]
-            # with open("s3_files", "w") as f:
-            #     dump(self.index, f)
-            with open("s3_files", "r") as f:
-                self.index = [item for item in load(f) if item.endswith(".cdg")]
-            print(len(self.index))
-            stop = perf_counter()
-            print(f"Took {stop - start:0.4f} seconds")
-
-        chunked = zip_longest(*[iter(self.index)] * 1000, fillvalue="")
-        return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
-
-    def add_to_config(self, config):
+    def add_to_config(self, config: dict) -> None:
         self.index += config["index"]
 
-    @async_in_thread
-    def search(self, result_future: Future, query: str) -> None:
+    async def search(self, result_future: asyncio.Future, query: str) -> None:
         print("searching s3")
-        filtered = self.filter_data_by_query(query, self.index)
-        results = []
+        filtered: list[str] = self.filter_data_by_query(query, self.index)
+        results: list[Result] = []
         for filename in filtered:
-            print(filename)
-            result = Result.from_filename(filename, "s3")
-            print(result)
+            result: Optional[Result] = Result.from_filename(filename, "s3")
             if result is None:
                 continue
             results.append(result)
-        print(results)
         result_future.set_result(results)
 
-    @async_in_thread
-    def buffer(self, entry: Entry) -> dict:
-        with self.masterlock:
-            if entry.uuid in self.downloaded_files:
-                return {}
-            self.downloaded_files[entry.uuid] = {"lock": Event()}
+    async def get_missing_metadata(self, entry: Entry) -> dict:
+        def mutagen_wrapped(file: str) -> int:
+            meta_infos = mutagen.File(file).info
+            return int(meta_infos.length)
 
-        cdg_filename = os.path.basename(entry.id)
-        path_to_file = os.path.dirname(entry.id)
+        await self.ensure_playable(entry)
 
-        cdg_path_with_uuid = os.path.join(path_to_file, f"{entry.uuid}-{cdg_filename}")
-        target_file_cdg = os.path.join(self.tmp_dir, cdg_path_with_uuid)
+        audio_file_name: Optional[str] = self.downloaded_files[entry.id].audio
 
-        ident_mp3 = entry.id[:-3] + "mp3"
-        target_file_mp3 = target_file_cdg[:-3] + "mp3"
+        if audio_file_name is None:
+            duration: int = 180
+        else:
+            duration = await asyncio.to_thread(mutagen_wrapped, audio_file_name)
+
+        return {"duration": int(duration)}
+
+    async def doBuffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
+        cdg_filename: str = os.path.basename(entry.id)
+        path_to_file: str = os.path.dirname(entry.id)
+
+        cdg_path: str = os.path.join(path_to_file, cdg_filename)
+        target_file_cdg: str = os.path.join(self.tmp_dir, cdg_path)
+
+        ident_mp3: str = entry.id[:-3] + "mp3"
+        target_file_mp3: str = target_file_cdg[:-3] + "mp3"
         os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
 
-        print(
-            f'self.minio.fget_object("{self.bucket}", "{entry.id}", "{target_file_cdg}")'
+        video_task: asyncio.Task = asyncio.create_task(
+            asyncio.to_thread(
+                self.minio.fget_object, self.bucket, entry.id, target_file_cdg
+            )
         )
-        self.minio.fget_object(self.bucket, entry.id, target_file_cdg)
-        self.minio.fget_object(self.bucket, ident_mp3, target_file_mp3)
+        audio_task: asyncio.Task = asyncio.create_task(
+            asyncio.to_thread(
+                self.minio.fget_object, self.bucket, ident_mp3, target_file_mp3
+            )
+        )
 
-        self.downloaded_files[entry.uuid]["cdg"] = target_file_cdg
-        self.downloaded_files[entry.uuid]["mp3"] = target_file_mp3
-        self.downloaded_files[entry.uuid]["lock"].set()
-
-        meta_infos = mutagen.File(target_file_mp3).info
-
-        print(f"duration is {meta_infos.length}")
-
-        return {"duration": int(meta_infos.length)}
+        await video_task
+        await audio_task
+        return target_file_cdg, target_file_mp3
 
 
 available_sources["s3"] = S3Source

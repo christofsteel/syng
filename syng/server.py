@@ -33,9 +33,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-clients = {}
-
-
 class Queue:
     def __init__(self, *args, **kwargs):
         self._queue = deque(*args, **kwargs)
@@ -77,6 +74,9 @@ class State:
     queue: Queue
     recent: list[Entry]
     sid: str
+
+
+clients: dict[str, State] = {}
 
 
 @sio.on("get-state")
@@ -204,8 +204,18 @@ async def handle_register_client(sid, data: dict[str, Any]):
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
         initial_recent = [Entry(**entry) for entry in data["recent"]]
-        clients[room] = State(data["secret"], {}, [], Queue(initial_entries), initial_recent, sid)
+        clients[room] = State(
+            data["secret"], {}, [], Queue(initial_entries), initial_recent, sid
+        )
         sio.enter_room(sid, room)
+        await sio.emit(
+            "state",
+            {
+                "queue": clients[room].queue.to_dict(),
+                "recent": [entry.to_dict() for entry in clients[room].recent],
+            },
+            room=sid,
+        )
         await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
 
 

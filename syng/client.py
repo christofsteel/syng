@@ -5,6 +5,8 @@ from traceback import print_exc
 from json import load
 import logging
 from argparse import ArgumentParser
+from dataclasses import dataclass, field
+from typing import Optional, Any
 
 import socketio
 import pyqrcode
@@ -13,25 +15,41 @@ from .sources import Source, configure_sources
 from .entry import Entry
 
 
-sio = socketio.AsyncClient()
-logger = logging.getLogger(__name__)
+sio: socketio.AsyncClient = socketio.AsyncClient()
+logger: logging.Logger = logging.getLogger(__name__)
 sources: dict[str, Source] = {}
 
 
-currentLock = asyncio.Semaphore(0)
-state = {"current": None, "queue": [], "recent": [], "room": None, "server": "", "secret": ""}
+currentLock: asyncio.Semaphore = asyncio.Semaphore(0)
+
+
+@dataclass
+class State:
+    current_source: Optional[Source] = None
+    queue: list[Entry] = field(default_factory=list)
+    recent: list[Entry] = field(default_factory=list)
+    room: str = ""
+    server: str = ""
+    secret: str = ""
+
+
+state: State = State()
 
 
 @sio.on("skip")
 async def handle_skip():
     logger.info("Skipping current")
-    await state["current"].skip_current(state["queue"][0])
+    await state.current_source.skip_current(state.queue[0])
 
 
 @sio.on("state")
-async def handle_state(data):
-    state["queue"] = [Entry(**entry) for entry in data["queue"]]
-    state["recent"] = [Entry(**entry) for entry in data["recent"]]
+async def handle_state(data: dict[str, Any]):
+    state.queue = [Entry(**entry) for entry in data["queue"]]
+    state.recent = [Entry(**entry) for entry in data["recent"]]
+
+    for entry in state.queue[:2]:
+        logger.warning(f"Buffering: %s", entry.title)
+        await sources[entry.source].buffer(entry)
 
 
 @sio.on("connect")
@@ -40,35 +58,29 @@ async def handle_connect():
     await sio.emit(
         "register-client",
         {
-            "secret": state["secret"],
-            "queue": [entry.to_dict() for entry in state["queue"]],
-            "recent": [entry.to_dict() for entry in state["recent"]],
-            "room": state["room"],
+            "secret": state.secret,
+            "queue": [entry.to_dict() for entry in state.queue],
+            "recent": [entry.to_dict() for entry in state.recent],
+            "room": state.room,
         },
     )
 
 
 @sio.on("buffer")
-async def handle_buffer(data):
-    source = sources[data["source"]]
-    meta_info = await source.buffer(Entry(**data))
+async def handle_buffer(data: dict[str, Any]):
+    source: Source = sources[data["source"]]
+    meta_info: dict[str, Any] = await source.get_missing_metadata(Entry(**data))
     await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
 
 
-async def buffer_and_report(entry):
-    meta_info = await sources[entry.source].buffer(entry)
-    await sio.emit("meta-info", {"uuid": entry.uuid, "meta": meta_info})
-
-
 @sio.on("play")
-async def handle_play(data):
-    entry = Entry(**data)
+async def handle_play(data: dict[str, Any]):
+    entry: Entry = Entry(**data)
     print(
         f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}"
     )
     try:
-        state["current"] = sources[entry.source]
-        asyncio.create_task(buffer_and_report(entry))
+        state.current_source = sources[entry.source]
         await sources[entry.source].play(entry)
     except Exception:
         print_exc()
@@ -77,16 +89,14 @@ async def handle_play(data):
 
 
 @sio.on("client-registered")
-async def handle_register(data):
+async def handle_register(data: dict[str, Any]):
     if data["success"]:
         logging.info("Registered")
-        print(f"Join here: {state['server']}/{data['room']}")
-        print(
-            pyqrcode.create(f"{state['server']}/{data['room']}").terminal(quiet_zone=1)
-        )
-        state["room"] = data["room"]
+        print(f"Join here: {state.server}/{data['room']}")
+        print(pyqrcode.create(f"{state.server}/{data['room']}").terminal(quiet_zone=1))
+        state.room = data["room"]
         await sio.emit("sources", {"sources": list(sources.keys())})
-        if state["current"] is None:
+        if state.current_source is None:
             await sio.emit("get-first")
     else:
         logging.warning("Registration failed")
@@ -94,11 +104,13 @@ async def handle_register(data):
 
 
 @sio.on("request-config")
-async def handle_request_config(data):
+async def handle_request_config(data: dict[str, Any]):
     if data["source"] in sources:
-        config = await sources[data["source"]].get_config()
+        config: dict[str, Any] | list[dict[str, Any]] = await sources[
+            data["source"]
+        ].get_config()
         if isinstance(config, list):
-            num_chunks = len(config)
+            num_chunks: int = len(config)
             for current, chunk in enumerate(config):
                 await sio.emit(
                     "config-chunk",
@@ -114,7 +126,7 @@ async def handle_request_config(data):
 
 
 async def aiomain():
-    parser = ArgumentParser()
+    parser: ArgumentParser = ArgumentParser()
 
     parser.add_argument("--room", "-r")
     parser.add_argument("--secret", "-s")
@@ -127,15 +139,17 @@ async def aiomain():
         source_config = load(file)
     sources.update(configure_sources(source_config))
     if args.room:
-        state["room"] = args.room
+        state.room = args.room
 
     if args.secret:
-        state["secret"] = args.secret
+        state.secret = args.secret
     else:
-        state["secret"] = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
-        print(f"Generated secret: {state['secret']}")
+        state.secret = "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+        )
+        print(f"Generated secret: {state.secret}")
 
-    state["server"] = args.server
+    state.server = args.server
 
     await sio.connect(args.server)
     await sio.wait()

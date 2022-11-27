@@ -31,3 +31,13 @@ build-backend = "poetry.core.masonry.api"
 exclude = [ ".venv" ]
 venvPath = "."
 venv = ".venv"
+
+[[tool.mypy.overrides]]
+module = [
+  "pytube",
+  "minio",
+  "aiocmd",
+  "pyqrcode",
+  "socketio"
+]
+ignore_missing_imports = true

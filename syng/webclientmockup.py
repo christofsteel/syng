@@ -1,11 +1,14 @@
-import socketio
 import asyncio
+from typing import Any
+
+from aiocmd import aiocmd
+import socketio
+
 from .result import Result
 from .entry import Entry
-from aiocmd import aiocmd
 
-sio = socketio.AsyncClient()
-state = {}
+sio: socketio.AsyncClient = socketio.AsyncClient()
+state: dict[str, Any] = {}
 
 
 @sio.on("search-results")

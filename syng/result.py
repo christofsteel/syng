@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Optional
 import os.path
 
 
@@ -21,7 +22,7 @@ class Result:
         }
 
     @staticmethod
-    def from_filename(filename, source) -> Result | None:
+    def from_filename(filename, source) -> Optional[Result]:
         try:
             splitfile = os.path.basename(filename[:-4]).split(" - ")
             ident = filename

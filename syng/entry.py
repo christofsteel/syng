@@ -1,6 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .sources import Source
 
 
 @dataclass
