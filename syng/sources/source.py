@@ -7,6 +7,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from ..entry import Entry
+from ..result import Result
 
 
 @dataclass
@@ -30,7 +31,7 @@ class Source:
 
     @staticmethod
     async def play_mpv(
-        video: str, audio: str | None, /, *options
+        video: str, audio: str | None, /, *options: str
     ) -> asyncio.subprocess.Process:
         args = ["--fullscreen", *options, video] + (
             [f"--audio-file={audio}"] if audio else []
@@ -42,13 +43,15 @@ class Source:
     async def get_entry(self, performer: str, ident: str) -> Entry:
         raise NotImplementedError
 
-    async def search(self, result_future: asyncio.Future, query: str) -> None:
+    async def search(
+        self, result_future: asyncio.Future[list[Result]], query: str
+    ) -> None:
         raise NotImplementedError
 
     async def doBuffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         raise NotImplementedError
 
-    async def buffer(self, entry: Entry):
+    async def buffer(self, entry: Entry) -> None:
         async with self.masterlock:
             if self.downloaded_files[entry.id].buffering:
                 print(f"already buffering {entry.title}")
@@ -75,7 +78,7 @@ class Source:
         if self.player is not None:
             self.player.kill()
 
-    async def ensure_playable(self, entry: Entry):
+    async def ensure_playable(self, entry: Entry) -> None:
         await self.buffer(entry)
         await self.downloaded_files[entry.id].ready.wait()
 

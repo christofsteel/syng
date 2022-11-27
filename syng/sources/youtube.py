@@ -21,7 +21,7 @@ class YoutubeSource(Source):
             config["start_streaming"] if "start_streaming" in config else False
         )
 
-    async def get_config(self) -> dict | list[dict]:
+    async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         return {"channels": self.channels}
 
     async def play(self, entry: Entry) -> None:
@@ -63,8 +63,10 @@ class YoutubeSource(Source):
 
         return 1 - (hits / len(queries))
 
-    async def search(self, result_future: asyncio.Future, query: str) -> None:
-        def _search(result_future: asyncio.Future, query: str) -> None:
+    async def search(
+        self, result_future: asyncio.Future[list[Result]], query: str
+    ) -> None:
+        def _search(result_future: asyncio.Future[list[Result]], query: str) -> None:
             results: list[YouTube] = []
             for channel in self.channels:
                 results += self._channel_search(query, channel)
@@ -99,12 +101,14 @@ class YoutubeSource(Source):
             "params": "EgZzZWFyY2g%3D",
         }
         data.update(self.innertube_client.base_data)
-        results: dict = self.innertube_client._call_api(
+        results: dict[str, Any] = self.innertube_client._call_api(
             endpoint, self.innertube_client.base_params, data
         )
-        items: list = results["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][-1][
-            "expandableTabRenderer"
-        ]["content"]["sectionListRenderer"]["contents"]
+        items: list[dict[str, Any]] = results["contents"][
+            "twoColumnBrowseResultsRenderer"
+        ]["tabs"][-1]["expandableTabRenderer"]["content"]["sectionListRenderer"][
+            "contents"
+        ]
 
         list_of_videos: list[YouTube] = []
         for item in items:

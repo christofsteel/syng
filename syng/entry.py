@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from uuid import uuid4, UUID
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .sources import Source
@@ -23,7 +23,7 @@ class Entry:
     async def from_source(performer: str, ident: str, source: Source) -> Entry:
         return await source.get_entry(performer, ident)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "uuid": str(self.uuid),
             "id": self.id,
@@ -36,8 +36,8 @@ class Entry:
         }
 
     @staticmethod
-    def from_dict(entry_dict):
+    def from_dict(entry_dict: dict[str, Any]) -> Entry:
         return Entry(**entry_dict)
 
-    def update(self, **kwargs):
+    def update(self, **kwargs: Any) -> None:
         self.__dict__.update(kwargs)

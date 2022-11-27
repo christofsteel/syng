@@ -3,7 +3,7 @@ from time import sleep, perf_counter
 from itertools import zip_longest
 import asyncio
 import os
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 
 from minio import Minio
 
@@ -15,7 +15,7 @@ from ..entry import Entry
 
 
 class S3Source(Source):
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config)
 
         if "endpoint" in config and "access_key" in config and "secret_key" in config:
@@ -46,8 +46,8 @@ class S3Source(Source):
             )
         raise RuntimeError(f"Could not parse {ident}")
 
-    async def get_config(self) -> dict | list[dict]:
-        def _get_config() -> dict | list[dict]:
+    async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
+        def _get_config() -> dict[str, Any] | list[dict[str, Any]]:
             if not self.index:
                 print(f"Indexing {self.bucket}")
                 # self.index = [
@@ -66,10 +66,12 @@ class S3Source(Source):
 
         return await asyncio.to_thread(_get_config)
 
-    def add_to_config(self, config: dict) -> None:
+    def add_to_config(self, config: dict[str, Any]) -> None:
         self.index += config["index"]
 
-    async def search(self, result_future: asyncio.Future, query: str) -> None:
+    async def search(
+        self, result_future: asyncio.Future[list[Result]], query: str
+    ) -> None:
         print("searching s3")
         filtered: list[str] = self.filter_data_by_query(query, self.index)
         results: list[Result] = []
@@ -80,7 +82,7 @@ class S3Source(Source):
             results.append(result)
         result_future.set_result(results)
 
-    async def get_missing_metadata(self, entry: Entry) -> dict:
+    async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         def mutagen_wrapped(file: str) -> int:
             meta_infos = mutagen.File(file).info
             return int(meta_infos.length)
@@ -107,12 +109,12 @@ class S3Source(Source):
         target_file_mp3: str = target_file_cdg[:-3] + "mp3"
         os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
 
-        video_task: asyncio.Task = asyncio.create_task(
+        video_task: asyncio.Task[None] = asyncio.create_task(
             asyncio.to_thread(
                 self.minio.fget_object, self.bucket, entry.id, target_file_cdg
             )
         )
-        audio_task: asyncio.Task = asyncio.create_task(
+        audio_task: asyncio.Task[None] = asyncio.create_task(
             asyncio.to_thread(
                 self.minio.fget_object, self.bucket, ident_mp3, target_file_mp3
             )

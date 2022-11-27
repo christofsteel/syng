@@ -37,13 +37,14 @@ state: State = State()
 
 
 @sio.on("skip")
-async def handle_skip():
+async def handle_skip(_: dict[str, Any]) -> None:
     logger.info("Skipping current")
-    await state.current_source.skip_current(state.queue[0])
+    if state.current_source is not None:
+        await state.current_source.skip_current(state.queue[0])
 
 
 @sio.on("state")
-async def handle_state(data: dict[str, Any]):
+async def handle_state(data: dict[str, Any]) -> None:
     state.queue = [Entry(**entry) for entry in data["queue"]]
     state.recent = [Entry(**entry) for entry in data["recent"]]
 
@@ -53,7 +54,7 @@ async def handle_state(data: dict[str, Any]):
 
 
 @sio.on("connect")
-async def handle_connect():
+async def handle_connect(_: dict[str, Any]) -> None:
     logging.info("Connected to server")
     await sio.emit(
         "register-client",
@@ -67,14 +68,14 @@ async def handle_connect():
 
 
 @sio.on("buffer")
-async def handle_buffer(data: dict[str, Any]):
+async def handle_buffer(data: dict[str, Any]) -> None:
     source: Source = sources[data["source"]]
     meta_info: dict[str, Any] = await source.get_missing_metadata(Entry(**data))
     await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
 
 
 @sio.on("play")
-async def handle_play(data: dict[str, Any]):
+async def handle_play(data: dict[str, Any]) -> None:
     entry: Entry = Entry(**data)
     print(
         f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}"
@@ -89,7 +90,7 @@ async def handle_play(data: dict[str, Any]):
 
 
 @sio.on("client-registered")
-async def handle_register(data: dict[str, Any]):
+async def handle_register(data: dict[str, Any]) -> None:
     if data["success"]:
         logging.info("Registered")
         print(f"Join here: {state.server}/{data['room']}")
@@ -104,7 +105,7 @@ async def handle_register(data: dict[str, Any]):
 
 
 @sio.on("request-config")
-async def handle_request_config(data: dict[str, Any]):
+async def handle_request_config(data: dict[str, Any]) -> None:
     if data["source"] in sources:
         config: dict[str, Any] | list[dict[str, Any]] = await sources[
             data["source"]
@@ -125,7 +126,7 @@ async def handle_request_config(data: dict[str, Any]):
             await sio.emit("config", {"source": data["source"], "config": config})
 
 
-async def aiomain():
+async def aiomain() -> None:
     parser: ArgumentParser = ArgumentParser()
 
     parser.add_argument("--room", "-r")
@@ -155,7 +156,7 @@ async def aiomain():
     await sio.wait()
 
 
-def main():
+def main() -> None:
     asyncio.run(aiomain())
 
 

@@ -1,18 +1,18 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 import os.path
 
 
 @dataclass
 class Result:
-    id: str | int
+    id: str
     source: str
     title: str
     artist: str
     album: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "source": self.source,
@@ -22,7 +22,7 @@ class Result:
         }
 
     @staticmethod
-    def from_filename(filename, source) -> Optional[Result]:
+    def from_filename(filename: str, source: str) -> Optional[Result]:
         try:
             splitfile = os.path.basename(filename[:-4]).split(" - ")
             ident = filename

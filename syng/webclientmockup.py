@@ -12,15 +12,15 @@ state: dict[str, Any] = {}
 
 
 @sio.on("search-results")
-async def handle_search_results(data):
-    for raw_item in data:
+async def handle_search_results(data: dict[str, Any]) -> None:
+    for raw_item in data["results"]:
         item = Result(**raw_item)
         print(f"{item.artist} - {item.title} [{item.album}]")
         print(f"{item.source}: {item.id}")
 
 
 @sio.on("state")
-async def handle_state(data):
+async def handle_state(data: dict[str, Any]) -> None:
     print("New Queue")
     for raw_item in data["queue"]:
         item = Entry(**raw_item)
@@ -32,13 +32,13 @@ async def handle_state(data):
 
 
 @sio.on("connect")
-async def handle_connect():
+async def handle_connect(_: dict[str, Any]) -> None:
     print("Connected")
     await sio.emit("register-web", {"room": state["room"]})
 
 
 @sio.on("register-admin")
-async def handle_register_admin(data):
+async def handle_register_admin(data: dict[str, Any]) -> None:
     if data["success"]:
         print("Logged in")
     else:
@@ -48,10 +48,10 @@ async def handle_register_admin(data):
 class SyngShell(aiocmd.PromptToolkitCmd):
     prompt = "syng> "
 
-    def do_exit(self):
+    def do_exit(self) -> bool:
         return True
 
-    async def do_stuff(self):
+    async def do_stuff(self) -> None:
         await sio.emit(
             "append",
             {
@@ -61,27 +61,27 @@ class SyngShell(aiocmd.PromptToolkitCmd):
             },
         )
 
-    async def do_search(self, query):
+    async def do_search(self, query: str) -> None:
         await sio.emit("search", {"query": query})
 
-    async def do_append(self, source, ident):
+    async def do_append(self, source: str, ident: str) -> None:
         await sio.emit("append", {"performer": "Hammy", "source": source, "id": ident})
 
-    async def do_admin(self, data):
+    async def do_admin(self, data: str) -> None:
         await sio.emit("register-admin", {"secret": data})
 
-    async def do_connect(self, server, room):
+    async def do_connect(self, server: str, room: str) -> None:
         state["room"] = room
         await sio.connect(server)
 
-    async def do_skip(self):
+    async def do_skip(self) -> None:
         await sio.emit("skip")
 
-    async def do_queue(self):
+    async def do_queue(self) -> None:
         await sio.emit("get-state")
 
 
-def main():
+def main() -> None:
     asyncio.run(SyngShell().run())
 
 

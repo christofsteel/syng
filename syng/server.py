@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections import deque
-from typing import Any
+from typing import Any, Callable
 import asyncio
 from dataclasses import dataclass
 import string
@@ -20,7 +20,7 @@ app = web.Application()
 sio.attach(app)
 
 
-async def root_handler(request):
+async def root_handler(request: Any) -> Any:
     return web.FileResponse("syng/static/index.html")
 
 
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 
 
 class Queue:
-    def __init__(self, *args, **kwargs):
-        self._queue = deque(*args, **kwargs)
+    def __init__(self, initial_entries: list[Entry]):
+        self._queue = deque(initial_entries)
 
         self.num_of_entries_sem = asyncio.Semaphore(len(self._queue))
         self.readlock = asyncio.Lock()
@@ -60,7 +60,9 @@ class Queue:
     def to_dict(self) -> list[dict[str, Any]]:
         return [item.to_dict() for item in self._queue]
 
-    def update(self, locator, updater):
+    def update(
+        self, locator: Callable[[Entry], Any], updater: Callable[[Entry], None]
+    ) -> None:
         for item in self._queue:
             if locator(item):
                 updater(item)
@@ -80,7 +82,7 @@ clients: dict[str, State] = {}
 
 
 @sio.on("get-state")
-async def handle_state(sid, data: dict[str, Any] = {}):
+async def handle_state(sid: str, data: dict[str, Any] = {}) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -96,7 +98,7 @@ async def handle_state(sid, data: dict[str, Any] = {}):
 
 
 @sio.on("append")
-async def handle_append(sid, data: dict[str, Any]):
+async def handle_append(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -121,7 +123,7 @@ async def handle_append(sid, data: dict[str, Any]):
 
 
 @sio.on("meta-info")
-async def handle_meta_info(sid, data):
+async def handle_meta_info(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -142,7 +144,7 @@ async def handle_meta_info(sid, data):
 
 
 @sio.on("get-first")
-async def handle_get_first(sid, data={}):
+async def handle_get_first(sid: str, data: dict[str, Any] = {}) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -153,7 +155,7 @@ async def handle_get_first(sid, data={}):
 
 
 @sio.on("pop-then-get-next")
-async def handle_pop_then_get_next(sid, data={}):
+async def handle_pop_then_get_next(sid: str, data: dict[str, Any] = {}) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -173,7 +175,7 @@ async def handle_pop_then_get_next(sid, data={}):
     await sio.emit("play", current.to_dict(), room=sid)
 
 
-def gen_id(length=4) -> str:
+def gen_id(length: int = 4) -> str:
     client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
     if client_id in clients:
         client_id = gen_id(length + 1)
@@ -181,13 +183,13 @@ def gen_id(length=4) -> str:
 
 
 @sio.on("register-client")
-async def handle_register_client(sid, data: dict[str, Any]):
-    room = data["room"] if "room" in data and data["room"] else gen_id()
+async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
+    room: str = data["room"] if "room" in data and data["room"] else gen_id()
     async with sio.session(sid) as session:
         session["room"] = room
 
     if room in clients:
-        old_state = clients[room]
+        old_state: State = clients[room]
         if data["secret"] == old_state.secret:
             logger.info("Got new client connection for %s", room)
             old_state.sid = sid
@@ -220,7 +222,7 @@ async def handle_register_client(sid, data: dict[str, Any]):
 
 
 @sio.on("sources")
-async def handle_sources(sid, data):
+async def handle_sources(sid: str, data: dict[str, Any]) -> None:
     """
     Get the list of sources the client wants to use.
     Update internal list of sources, remove unused
@@ -243,7 +245,7 @@ async def handle_sources(sid, data):
 
 
 @sio.on("config-chunk")
-async def handle_config_chung(sid, data):
+async def handle_config_chung(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -258,7 +260,7 @@ async def handle_config_chung(sid, data):
 
 
 @sio.on("config")
-async def handle_config(sid, data):
+async def handle_config(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -268,7 +270,7 @@ async def handle_config(sid, data):
 
 
 @sio.on("register-web")
-async def handle_register_web(sid, data):
+async def handle_register_web(sid: str, data: dict[str, Any]) -> bool:
     if data["room"] in clients:
         async with sio.session(sid) as session:
             session["room"] = data["room"]
@@ -283,12 +285,11 @@ async def handle_register_web(sid, data):
             room=sid,
         )
         return True
-    else:
-        return False
+    return False
 
 
 @sio.on("register-admin")
-async def handle_register_admin(sid, data: dict[str, str]):
+async def handle_register_admin(sid: str, data: dict[str, str]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -300,7 +301,7 @@ async def handle_register_admin(sid, data: dict[str, str]):
 
 
 @sio.on("get-config")
-async def handle_get_config(sid, data):
+async def handle_get_config(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
@@ -314,7 +315,7 @@ async def handle_get_config(sid, data):
 
 
 @sio.on("skip")
-async def handle_skip(sid, data={}):
+async def handle_skip(sid: str, data: dict[str, Any] = {}) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
@@ -324,13 +325,13 @@ async def handle_skip(sid, data={}):
 
 
 @sio.on("disconnect")
-async def handle_disconnect(sid, data={}):
+async def handle_disconnect(sid: str, data: dict[str, Any] = {}) -> None:
     async with sio.session(sid) as session:
         sio.leave_room(sid, session["room"])
 
 
 @sio.on("search")
-async def handle_search(sid, data: dict[str, str]):
+async def handle_search(sid: str, data: dict[str, str]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -348,7 +349,11 @@ async def handle_search(sid, data: dict[str, str]):
         for result_future in result_futures
         for search_result in await result_future
     ]
-    await sio.emit("search-results", [result.to_dict() for result in results], room=sid)
+    await sio.emit(
+        "search-results",
+        {"results": [result.to_dict() for result in results]},
+        room=sid,
+    )
 
 
 def main() -> None:
