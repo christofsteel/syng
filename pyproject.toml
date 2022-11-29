@@ -21,7 +21,7 @@ minio = "^7.1.12"
 mutagen = "^1.46.0"
 aiocmd = "^0.1.5"
 pyqrcode = "^1.2.1"
-
+pillow = "^9.3.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -38,6 +38,8 @@ module = [
   "minio",
   "aiocmd",
   "pyqrcode",
-  "socketio"
+  "socketio",
+  "pillow",
+  "PIL"
 ]
 ignore_missing_imports = true

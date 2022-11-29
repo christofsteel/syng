@@ -7,9 +7,12 @@ import logging
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from typing import Optional, Any
+import tempfile
+import datetime
 
 import socketio
 import pyqrcode
+from PIL import Image
 
 from .sources import Source, configure_sources
 from .entry import Entry
@@ -31,13 +34,21 @@ class State:
     room: str = ""
     server: str = ""
     secret: str = ""
+    preview_duration: int = 3
+    last_song: Optional[datetime.datetime] = None
+
+    def get_config(self) -> dict[str, Any]:
+        return {
+            "preview_duration": self.preview_duration,
+            "last_song": self.last_song.timestamp() if self.last_song else None,
+        }
 
 
 state: State = State()
 
 
-@sio.on("skip")
-async def handle_skip(_: dict[str, Any]) -> None:
+@sio.on("skip-current")
+async def handle_skip_current(_: dict[str, Any] = {}) -> None:
     logger.info("Skipping current")
     if state.current_source is not None:
         await state.current_source.skip_current(state.queue[0])
@@ -49,20 +60,21 @@ async def handle_state(data: dict[str, Any]) -> None:
     state.recent = [Entry(**entry) for entry in data["recent"]]
 
     for entry in state.queue[:2]:
-        logger.warning(f"Buffering: %s", entry.title)
+        logger.info("Buffering: %s", entry.title)
         await sources[entry.source].buffer(entry)
 
 
 @sio.on("connect")
-async def handle_connect(_: dict[str, Any]) -> None:
+async def handle_connect(_: dict[str, Any] = {}) -> None:
     logging.info("Connected to server")
     await sio.emit(
         "register-client",
         {
-            "secret": state.secret,
             "queue": [entry.to_dict() for entry in state.queue],
             "recent": [entry.to_dict() for entry in state.recent],
             "room": state.room,
+            "secret": state.secret,
+            "config": state.get_config(),
         },
     )
 
@@ -74,6 +86,26 @@ async def handle_buffer(data: dict[str, Any]) -> None:
     await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
 
 
+async def preview(entry: Entry) -> None:
+    background = Image.new("RGB", (1280, 720))
+    subtitle: str = f"""1
+00:00:00,00 --> 00:05:00,00
+{entry.artist} - {entry.title}
+{entry.performer}"""
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        background.save(tmpfile, "png")
+        process = await asyncio.create_subprocess_exec(
+            "mpv",
+            tmpfile.name,
+            "--image-display-duration=3",
+            "--sub-pos=50",
+            "--sub-file=-",
+            "--fullscreen",
+            stdin=asyncio.subprocess.PIPE,
+        )
+        await process.communicate(subtitle.encode())
+
+
 @sio.on("play")
 async def handle_play(data: dict[str, Any]) -> None:
     entry: Entry = Entry(**data)
@@ -82,10 +114,10 @@ async def handle_play(data: dict[str, Any]) -> None:
     )
     try:
         state.current_source = sources[entry.source]
+        await preview(entry)
         await sources[entry.source].play(entry)
     except Exception:
         print_exc()
-    logging.info("Finished, waiting for next")
     await sio.emit("pop-then-get-next")
 
 
@@ -137,8 +169,17 @@ async def aiomain() -> None:
     args = parser.parse_args()
 
     with open(args.config_file, encoding="utf8") as file:
-        source_config = load(file)
-    sources.update(configure_sources(source_config))
+        config = load(file)
+    sources.update(configure_sources(config["sources"]))
+
+    if "config" in config:
+        if "last_song" in config["config"]:
+            state.last_song = datetime.datetime.fromisoformat(
+                config["config"]["last_song"]
+            )
+        if "preview_duration" in config["config"]:
+            state.preview_duration = config["config"]["preview_duration"]
+
     if args.room:
         state.room = args.room
 
