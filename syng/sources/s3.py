@@ -52,6 +52,7 @@ class S3Source(Source):
                 self.index = [
                     obj.object_name
                     for obj in self.minio.list_objects(self.bucket, recursive=True)
+                    if obj.object_name.endswith(".cdg")
                 ]
                 print("s3: Indexing done")
                 # with open("s3_files", "w") as f:
