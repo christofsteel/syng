@@ -63,33 +63,37 @@ class YoutubeSource(Source):
 
         return 1 - (hits / len(queries))
 
-    async def search(
-        self, result_future: asyncio.Future[list[Result]], query: str
-    ) -> None:
-        def _search(result_future: asyncio.Future[list[Result]], query: str) -> None:
-            results: list[YouTube] = []
-            for channel in self.channels:
-                results += self._channel_search(query, channel)
-            search_results: Optional[list[YouTube]] = Search(query + " karaoke").results
-            if search_results is not None:
-                results += search_results
+    async def search(self, query: str) -> list[Result]:
+        results: list[YouTube] = []
+        results_lists: list[list[YouTube]] = await asyncio.gather(
+            *[
+                asyncio.to_thread(self._channel_search, query, channel)
+                for channel in self.channels
+            ],
+            asyncio.to_thread(self._yt_search, query),
+        )
+        results = [
+            search_result for yt_result in results_lists for search_result in yt_result
+        ]
 
-            results.sort(key=partial(self._contains_index, query))
+        results.sort(key=partial(self._contains_index, query))
 
-            result_future.set_result(
-                [
-                    Result(
-                        id=result.watch_url,
-                        source="youtube",
-                        title=result.title,
-                        artist=result.author,
-                        album="YouTube",
-                    )
-                    for result in results
-                ]
+        return [
+            Result(
+                id=result.watch_url,
+                source="youtube",
+                title=result.title,
+                artist=result.author,
+                album="YouTube",
             )
+            for result in results
+        ]
 
-        await asyncio.to_thread(_search, result_future, query)
+    def _yt_search(self, query: str) -> list[YouTube]:
+        results = Search(f"{query} karaoke").results
+        if results is not None:
+            return results
+        return []
 
     def _channel_search(self, query: str, channel: str) -> list[YouTube]:
         browse_id: str = Channel(f"https://www.youtube.com{channel}").channel_id

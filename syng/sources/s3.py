@@ -1,5 +1,4 @@
-from json import load, dump
-from time import sleep, perf_counter
+# from json import load, dump
 from itertools import zip_longest
 import asyncio
 import os
@@ -49,15 +48,16 @@ class S3Source(Source):
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         def _get_config() -> dict[str, Any] | list[dict[str, Any]]:
             if not self.index:
-                print(f"Indexing {self.bucket}")
-                # self.index = [
-                #     obj.object_name
-                #     for obj in self.minio.list_objects(self.bucket, recursive=True)
-                # ]
+                print(f"s3: Indexing '{self.bucket}'")
+                self.index = [
+                    obj.object_name
+                    for obj in self.minio.list_objects(self.bucket, recursive=True)
+                ]
+                print("s3: Indexing done")
                 # with open("s3_files", "w") as f:
                 #     dump(self.index, f)
-                with open("s3_files", "r") as f:
-                    self.index = [item for item in load(f) if item.endswith(".cdg")]
+                # with open("s3_files", "r") as f:
+                #     self.index = [item for item in load(f) if item.endswith(".cdg")]
 
             chunked = zip_longest(*[iter(self.index)] * 1000, fillvalue="")
             return [
@@ -69,10 +69,7 @@ class S3Source(Source):
     def add_to_config(self, config: dict[str, Any]) -> None:
         self.index += config["index"]
 
-    async def search(
-        self, result_future: asyncio.Future[list[Result]], query: str
-    ) -> None:
-        print("searching s3")
+    async def search(self, query: str) -> list[Result]:
         filtered: list[str] = self.filter_data_by_query(query, self.index)
         results: list[Result] = []
         for filename in filtered:
@@ -80,7 +77,7 @@ class S3Source(Source):
             if result is None:
                 continue
             results.append(result)
-        result_future.set_result(results)
+        return results
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         def mutagen_wrapped(file: str) -> int:
@@ -109,12 +106,12 @@ class S3Source(Source):
         target_file_mp3: str = target_file_cdg[:-3] + "mp3"
         os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
 
-        video_task: asyncio.Task[None] = asyncio.create_task(
+        video_task: asyncio.Task[Any] = asyncio.create_task(
             asyncio.to_thread(
                 self.minio.fget_object, self.bucket, entry.id, target_file_cdg
             )
         )
-        audio_task: asyncio.Task[None] = asyncio.create_task(
+        audio_task: asyncio.Task[Any] = asyncio.create_task(
             asyncio.to_thread(
                 self.minio.fget_object, self.bucket, ident_mp3, target_file_mp3
             )

@@ -42,15 +42,17 @@ class Source:
             [f"--audio-file={audio}"] if audio else []
         )
 
-        mpv_process = asyncio.create_subprocess_exec("mpv", *args)
+        mpv_process = asyncio.create_subprocess_exec(
+            "mpv",
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+        )
         return await mpv_process
 
     async def get_entry(self, performer: str, ident: str) -> Entry:
         raise NotImplementedError
 
-    async def search(
-        self, result_future: asyncio.Future[list[Result]], query: str
-    ) -> None:
+    async def search(self, query: str) -> list[Result]:
         raise NotImplementedError
 
     async def doBuffer(self, entry: Entry) -> Tuple[str, Optional[str]]:

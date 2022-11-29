@@ -415,16 +415,22 @@ async def handle_search(sid: str, data: dict[str, str]) -> None:
 
     query = data["query"]
     result_futures = []
-    for source in state.config.sources_prio:
-        loop = asyncio.get_running_loop()
-        search_future = loop.create_future()
-        loop.create_task(state.config.sources[source].search(search_future, query))
-        result_futures.append(search_future)
+    results_list = await asyncio.gather(
+        *[
+            state.config.sources[source].search(query)
+            for source in state.config.sources_prio
+        ]
+    )
+    # for source in state.config.sources_prio:
+    #     loop = asyncio.get_running_loop()
+    #     search_future = loop.create_future()
+    #     loop.create_task(state.config.sources[source].search(search_future, query))
+    #     result_futures.append(search_future)
 
     results = [
         search_result
-        for result_future in result_futures
-        for search_result in await result_future
+        for source_result in results_list
+        for search_result in source_result
     ]
     await sio.emit(
         "search-results",

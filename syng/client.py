@@ -102,6 +102,8 @@ async def preview(entry: Entry) -> None:
             "--sub-file=-",
             "--fullscreen",
             stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
         await process.communicate(subtitle.encode())
 
