@@ -1,58 +1,93 @@
 from __future__ import annotations
-from collections import deque
-from typing import Any, Callable, Optional
-import asyncio
-from dataclasses import dataclass
-import string
-import random
-import logging
-from argparse import ArgumentParser
-from uuid import UUID
-import datetime
 
-from aiohttp import web
+import asyncio
+import datetime
+import logging
+import random
+import string
+from argparse import ArgumentParser
+from collections import deque
+from dataclasses import dataclass
+from typing import Any
+from typing import Callable
+from typing import Optional
+from uuid import UUID
+
 import socketio
+from aiohttp import web
 
 from .entry import Entry
-from .sources import Source, available_sources
+from .sources import available_sources
+from .sources import Source
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", logger=True, engineio_logger=False)
+sio = socketio.AsyncServer(cors_allowed_origins="*",
+                           logger=True, engineio_logger=False)
 app = web.Application()
 sio.attach(app)
 
 
 async def root_handler(request: Any) -> Any:
+    """
+    Handle the index and favicon requests.
+
+    If the path of the request ends with "/favicon.ico" return the favicon,
+    otherwise the index.html. This way the javascript can read the room code
+    from the url.
+
+    :param request Any: Webrequest from aiohttp
+    :return: Either the favicon or the index.html
+    :rtype web.FileResponse:
+    """
     if request.path.endswith("/favicon.ico"):
         return web.FileResponse("syng/static/favicon.ico")
     return web.FileResponse("syng/static/index.html")
 
-
-async def favico_handler(_: Any) -> Any:
-    return web.FileResponse("syng/static/favicon.ico")
-
-
-app.add_routes([web.static("/assets/", "syng/static/assets/")])
-app.router.add_route("*", "/", root_handler)
-app.router.add_route("*", "/{room}", root_handler)
-app.router.add_route("*", "/{room}/", root_handler)
-app.router.add_route("*", "/favicon.ico", favico_handler)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class Queue:
+    """A async queue with synchronization.
+
+    This queue keeps track of the amount of entries by using a semaphore.
+
+    :param initial_entries: Initial list of entries to add to the queue
+    :type initial_entries: list[Entry]
+    """
+
     def __init__(self, initial_entries: list[Entry]):
+        """
+        Construct the queue. And initialize the internal lock and semaphore.
+
+        :param initial_entries: Initial list of entries to add to the queue
+        :type initial_entries: list[Entry]
+        """
         self._queue = deque(initial_entries)
 
         self.num_of_entries_sem = asyncio.Semaphore(len(self._queue))
         self.readlock = asyncio.Lock()
 
-    def append(self, x: Entry) -> None:
-        self._queue.append(x)
+    def append(self, entry: Entry) -> None:
+        """
+        Append an entry to the queue, increase the semaphore.
+
+        :param entry: The entry to add
+        :type entry: Entry
+        :rtype: None
+        """
+        self._queue.append(entry)
         self.num_of_entries_sem.release()
 
     async def peek(self) -> Entry:
+        """
+        Return the first entry in the queue.
+
+        If the queue is empty, wait until the queue has at least one entry.
+
+        :returns: First entry of the queue
+        :rtype: Entry
+        """
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
             item = self._queue[0]
@@ -60,33 +95,83 @@ class Queue:
         return item
 
     async def popleft(self) -> Entry:
+        """
+        Remove the first entry in the queue and return it.
+
+        Decreases the semaphore. If the queue is empty, wait until the queue
+        has at least one entry.
+
+        :returns: First entry of the queue
+        :rtype: Entry
+        """
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
             item = self._queue.popleft()
         return item
 
     def to_dict(self) -> list[dict[str, Any]]:
+        """
+        Forward the to_dict request to all entries and return it in a list.
+
+        This is done, so that the entries can be converted to a JSON object,
+        when sending it to the web or playback client.
+
+        :returns: A list with dictionaries, that encode the enties in the
+            queue.
+        :rtype: list[dict[str, Any]]
+        """
         return [item.to_dict() for item in self._queue]
 
-    def update(
-        self, locator: Callable[[Entry], Any], updater: Callable[[Entry], None]
-    ) -> None:
+    def update(self, uuid: UUID | str, updater: Callable[[Entry], None]) -> None:
+        """
+        Update entries in the queue, identified by their uuid.
+
+        :param uuid: The uuid of the entry to update
+        :type uuid: UUID | str
+        :param updater: A function, that updates the entry
+        :type updater: Callable[[Entry], None]
+        :rtype: None
+        """
         for item in self._queue:
-            if locator(item):
+            if item.uuid == uuid or str(item.uuid) == uuid:
                 updater(item)
 
     def find_by_uuid(self, uuid: UUID | str) -> Optional[Entry]:
+        """
+        Find an entry by its uuid and return it.
+
+        :param uuid: The uuid to search for.
+        :type uuid: UUID | str
+        :returns: The entry with the uuid or `None` if no such entry exists
+        :rtype: Optional[Entry]
+        """
         for item in self._queue:
             if item.uuid == uuid or str(item.uuid) == uuid:
                 return item
         return None
 
     async def remove(self, entry: Entry) -> None:
+        """
+        Remove an entry, if it exists. Decrease the semaphore.
+
+        :param entry: The entry to remove
+        :type entry: Entry
+        :rtype: None
+        """
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
             self._queue.remove(entry)
 
-    async def moveUp(self, uuid: str) -> None:
+    async def move_up(self, uuid: str) -> None:
+        """
+        Move an :py:class:`syng.entry.Entry` with the uuid up in the queue.
+
+        If it is called on the first two elements, nothing will happen.
+
+        :param uuid: The uuid of the entry.
+        :type uuid: str
+        :rtype: None
+        """
         async with self.readlock:
             uuid_idx = 0
             for idx, item in enumerate(self._queue):
@@ -176,7 +261,7 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     await send_state(state, room)
 
     await sio.emit(
-        "buffer",
+        "get-meta-info",
         entry.to_dict(),
         room=clients[room].sid,
     )
@@ -189,7 +274,7 @@ async def handle_meta_info(sid: str, data: dict[str, Any]) -> None:
     state = clients[room]
 
     state.queue.update(
-        lambda item: str(item.uuid) == data["uuid"],
+        data["uuid"],
         lambda item: item.update(**data["meta"]),
     )
 
@@ -226,7 +311,8 @@ async def handle_pop_then_get_next(sid: str, data: dict[str, Any] = {}) -> None:
 
 
 def gen_id(length: int = 4) -> str:
-    client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
+    client_id = "".join([random.choice(string.ascii_letters)
+                        for _ in range(length)])
     if client_id in clients:
         client_id = gen_id(length + 1)
     return client_id
@@ -234,6 +320,13 @@ def gen_id(length: int = 4) -> str:
 
 @sio.on("register-client")
 async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
+    """
+    [TODO:description]
+
+    :param sid str: [TODO:description]
+    :param data dict[str, Any]: [TODO:description]
+    :rtype None: [TODO:description]
+    """
     room: str = data["room"] if "room" in data and data["room"] else gen_id()
     async with sio.session(sid) as session:
         session["room"] = room
@@ -375,14 +468,14 @@ async def handle_skip_current(sid: str, data: dict[str, Any] = {}) -> None:
         await sio.emit("skip-current", room=clients[room].sid)
 
 
-@sio.on("moveUp")
-async def handle_moveUp(sid: str, data: dict[str, Any]) -> None:
+@sio.on("move-up")
+async def handle_move_up(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
     state = clients[room]
     if is_admin:
-        await state.queue.moveUp(data["uuid"])
+        await state.queue.move_up(data["uuid"])
         await send_state(state, room)
 
 
@@ -414,7 +507,6 @@ async def handle_search(sid: str, data: dict[str, str]) -> None:
     state = clients[room]
 
     query = data["query"]
-    result_futures = []
     results_list = await asyncio.gather(
         *[
             state.config.sources[source].search(query)
@@ -444,6 +536,12 @@ def main() -> None:
     parser.add_argument("--host", "-H", default="localhost")
     parser.add_argument("--port", "-p", default="8080")
     args = parser.parse_args()
+
+    app.add_routes([web.static("/assets/", "syng/static/assets/")])
+    app.router.add_route("*", "/", root_handler)
+    app.router.add_route("*", "/{room}", root_handler)
+    app.router.add_route("*", "/{room}/", root_handler)
+
     web.run_app(app, host=args.host, port=args.port)
 
 

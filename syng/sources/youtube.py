@@ -90,7 +90,7 @@ class YoutubeSource(Source):
         ]
 
     def _yt_search(self, query: str) -> list[YouTube]:
-        results = Search(f"{query} karaoke").results
+        results: Optional[list[YouTube]] = Search(f"{query} karaoke").results
         if results is not None:
             return results
         return []
