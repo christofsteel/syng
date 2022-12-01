@@ -1,4 +1,4 @@
-terminal
+terminal:
   image: python:alpine
   before_script:
     - pip install poetry
