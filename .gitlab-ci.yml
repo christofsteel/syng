@@ -5,4 +5,6 @@ code_qualityt:
         - pip install pylint --quiet
         - pip install -e . --quiet        
         - mypy -p syng --strict
+        - ls -al
+        - pwd
         - pylint syng
