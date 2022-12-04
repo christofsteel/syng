@@ -4,12 +4,14 @@ mypy:
     stage: test
     script:
         - pip install mypy --quiet
+        - pip install . --quiet
         - mypy syng --strict
 
 pylint:
     stage: test
     script:
         - pip install pylint --quiet
+        - pip install . --quiet
         - pylint syng
 
 test:
