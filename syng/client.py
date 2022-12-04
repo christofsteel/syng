@@ -1,3 +1,33 @@
+"""
+Module for the playback client.
+
+Excerp from the help::
+
+    usage: client.py [-h] [--room ROOM] [--secret SECRET] [--config-file CONFIG_FILE] server
+
+    positional arguments:
+      server
+
+    options:
+      -h, --help            show this help message and exit
+      --room ROOM, -r ROOM
+      --secret SECRET, -s SECRET
+      --config-file CONFIG_FILE, -C CONFIG_FILE
+
+The config file should be a json file in the following style::
+
+    {
+      "sources": {
+        "SOURCE1": { configuration for SOURCE },
+        "SOURCE2": { configuration for SOURCE },
+        ...
+        },
+      },
+      "config": {
+        configuration for the client
+      }
+    }
+"""
 import asyncio
 import datetime
 import logging
@@ -16,12 +46,13 @@ import pyqrcode
 import socketio
 from PIL import Image
 
+from . import json
 from .entry import Entry
 from .sources import configure_sources
 from .sources import Source
 
 
-sio: socketio.AsyncClient = socketio.AsyncClient()
+sio: socketio.AsyncClient = socketio.AsyncClient(json=json)
 logger: logging.Logger = logging.getLogger(__name__)
 sources: dict[str, Source] = {}
 
@@ -58,6 +89,8 @@ class State:
     :type last_song: Optional[datetime.datetime]
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     current_source: Optional[Source] = None
     queue: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
@@ -88,20 +121,23 @@ state: State = State()
 
 
 @sio.on("skip-current")
-async def handle_skip_current(_: dict[str, Any] = {}) -> None:
+async def handle_skip_current(data: dict[str, Any]) -> None:
     """
     Handle the "skip-current" message.
 
     Skips the song, that is currently played. If playback currently waits for
     buffering, the buffering is also aborted.
 
-    :param _: Data part of the message, ignored
-    :type _: dict[str, Any]
+    Since the ``queue`` could already be updated, when this evaluates, the
+    first entry in the queue is send explicitly.
+
+    :param data: An entry, that should be equivalent to the first entry of the
+        queue.
     :rtype: None
     """
     logger.info("Skipping current")
     if state.current_source is not None:
-        await state.current_source.skip_current(state.queue[0])
+        await state.current_source.skip_current(Entry(**data))
 
 
 @sio.on("state")
@@ -129,7 +165,7 @@ async def handle_state(data: dict[str, Any]) -> None:
 
 
 @sio.on("connect")
-async def handle_connect(_: dict[str, Any] = {}) -> None:
+async def handle_connect() -> None:
     """
     Handle the "connect" message.
 
@@ -145,16 +181,14 @@ async def handle_connect(_: dict[str, Any] = {}) -> None:
     This message will be handled by the
     :py:func:`syng.server.handle_register_client` function of the server.
 
-    :param _: Data part of the message, ignored
-    :type _: dict[str, Any]
     :rtype: None
     """
     logging.info("Connected to server")
     await sio.emit(
         "register-client",
         {
-            "queue": [entry.to_dict() for entry in state.queue],
-            "recent": [entry.to_dict() for entry in state.recent],
+            "queue": state.queue,
+            "recent": state.recent,
             "room": state.room,
             "secret": state.secret,
             "config": state.get_config(),
@@ -167,7 +201,7 @@ async def handle_get_meta_info(data: dict[str, Any]) -> None:
     """
     Handle a "get-meta-info" message.
 
-    Collects the metadata from a given :py:class:`Entry`, from its source, and
+    Collects the metadata for a given :py:class:`Entry`, from its source, and
     sends them back to the server in a "meta-info" message. On the server side
     a :py:func:`syng.server.handle_meta_info` function is called.
 
@@ -224,23 +258,34 @@ async def handle_play(data: dict[str, Any]) -> None:
     :py:attr:`State.preview_duration` is set, it shows a small preview before
     that.
 
+    When the playback is done, the next song is requested from the server with
+    a "pop-then-get-next" message. This is handled by the
+    :py:func:`syng.server.handle_pop_then_get_next` function on the server.
+
+    If the entry is marked as skipped, emit a "get-first"  message instead,
+    because the server already handled the removal of the first entry.
+
     :param data: A dictionary encoding the entry
     :type data: dict[str, Any]
     :rtype: None
     """
     entry: Entry = Entry(**data)
     print(
-        f"Playing: {entry.artist} - {entry.title} [{entry.album}] ({entry.source}) for {entry.performer}"
+        f"Playing: {entry.artist} - {entry.title} [{entry.album}] "
+        f"({entry.source}) for {entry.performer}"
     )
     try:
         state.current_source = sources[entry.source]
         if state.preview_duration > 0:
             await preview(entry)
         await sources[entry.source].play(entry)
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         print_exc()
     state.current_source = None
-    await sio.emit("pop-then-get-next")
+    if entry.skip:
+        await sio.emit("get-first")
+    else:
+        await sio.emit("pop-then-get-next")
 
 
 @sio.on("client-registered")
@@ -254,12 +299,12 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
 
     Start listing all configured :py:class:`syng.sources.source.Source` to the
     server via a "sources" message. This message will be handled by the
-    :py:func:`server.handle_sources` function and may request additional
+    :py:func:`syng.server.handle_sources` function and may request additional
     configuration for each source.
 
     If there is no song playing, start requesting the first song of the queue
     with a "get-first" message. This will be handled on the server by the
-    :py:func:`server.handle_get_first` function.
+    :py:func:`syng.server.handle_get_first` function.
 
     :param data: A dictionary containing a `success` and a `room` entry.
     :type data: dict[str, Any]
@@ -366,5 +411,12 @@ async def aiomain() -> None:
     await sio.wait()
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """
+    Entry point for the syng-client script.
+    """
     asyncio.run(aiomain())
+
+
+if __name__ == "__main__":
+    main()

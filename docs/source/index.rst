@@ -2,12 +2,16 @@ Welcome to syng's documentation!
 ================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    server
    client
+   queue
    entry
+   result
+   json
+   sources
 
 
 Indices and tables

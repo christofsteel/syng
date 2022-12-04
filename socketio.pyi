@@ -1,20 +1,32 @@
-from typing import Any, Optional, Awaitable, Callable, TypeVar
+from typing import Any
+from typing import Awaitable
+from typing import Callable
+from typing import Optional
+from typing import TypeVar
 
-Handler = TypeVar("Handler", bound=Callable[[str, dict[str, Any]], Any])
-ClientHandler = TypeVar("ClientHandler", bound=Callable[[dict[str, Any]], Any])
+Handler = TypeVar(
+    "Handler",
+    bound=Callable[[str, dict[str, Any]], Any] | Callable[[str], Any],
+)
+ClientHandler = TypeVar(
+    "ClientHandler", bound=Callable[[dict[str, Any]], Any] | Callable[[], Any]
+)
+
 
 class _session_context_manager:
     async def __aenter__(self) -> dict[str, Any]: ...
     async def __aexit__(self, *args: list[Any]) -> None: ...
 
+
 class AsyncServer:
     def __init__(
-        self, cors_allowed_origins: str, logger: bool, engineio_logger: bool
+        self, cors_allowed_origins: str, logger: bool, engineio_logger: bool, json: Any
     ): ...
+
     async def emit(
         self,
         message: str,
-        body: Optional[dict[str, Any]] = None,
+        body: Any = None,
         room: Optional[str] = None,
     ) -> None: ...
     def session(self, sid: str) -> _session_context_manager: ...
@@ -23,11 +35,11 @@ class AsyncServer:
     def leave_room(self, sid: str, room: str) -> None: ...
     def attach(self, app: Any) -> None: ...
 
+
 class AsyncClient:
+    def __init__(self, json: Any = None): ...
     def on(self, event: str) -> Callable[[ClientHandler], ClientHandler]: ...
     async def wait(self) -> None: ...
     async def connect(self, server: str) -> None: ...
     async def disconnect(self) -> None: ...
-    async def emit(
-        self, message: str, data: Optional[dict[str, Any]] = None
-    ) -> None: ...
+    async def emit(self, message: str, data: Any = None) -> None: ...

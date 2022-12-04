@@ -1,3 +1,6 @@
+# pylint: disable=missing-function-docstring
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
 import asyncio
 from typing import Any
 
@@ -16,7 +19,7 @@ async def handle_search_results(data: dict[str, Any]) -> None:
     for raw_item in data["results"]:
         item = Result(**raw_item)
         print(f"{item.artist} - {item.title} [{item.album}]")
-        print(f"{item.source}: {item.id}")
+        print(f"{item.source}: {item.ident}")
 
 
 @sio.on("state")
@@ -57,7 +60,8 @@ class SyngShell(aiocmd.PromptToolkitCmd):
             {
                 "performer": "Hammy",
                 "source": "youtube",
-                "id": "https://www.youtube.com/watch?v=rqZqHXJm-UA",  # https://youtube.com/watch?v=x5bM5Bdizi4",
+                # https://youtube.com/watch?v=x5bM5Bdizi4",
+                "ident": "https://www.youtube.com/watch?v=rqZqHXJm-UA",
             },
         )
 
@@ -65,7 +69,9 @@ class SyngShell(aiocmd.PromptToolkitCmd):
         await sio.emit("search", {"query": query})
 
     async def do_append(self, source: str, ident: str) -> None:
-        await sio.emit("append", {"performer": "Hammy", "source": source, "id": ident})
+        await sio.emit(
+            "append", {"performer": "Hammy", "source": source, "ident": ident}
+        )
 
     async def do_admin(self, data: str) -> None:
         await sio.emit("register-admin", {"secret": data})

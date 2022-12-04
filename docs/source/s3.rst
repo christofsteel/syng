@@ -1,0 +1,5 @@
+S3
+==
+
+.. automodule:: syng.sources.s3
+    :members:
