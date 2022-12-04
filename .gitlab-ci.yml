@@ -2,4 +2,7 @@ test:mypy:
     image: python:3
     script:
         - pip install mypy --quiet
+        - pip install pylint --quiet
+        - pip install -e . --quiet        
         - mypy syng --strict
+        - pylint syng
