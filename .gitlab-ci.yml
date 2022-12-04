@@ -1,8 +1,39 @@
-code_qualityt:
-    image: python:3
+image: python:3-alpine
+
+mypy:
+    stage: test
     script:
         - pip install mypy --quiet
+        - pip install . --quiet
+        - mypy syng --strict
+
+pylint:
+    stage: test
+    script:
         - pip install pylint --quiet
-        - pip install -e . --quiet        
-        - mypy -p syng --strict
+        - pip install . --quiet
         - pylint syng
+
+test:
+    stage: test
+    script:
+        - pip install -U sphinx
+        - pip install . --quiet
+        - sphinx-build -b html docs/source docs/build
+    only:
+        - branches
+    except:
+        - main
+
+
+pages:
+    stage: deploy
+    script:
+        - pip install -U sphinx
+        - pip install . --quiet
+        - sphinx-build -b html docs/source docs/build
+    artifacts:
+        paths:
+            - docs/build
+    only:
+        - main
