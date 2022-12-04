@@ -1,0 +1,5 @@
+test:mypy:
+    image: python:3
+    script:
+        - pip install mypy --quiet
+        - mypy syng --strict
