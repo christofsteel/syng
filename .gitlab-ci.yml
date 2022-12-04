@@ -3,5 +3,6 @@ code_quality:
     script:
         - pip install mypy --quiet
         - pip install pylint --quiet
+        - pip install . --quiet
         - mypy syng --strict
         - pylint syng
