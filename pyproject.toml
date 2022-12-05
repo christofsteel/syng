@@ -22,6 +22,7 @@ mutagen = "^1.46.0"
 aiocmd = "^0.1.5"
 pyqrcode = "^1.2.1"
 pillow = "^9.3.0"
+yt-dlp = "^2022.11.11"
 
 [build-system]
 requires = ["poetry-core"]
@@ -40,6 +41,7 @@ module = [
   "pyqrcode",
   "socketio",
   "pillow",
-  "PIL"
+  "PIL",
+  "yt_dlp",
 ]
 ignore_missing_imports = true

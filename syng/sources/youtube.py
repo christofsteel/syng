@@ -1,6 +1,8 @@
 """
 Construct the YouTube source.
 
+If available, downloading will be performed via yt-dlp, if not, pytube will be used.
+
 Adds it to the ``available_sources`` with the name ``youtube``.
 """
 import asyncio
@@ -16,6 +18,13 @@ from pytube import Search
 from pytube import Stream
 from pytube import StreamQuery
 from pytube import YouTube
+
+try:
+    from yt_dlp import YoutubeDL
+
+    USE_YT_DLP = True
+except ImportError:
+    USE_YT_DLP = False
 
 from ..entry import Entry
 from ..result import Result
@@ -36,7 +45,7 @@ class YoutubeSource(Source):
           downloaded/streamed. Default is 720.
         - ``start_streaming``: If set to ``True``, the client starts streaming
           the video, if buffering was not completed. Needs ``youtube-dl`` or
-          ``yt-dlp``.
+          ``yt-dlp``. Default is False.
     """
 
     def __init__(self, config: dict[str, Any]):
@@ -51,6 +60,18 @@ class YoutubeSource(Source):
         self.start_streaming: bool = (
             config["start_streaming"] if "start_streaming" in config else False
         )
+        self.formatstring = (
+            f"bestvideo[height<={self.max_res}]+"
+            f"bestaudio/best[height<={self.max_res}]"
+        )
+        if USE_YT_DLP:
+            self._yt_dlp = YoutubeDL(
+                params={
+                    "paths": {"home": self.tmp_dir},
+                    "format": self.formatstring,
+                    "quiet": True,
+                }
+            )
 
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """
@@ -75,14 +96,12 @@ class YoutubeSource(Source):
         :rtype: None
         """
         if self.start_streaming and not self.downloaded_files[entry.ident].complete:
-            print("streaming")
             self.player = await self.play_mpv(
                 entry.ident,
                 None,
                 "--script-opts=ytdl_hook-ytdl_path=yt-dlp,"
                 "ytdl_hook-exclude='%.pls$'",
-                f"--ytdl-format=bestvideo[height<={self.max_res}]"
-                f"+bestaudio/best[height<={self.max_res}]",
+                f"--ytdl-format={self.formatstring}",
                 "--fullscreen",
             )
             await self.player.wait()
@@ -236,6 +255,23 @@ class YoutubeSource(Source):
                 pass
         return list_of_videos
 
+    async def _buffer_with_yt_dlp(self, entry: Entry) -> Tuple[str, Optional[str]]:
+        """
+        Download the video using yt-dlp.
+
+        Yt-dlp automatically merges the audio and video, so only the video
+        location exists, the return value for the audio part will always be
+        ``None``.
+
+        :param entry: The entry to download.
+        :type entry: Entry
+        :return: The location of the video file and ```None```
+        :rtype: Tuple[str, Optional[str]]
+        """
+        info = await asyncio.to_thread(self._yt_dlp.extract_info, entry.ident)
+        combined_path = info["requested_downloads"][0]["filepath"]
+        return combined_path, None
+
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
         Download the video.
@@ -245,6 +281,8 @@ class YoutubeSource(Source):
         the video and audio seperatly. If that is the case, both will be
         downloaded.
 
+        If yt-dlp is installed it will be used, otherwise pytube will be used.
+
 
         :param entry: The entry to download.
         :type entry: Entry
@@ -252,6 +290,9 @@ class YoutubeSource(Source):
           location of the audio file.
         :rtype: Tuple[str, Optional[str]]
         """
+        if USE_YT_DLP:
+            return await self._buffer_with_yt_dlp(entry)
+
         yt_song: YouTube = YouTube(entry.ident)
 
         streams: StreamQuery = await asyncio.to_thread(lambda: yt_song.streams)
