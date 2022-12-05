@@ -38,7 +38,11 @@ class S3Source(Source):
         """Create the source."""
         super().__init__(config)
 
-        if "endpoint" in config and "access_key" in config and "secret_key" in config:
+        if (
+            "endpoint" in config
+            and "access_key" in config
+            and "secret_key" in config
+        ):
             self.minio: Minio = Minio(
                 config["endpoint"],
                 access_key=config["access_key"],
@@ -98,7 +102,9 @@ class S3Source(Source):
 
         def _get_config() -> dict[str, Any] | list[dict[str, Any]]:
             if not self.index:
-                if self.index_file is not None and os.path.isfile(self.index_file):
+                if self.index_file is not None and os.path.isfile(
+                    self.index_file
+                ):
                     with open(
                         self.index_file, "r", encoding="utf8"
                     ) as index_file_handle:
@@ -107,7 +113,9 @@ class S3Source(Source):
                     print(f"s3: Indexing '{self.bucket}'")
                     self.index = [
                         obj.object_name
-                        for obj in self.minio.list_objects(self.bucket, recursive=True)
+                        for obj in self.minio.list_objects(
+                            self.bucket, recursive=True
+                        )
                         if obj.object_name.endswith(".cdg")
                     ]
                     print("s3: Indexing done")
@@ -121,7 +129,8 @@ class S3Source(Source):
 
             chunked = zip_longest(*[iter(self.index)] * 1000, fillvalue="")
             return [
-                {"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked
+                {"index": list(filter(lambda x: x != "", chunk))}
+                for chunk in chunked
             ]
 
         return await asyncio.to_thread(_get_config)
@@ -166,12 +175,16 @@ class S3Source(Source):
 
         await self.ensure_playable(entry)
 
-        audio_file_name: Optional[str] = self.downloaded_files[entry.ident].audio
+        audio_file_name: Optional[str] = self.downloaded_files[
+            entry.ident
+        ].audio
 
         if audio_file_name is None:
             duration: int = 180
         else:
-            duration = await asyncio.to_thread(mutagen_wrapped, audio_file_name)
+            duration = await asyncio.to_thread(
+                mutagen_wrapped, audio_file_name
+            )
 
         return {"duration": int(duration)}
 
@@ -196,7 +209,10 @@ class S3Source(Source):
 
         video_task: asyncio.Task[Any] = asyncio.create_task(
             asyncio.to_thread(
-                self.minio.fget_object, self.bucket, entry.ident, target_file_cdg
+                self.minio.fget_object,
+                self.bucket,
+                entry.ident,
+                target_file_cdg,
             )
         )
         audio_task: asyncio.Task[Any] = asyncio.create_task(

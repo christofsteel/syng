@@ -1,6 +1,4 @@
-"""
-Wraps the ``json`` module, so that own classes get encoded.
-"""
+"""Wraps the ``json`` module, so that own classes get encoded."""
 import json
 from dataclasses import asdict
 from typing import Any
@@ -40,5 +38,5 @@ def dumps(obj: Any, **kw: Any) -> str:
 
 
 def loads(string: str, **kw: Any) -> Any:
-    """Forward everything to ``json.loads``"""
+    """Forward everything to ``json.loads``."""
     return json.loads(string, **kw)

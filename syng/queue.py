@@ -1,6 +1,4 @@
-"""
-A async queue with synchronization.
-"""
+"""A async queue with synchronization."""
 import asyncio
 from collections import deque
 from typing import Any
@@ -91,7 +89,9 @@ class Queue:
         """
         return list(self._queue)  # [item for item in self._queue]
 
-    def update(self, uuid: UUID | str, updater: Callable[[Entry], None]) -> None:
+    def update(
+        self, uuid: UUID | str, updater: Callable[[Entry], None]
+    ) -> None:
         """
         Update entries in the queue, identified by their uuid.
 

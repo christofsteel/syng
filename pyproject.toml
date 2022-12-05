@@ -45,3 +45,6 @@ module = [
   "yt_dlp",
 ]
 ignore_missing_imports = true
+
+[tool.black]
+line-length = 79

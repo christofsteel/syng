@@ -1,7 +1,8 @@
 """
 Construct the YouTube source.
 
-If available, downloading will be performed via yt-dlp, if not, pytube will be used.
+If available, downloading will be performed via yt-dlp, if not, pytube will be
+used.
 
 Adds it to the ``available_sources`` with the name ``youtube``.
 """
@@ -52,10 +53,14 @@ class YoutubeSource(Source):
         """Create the source."""
         super().__init__(config)
         self.innertube_client: innertube.InnerTube = innertube.InnerTube(
-            client="WEB")
-        self.channels: list[str] = config["channels"] if "channels" in config else [
-        ]
-        self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            client="WEB"
+        )
+        self.channels: list[str] = (
+            config["channels"] if "channels" in config else []
+        )
+        self.tmp_dir: str = (
+            config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+        )
         self.max_res: int = config["max_res"] if "max_res" in config else 720
         self.start_streaming: bool = (
             config["start_streaming"] if "start_streaming" in config else False
@@ -95,7 +100,10 @@ class YoutubeSource(Source):
         :type entry: Entry
         :rtype: None
         """
-        if self.start_streaming and not self.downloaded_files[entry.ident].complete:
+        if (
+            self.start_streaming
+            and not self.downloaded_files[entry.ident].complete
+        ):
             self.player = await self.play_mpv(
                 entry.ident,
                 None,
@@ -157,7 +165,9 @@ class YoutubeSource(Source):
         """
 
         def _contains_index(query: str, result: YouTube) -> float:
-            compare_string: str = result.title.lower() + " " + result.author.lower()
+            compare_string: str = (
+                result.title.lower() + " " + result.author.lower()
+            )
             hits: int = 0
             queries: list[str] = shlex.split(query.lower())
             for word in queries:
@@ -175,7 +185,9 @@ class YoutubeSource(Source):
             asyncio.to_thread(self._yt_search, query),
         )
         results = [
-            search_result for yt_result in results_lists for search_result in yt_result
+            search_result
+            for yt_result in results_lists
+            for search_result in yt_result
         ]
 
         results.sort(key=partial(_contains_index, query))
@@ -209,7 +221,8 @@ class YoutubeSource(Source):
         A lot of black Magic happens here.
         """
         browse_id: str = Channel(
-            f"https://www.youtube.com{channel}").channel_id
+            f"https://www.youtube.com{channel}"
+        ).channel_id
         endpoint: str = f"{self.innertube_client.base_url}/browse"
 
         data: dict[str, str] = {
@@ -223,7 +236,9 @@ class YoutubeSource(Source):
         )
         items: list[dict[str, Any]] = results["contents"][
             "twoColumnBrowseResultsRenderer"
-        ]["tabs"][-1]["expandableTabRenderer"]["content"]["sectionListRenderer"][
+        ]["tabs"][-1]["expandableTabRenderer"]["content"][
+            "sectionListRenderer"
+        ][
             "contents"
         ]
 
@@ -232,13 +247,14 @@ class YoutubeSource(Source):
             try:
                 if (
                     "itemSectionRenderer" in item
-                    and "videoRenderer" in item["itemSectionRenderer"]["contents"][0]
+                    and "videoRenderer"
+                    in item["itemSectionRenderer"]["contents"][0]
                 ):
                     yt_url: str = (
                         "https://youtube.com/watch?v="
-                        + item["itemSectionRenderer"]["contents"][0]["videoRenderer"][
-                            "videoId"
-                        ]
+                        + item["itemSectionRenderer"]["contents"][0][
+                            "videoRenderer"
+                        ]["videoId"]
                     )
                     author: str = item["itemSectionRenderer"]["contents"][0][
                         "videoRenderer"
@@ -255,7 +271,9 @@ class YoutubeSource(Source):
                 pass
         return list_of_videos
 
-    async def _buffer_with_yt_dlp(self, entry: Entry) -> Tuple[str, Optional[str]]:
+    async def _buffer_with_yt_dlp(
+        self, entry: Entry
+    ) -> Tuple[str, Optional[str]]:
         """
         Download the video using yt-dlp.
 
@@ -299,15 +317,16 @@ class YoutubeSource(Source):
 
         video_streams: StreamQuery = streams.filter(
             type="video",
-            custom_filter_functions=[lambda s: int(
-                s.resolution[:-1]) <= self.max_res],
+            custom_filter_functions=[
+                lambda s: int(s.resolution[:-1]) <= self.max_res
+            ],
         )
         audio_streams: StreamQuery = streams.filter(only_audio=True)
 
         best_video_stream: Stream = sorted(
             video_streams,
-            key=lambda s: int(s.resolution[:-1]) +
-            (1 if s.is_progressive else 0),
+            key=lambda s: int(s.resolution[:-1])
+            + (1 if s.is_progressive else 0),
         )[-1]
         best_audio_stream: Stream = sorted(
             audio_streams, key=lambda s: int(s.abr[:-4])

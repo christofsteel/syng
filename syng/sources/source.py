@@ -308,7 +308,7 @@ class Source:
 
     def filter_data_by_query(self, query: str, data: list[str]) -> list[str]:
         """
-        Filters the ``data``-list by the ``query``.
+        Filter the ``data``-list by the ``query``.
 
         :param query: The query to filter
         :type query: str
@@ -325,7 +325,11 @@ class Source:
             return True
 
         splitquery = shlex.split(query)
-        return [element for element in data if contains_all_words(splitquery, element)]
+        return [
+            element
+            for element in data
+            if contains_all_words(splitquery, element)
+        ]
 
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """

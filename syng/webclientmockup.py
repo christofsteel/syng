@@ -27,11 +27,15 @@ async def handle_state(data: dict[str, Any]) -> None:
     print("New Queue")
     for raw_item in data["queue"]:
         item = Entry(**raw_item)
-        print(f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})")
+        print(
+            f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})"
+        )
     print("Recent")
     for raw_item in data["recent"]:
         item = Entry(**raw_item)
-        print(f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})")
+        print(
+            f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})"
+        )
 
 
 @sio.on("connect")

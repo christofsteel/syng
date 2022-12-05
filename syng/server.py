@@ -205,7 +205,10 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
         start_time = first_song.started_at
 
     start_time = state.queue.fold(
-        lambda item, time: time + item.duration + state.config.preview_duration + 1,
+        lambda item, time: time
+        + item.duration
+        + state.config.preview_duration
+        + 1,
         start_time,
     )
 
@@ -215,7 +218,8 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
             await sio.emit(
                 "msg",
                 {
-                    "msg": f"The song queue ends at {end_time.hour:02d}:{end_time.minute:02d}."
+                    "msg": f"The song queue ends at {end_time.hour:02d}:"
+                    f"{end_time.minute:02d}."
                 },
                 room=sid,
             )
@@ -415,7 +419,9 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             config=Config(sources={}, sources_prio=[], **data["config"]),
         )
         sio.enter_room(sid, room)
-        await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
+        await sio.emit(
+            "client-registered", {"success": True, "room": room}, room=sid
+        )
         await send_state(clients[room], sid)
 
 
@@ -486,9 +492,9 @@ async def handle_config_chung(sid: str, data: dict[str, Any]) -> None:
         return
 
     if not data["source"] in state.config.sources:
-        state.config.sources[data["source"]] = available_sources[data["source"]](
-            data["config"]
-        )
+        state.config.sources[data["source"]] = available_sources[
+            data["source"]
+        ](data["config"])
     else:
         state.config.sources[data["source"]].add_to_config(data["config"])
 

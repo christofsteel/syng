@@ -1,6 +1,4 @@
-"""
-Module for the entry of the queue.
-"""
+"""Module for the entry of the queue."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,7 +13,8 @@ from uuid import uuid4
 class Entry:
     """This represents a song in the queue.
 
-    :param ident: An identifier, that uniquely identifies the song in its source.
+    :param ident: An identifier, that uniquely identifies the song in its
+        source.
     :type ident: str
     :param source: The name of the source, this will be played from.
     :type source: str
@@ -59,11 +58,11 @@ class Entry:
     started_at: Optional[float] = None
 
     def update(self, **kwargs: Any) -> None:
-        """
+        r"""
         Update the attributes with given substitutions.
 
-        :param \\*\\*kwargs: Keywords taken from the list of attributes.
-        :type \\*\\*kwargs: Any
+        :param \*\*kwargs: Keywords taken from the list of attributes.
+        :type \*\*kwargs: Any
         :rtype: None
         """
         self.__dict__.update(kwargs)
