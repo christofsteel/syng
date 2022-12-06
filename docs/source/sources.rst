@@ -8,6 +8,7 @@ Sources
    source   
    youtube
    s3
+   files
 
 .. automodule:: syng.sources
     :members:
