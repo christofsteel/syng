@@ -385,7 +385,6 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         session["room"] = room
 
-    print(data["config"])
     if room in clients:
         old_state: State = clients[room]
         if data["secret"] == old_state.secret:
@@ -467,7 +466,7 @@ async def handle_sources(sid: str, data: dict[str, Any]) -> None:
 
 
 @sio.on("config-chunk")
-async def handle_config_chung(sid: str, data: dict[str, Any]) -> None:
+async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
     """
     Handle the "config-chunk" message.
 
