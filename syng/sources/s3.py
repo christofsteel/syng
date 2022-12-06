@@ -53,7 +53,7 @@ class S3Source(Source):
                 config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
             )
 
-        self.index: list[str] = []
+        self.index: list[str] = config["index"] if "index" in config else []
         self.index_file: Optional[str] = (
             config["index_file"] if "index_file" in config else None
         )
