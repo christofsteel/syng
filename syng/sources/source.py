@@ -13,6 +13,7 @@ import shlex
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field
+from itertools import zip_longest
 from traceback import print_exc
 from typing import Any
 from typing import Optional
@@ -68,9 +69,9 @@ class Source:
     """Parentclass for all sources.
 
     A new source should subclass this, and at least implement
-    :py:func:`Source.get_entry`, :py:func:`Source.search` and
-    :py:func:`Source.do_buffer`. The sources will be shared between the server
-    and the playback client.
+    :py:func:`Source.do_buffer`, :py:func:`Song.get_entry` and
+    :py:func:`Source.get_file_list`, and set the ``source_name``
+    attribute.
 
     Source specific tasks will be forwarded to the respective source, like:
         - Playing the audio/video
@@ -78,6 +79,16 @@ class Source:
         - Searching for a query
         - Getting an entry from an identifier
         - Handling the skipping of currently played song
+
+    Some methods of a source will be called by the server and some will be
+    called by the playback client.
+
+    Specific server methods:
+    ``get_entry``, ``search``, ``add_to_config``
+
+    Specific client methods:
+    ``buffer``, ``do_buffer``, ``play``, ``skip_current``, ``ensure_playable``,
+    ``get_missing_metadata``, ``get_config``
 
     Each source has a reference to all files, that are currently queued to
     download via the :py:attr:`Source.downloaded_files` attribute and a
@@ -89,24 +100,27 @@ class Source:
                    started
                  - ``extra_mpv_arguments``, list of arguments added to the mpv
                    instance, can be overwritten by a subclass
+                 - ``source_name``, the string used to identify the source
     """
 
-    def __init__(self, _: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Create and initialize a new source.
 
         You should never try to instantiate the Source class directly, rather
         you should instantiate a subclass.
 
-        :param _: Specific configuration for a Soure, ignored in the base
-            class
-        :type _: dict[str, Any]
+        :param config: Specific configuration for a source. See the respective
+          source for documentation.
+        :type config: dict[str, Any]
         """
+        self.source_name: str = ""
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(
             DLFilesEntry
         )
         self._masterlock: asyncio.Lock = asyncio.Lock()
         self.player: Optional[asyncio.subprocess.Process] = None
+        self._index: list[str] = config["index"] if "index" in config else []
         self.extra_mpv_arguments: list[str] = []
         self._skip_next = False
 
@@ -137,33 +151,63 @@ class Source:
         )
         return await mpv_process
 
-    async def get_entry(self, performer: str, ident: str) -> Entry:
+    async def get_entry(self, performer: str, ident: str) -> Optional[Entry]:
         """
         Create an :py:class:`syng.entry.Entry` from a given identifier.
 
-        Abstract, needs to be implemented by subclass.
+        By default, this confirmes, that the ident is a valid entry (i.e. part
+        of the indexed list), and builds an Entry by parsing the file name.
+
+        Since the server does not have access to the actual file, only to the
+        file name, ``duration`` can not be set. It will be approximated with
+        180 seconds. When added to the queue, the server will ask the client
+        for additional metadata, like this.
 
         :param performer: The performer of the song
         :type performer: str
         :param ident: Unique identifier of the song.
         :type ident: str
-        :returns: New entry for the identifier.
-        :rtype: Entry
+        :returns: New entry for the identifier, or None, if the ident is
+            invalid.
+        :rtype: Optional[Entry]
         """
-        raise NotImplementedError
+        if ident not in self._index:
+            return None
+
+        res: Optional[Result] = Result.from_filename(ident, self.source_name)
+        if res is not None:
+            return Entry(
+                ident=ident,
+                source=self.source_name,
+                duration=180,
+                album=res.album,
+                title=res.title,
+                artist=res.artist,
+                performer=performer,
+            )
+        return None
 
     async def search(self, query: str) -> list[Result]:
         """
         Search the songs from the source for a query.
 
-        Abstract, needs to be implemented by subclass.
+        By default, this searches in the internal index.
 
         :param query: The query to search for
         :type query: str
         :returns: A list of Results containing the query.
         :rtype: list[Result]
         """
-        raise NotImplementedError
+        filtered: list[str] = self.filter_data_by_query(query, self._index)
+        results: list[Result] = []
+        for filename in filtered:
+            result: Optional[Result] = Result.from_filename(
+                filename, self.source_name
+            )
+            if result is None:
+                continue
+            results.append(result)
+        return results
 
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
@@ -331,6 +375,18 @@ class Source:
             if contains_all_words(splitquery, element)
         ]
 
+    async def get_file_list(self) -> list[str]:
+        """
+        Gather a list of all files belonging to the source.
+
+        This list will be send to the server. When the server searches, this
+        list will be searched.
+
+        :return: List of filenames belonging to the source
+        :rtype: list[str]
+        """
+        return []
+
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """
         Return the part of the config, that should be send to the server.
@@ -339,12 +395,26 @@ class Source:
         dictionary, a single message will be send. If it is a list, one message
         will be send for each entry in the list.
 
-        Abstract, needs to be implemented by subclass.
+        By default this is the list of files handled by the source, split into
+        chunks of 1000 filenames. This list is cached internally, so it does
+        not need to be rebuild, when the client reconnects.
+
+        But this can be any other values, as long as the respective source can
+        handle that data.
 
         :return: The part of the config, that should be sended to the server.
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
-        raise NotImplementedError
+        if not self._index:
+            self._index = []
+            print(f"{self.source_name}: generating index")
+            self._index = await self.get_file_list()
+            print(f"{self.source_name}: done")
+        chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
+        return [
+            {"index": list(filter(lambda x: x != "", chunk))}
+            for chunk in chunked
+        ]
 
     def add_to_config(self, config: dict[str, Any]) -> None:
         """
@@ -353,10 +423,14 @@ class Source:
         This is called on the server, if :py:func:`Source.get_config` returns a
         list.
 
+        In the default configuration, this just adds the index key of the
+        config to the index attribute of the source
+
         :param config: The part of the config to add.
         :type config: dict[str, Any]
         :rtype: None
         """
+        self._index += config["index"]
 
 
 available_sources: dict[str, Type[Source]] = {}

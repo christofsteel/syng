@@ -197,6 +197,9 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
 
     source_obj = state.config.sources[data["source"]]
     entry = await source_obj.get_entry(data["performer"], data["ident"])
+    if entry is None:
+        await sio.emit("mst", {"msg": f"Unable to append {data['ident']}"})
+        return
 
     first_song = state.queue.try_peek()
     if first_song is None or first_song.started_at is None:

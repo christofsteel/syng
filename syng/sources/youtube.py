@@ -52,6 +52,8 @@ class YoutubeSource(Source):
     def __init__(self, config: dict[str, Any]):
         """Create the source."""
         super().__init__(config)
+        self.source_name = "youtube"
+
         self.innertube_client: innertube.InnerTube = innertube.InnerTube(
             client="WEB"
         )
