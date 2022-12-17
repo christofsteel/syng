@@ -49,6 +49,8 @@ class YoutubeSource(Source):
           ``yt-dlp``. Default is False.
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self, config: dict[str, Any]):
         """Create the source."""
         super().__init__(config)

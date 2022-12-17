@@ -2,13 +2,11 @@
 import asyncio
 import os
 from typing import Any
-from typing import Optional
 from typing import Tuple
 
 import mutagen
 
 from ..entry import Entry
-from ..result import Result
 from .source import available_sources
 from .source import Source
 
@@ -33,7 +31,7 @@ class FilesSource(Source):
 
         def _get_file_list() -> list[str]:
             file_list = []
-            for path, dir, files in os.walk(self.dir):
+            for path, _, files in os.walk(self.dir):
                 for file in files:
                     if file.endswith(".cdg"):
                         file_list.append(
