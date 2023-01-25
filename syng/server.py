@@ -743,8 +743,10 @@ async def cleanup() -> None:
     # The internal loop counter does not use a regular timestamp, so we need to convert between
     # regular datetime and the async loop time
     now = datetime.datetime.now()
-    today = datetime.datetime(now.year, now.month, now.day)
-    next_run = today + datetime.timedelta(days=1)
+    # today = datetime.datetime(now.year, now.month, now.day)
+    # next_run = today + datetime.timedelta(days=1)
+
+    next_run = now + datetime.timedelta(hours=1)
     offset = next_run.timestamp() - now.timestamp()
     loop_next = asyncio.get_event_loop().time() + offset
 
