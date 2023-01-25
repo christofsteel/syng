@@ -20,7 +20,9 @@ import random
 import string
 from argparse import ArgumentParser
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
+from typing import AsyncGenerator
 from typing import Optional
 
 import socketio
@@ -56,7 +58,7 @@ async def root_handler(request: Any) -> Any:
     return web.FileResponse("syng/static/index.html")
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -112,6 +114,9 @@ class State:
     recent: list[Entry]
     sid: str
     config: Config
+    last_seen: datetime.datetime = field(
+        init=False, default_factory=datetime.datetime.now
+    )
 
 
 clients: dict[str, State] = {}
@@ -325,6 +330,7 @@ async def handle_pop_then_get_next(sid: str) -> None:
 
     old_entry = await state.queue.popleft()
     state.recent.append(old_entry)
+    state.last_seen = datetime.datetime.now()
 
     await send_state(state, room)
     current = await state.queue.peek()
@@ -715,6 +721,49 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
     )
 
 
+async def cleanup() -> None:
+    """ Clean up the unused playback clients
+
+    This runs every hour, and removes every client, that did not requested a song for four hours
+    """
+
+    logger.info("Start Cleanup")
+    to_remove: list[str] = []
+    for sid, state in clients.items():
+        logger.info("Client %s, last seen: %s", sid, str(state.last_seen))
+        if state.last_seen + datetime.timedelta(hours=4) < datetime.datetime.now():
+            logger.info("No activity for 4 hours, removing %s", sid)
+            to_remove.append(sid)
+    for sid in to_remove:
+        await sio.disconnect(sid)
+        del clients[sid]
+    logger.info("End Cleanup")
+
+
+    # The internal loop counter does not use a regular timestamp, so we need to convert between
+    # regular datetime and the async loop time
+    now = datetime.datetime.now()
+    today = datetime.datetime(now.year, now.month, now.day)
+    next_run = today + datetime.timedelta(days=1)
+    offset = next_run.timestamp() - now.timestamp()
+    loop_next = asyncio.get_event_loop().time() + offset
+
+    logger.info("Next Cleanup at %s", str(next))
+    asyncio.get_event_loop().call_at(loop_next, lambda: asyncio.create_task(cleanup()))
+
+async def background_tasks(iapp: web.Application) -> AsyncGenerator[None, None]:
+    """ Create all the background tasks
+
+    For now, this is only the cleanup task
+    """
+
+    iapp["repeated_cleanup"] = asyncio.create_task(cleanup())
+
+    yield
+
+    iapp["repeated_cleanup"].cancel()
+    await iapp["repeated_cleanup"]
+
 def main() -> None:
     """
     Configure and start the server.
@@ -733,6 +782,8 @@ def main() -> None:
     app.router.add_route("*", "/", root_handler)
     app.router.add_route("*", "/{room}", root_handler)
     app.router.add_route("*", "/{room}/", root_handler)
+
+    app.cleanup_ctx.append(background_tasks)
 
     web.run_app(app, host=args.host, port=args.port)
 
