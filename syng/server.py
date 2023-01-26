@@ -74,7 +74,7 @@ class Config:
     :type sources: Source
     :param sources_prio: A list defining the order of the search results.
     :type sources_prio: list[str]
-    :param preview_duration: The duration in seconds the playbackclients shows
+    :param preview_duration: The duration in seconds the playback clients shows
         a preview for the next song. This is accounted for in the calculation
         of the ETA for songs later in the queue.
     :type preview_duration: int
@@ -119,9 +119,6 @@ class State:
     )
 
 
-clients: dict[str, State] = {}
-
-
 async def send_state(state: State, sid: str) -> None:
     """
     Send the current state (queue and recent-list) to sid.
@@ -160,7 +157,7 @@ async def handle_state(sid: str) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     await send_state(state, sid)
 
@@ -198,7 +195,7 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     source_obj = state.config.sources[data["source"]]
     entry = await source_obj.get_entry(data["performer"], data["ident"])
@@ -239,7 +236,7 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     await sio.emit(
         "get-meta-info",
         entry,
-        room=clients[room].sid,
+        room=app["clients"][room].sid,
     )
 
 
@@ -263,7 +260,7 @@ async def handle_meta_info(sid: str, data: dict[str, Any]) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     state.queue.update(
         data["uuid"],
@@ -294,7 +291,7 @@ async def handle_get_first(sid: str) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     current = await state.queue.peek()
     current.started_at = datetime.datetime.now().timestamp()
@@ -323,7 +320,7 @@ async def handle_pop_then_get_next(sid: str) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     if sid != state.sid:
         return
@@ -386,7 +383,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         client_id = "".join(
             [random.choice(string.ascii_letters) for _ in range(length)]
         )
-        if client_id in clients:
+        if client_id in app["clients"]:
             client_id = gen_id(length + 1)
         return client_id
 
@@ -394,8 +391,8 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         session["room"] = room
 
-    if room in clients:
-        old_state: State = clients[room]
+    if room in app["clients"]:
+        old_state: State = app["clients"][room]
         if data["secret"] == old_state.secret:
             logger.info("Got new client connection for %s", room)
             old_state.sid = sid
@@ -408,7 +405,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             await sio.emit(
                 "client-registered", {"success": True, "room": room}, room=sid
             )
-            await send_state(clients[room], sid)
+            await send_state(app["clients"][room], sid)
         else:
             logger.warning("Got wrong secret for %s", room)
             await sio.emit(
@@ -419,7 +416,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         initial_entries = [Entry(**entry) for entry in data["queue"]]
         initial_recent = [Entry(**entry) for entry in data["recent"]]
 
-        clients[room] = State(
+        app["clients"][room] = State(
             secret=data["secret"],
             queue=Queue(initial_entries),
             recent=initial_recent,
@@ -430,7 +427,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         await sio.emit(
             "client-registered", {"success": True, "room": room}, room=sid
         )
-        await send_state(clients[room], sid)
+        await send_state(app["clients"][room], sid)
 
 
 @sio.on("sources")
@@ -457,7 +454,7 @@ async def handle_sources(sid: str, data: dict[str, Any]) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     if sid != state.sid:
         return
@@ -494,7 +491,7 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     if sid != state.sid:
         return
@@ -526,7 +523,7 @@ async def handle_config(sid: str, data: dict[str, Any]) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     if sid != state.sid:
         return
@@ -551,11 +548,11 @@ async def handle_register_web(sid: str, data: dict[str, Any]) -> bool:
     :returns: True, if the room exist, False otherwise
     :rtype: bool
     """
-    if data["room"] in clients:
+    if data["room"] in app["clients"]:
         async with sio.session(sid) as session:
             session["room"] = data["room"]
             sio.enter_room(sid, session["room"])
-        state = clients[session["room"]]
+        state = app["clients"][session["room"]]
         await send_state(state, sid)
         return True
     return False
@@ -578,7 +575,7 @@ async def handle_register_admin(sid: str, data: dict[str, Any]) -> bool:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     is_admin: bool = data["secret"] == state.secret
     async with sio.session(sid) as session:
@@ -602,12 +599,14 @@ async def handle_skip_current(sid: str) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
-    state = clients[room]
+    state = app["clients"][room]
 
     if is_admin:
         old_entry = await state.queue.popleft()
         state.recent.append(old_entry)
-        await sio.emit("skip-current", old_entry, room=clients[room].sid)
+        await sio.emit(
+            "skip-current", old_entry, room=app["clients"][room].sid
+        )
         await send_state(state, room)
 
 
@@ -628,7 +627,7 @@ async def handle_move_up(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
-    state = clients[room]
+    state = app["clients"][room]
     if is_admin:
         await state.queue.move_up(data["uuid"])
         await send_state(state, room)
@@ -651,7 +650,7 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
-    state = clients[room]
+    state = app["clients"][room]
 
     if is_admin:
         entry = state.queue.find_by_uuid(data["uuid"])
@@ -699,7 +698,7 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
     """
     async with sio.session(sid) as session:
         room = session["room"]
-    state = clients[room]
+    state = app["clients"][room]
 
     query = data["query"]
     results_list = await asyncio.gather(
@@ -722,23 +721,25 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
 
 
 async def cleanup() -> None:
-    """ Clean up the unused playback clients
+    """Clean up the unused playback clients
 
     This runs every hour, and removes every client, that did not requested a song for four hours
     """
 
     logger.info("Start Cleanup")
     to_remove: list[str] = []
-    for sid, state in clients.items():
+    for sid, state in app["clients"].items():
         logger.info("Client %s, last seen: %s", sid, str(state.last_seen))
-        if state.last_seen + datetime.timedelta(hours=4) < datetime.datetime.now():
+        if (
+            state.last_seen + datetime.timedelta(hours=4)
+            < datetime.datetime.now()
+        ):
             logger.info("No activity for 4 hours, removing %s", sid)
             to_remove.append(sid)
     for sid in to_remove:
         await sio.disconnect(sid)
-        del clients[sid]
+        del app["clients"][sid]
     logger.info("End Cleanup")
-
 
     # The internal loop counter does not use a regular timestamp, so we need to convert between
     # regular datetime and the async loop time
@@ -751,10 +752,15 @@ async def cleanup() -> None:
     loop_next = asyncio.get_event_loop().time() + offset
 
     logger.info("Next Cleanup at %s", str(next))
-    asyncio.get_event_loop().call_at(loop_next, lambda: asyncio.create_task(cleanup()))
+    asyncio.get_event_loop().call_at(
+        loop_next, lambda: asyncio.create_task(cleanup())
+    )
 
-async def background_tasks(iapp: web.Application) -> AsyncGenerator[None, None]:
-    """ Create all the background tasks
+
+async def background_tasks(
+    iapp: web.Application,
+) -> AsyncGenerator[None, None]:
+    """Create all the background tasks
 
     For now, this is only the cleanup task
     """
@@ -765,6 +771,7 @@ async def background_tasks(iapp: web.Application) -> AsyncGenerator[None, None]:
 
     iapp["repeated_cleanup"].cancel()
     await iapp["repeated_cleanup"]
+
 
 def main() -> None:
     """
@@ -785,6 +792,7 @@ def main() -> None:
     app.router.add_route("*", "/{room}", root_handler)
     app.router.add_route("*", "/{room}/", root_handler)
 
+    app["clients"] = {}
     app.cleanup_ctx.append(background_tasks)
 
     web.run_app(app, host=args.host, port=args.port)
