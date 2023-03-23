@@ -3,12 +3,13 @@ Module for the Server.
 
 Starts a async socketio server, and serves the web client::
 
-    usage: server.py [-h] [--host HOST] [--port PORT]
+    usage: server.py [-h] [--host HOST] [--port PORT] [--root-folder PATH]
 
     options:
       -h, --help            show this help message and exit
       --host HOST, -H HOST
       --port PORT, -p PORT
+      --root-folder PATH, -r PATH
 
 """
 from __future__ import annotations
@@ -16,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import logging
+import os
 import random
 import string
 from argparse import ArgumentParser
@@ -54,8 +56,10 @@ async def root_handler(request: Any) -> Any:
     :rtype web.FileResponse:
     """
     if request.path.endswith("/favicon.ico"):
-        return web.FileResponse("syng/static/favicon.ico")
-    return web.FileResponse("syng/static/index.html")
+        return web.FileResponse(
+            os.path.join(app["root_folder"], "favicon.ico")
+        )
+    return web.FileResponse(os.path.join(app["root_folder"], "index.html"))
 
 
 logging.basicConfig(level=logging.WARNING)
@@ -786,9 +790,15 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument("--host", "-H", default="localhost")
     parser.add_argument("--port", "-p", default="8080")
+    parser.add_argument("--root-folder", "-r", default="syng/static/")
     args = parser.parse_args()
 
-    app.add_routes([web.static("/assets/", "syng/static/assets/")])
+    app["root_folder"] = args.root_folder
+
+    app.add_routes(
+        [web.static("/assets/", os.path.join(app["root_folder"], "assets/"))]
+    )
+
     app.router.add_route("*", "/", root_handler)
     app.router.add_route("*", "/{room}", root_handler)
     app.router.add_route("*", "/{room}/", root_handler)
