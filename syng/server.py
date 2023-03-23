@@ -722,7 +722,7 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
 
 
 async def cleanup() -> None:
-    """ Clean up the unused playback clients
+    """Clean up the unused playback clients
 
     This runs every hour, and removes every client, that did not requested a song for four hours
     """
@@ -731,14 +731,16 @@ async def cleanup() -> None:
     to_remove: list[str] = []
     for sid, state in clients.items():
         logger.info("Client %s, last seen: %s", sid, str(state.last_seen))
-        if state.last_seen + datetime.timedelta(hours=4) < datetime.datetime.now():
+        if (
+            state.last_seen + datetime.timedelta(hours=4)
+            < datetime.datetime.now()
+        ):
             logger.info("No activity for 4 hours, removing %s", sid)
             to_remove.append(sid)
     for sid in to_remove:
         await sio.disconnect(sid)
         del clients[sid]
     logger.info("End Cleanup")
-
 
     # The internal loop counter does not use a regular timestamp, so we need to convert between
     # regular datetime and the async loop time
@@ -751,10 +753,15 @@ async def cleanup() -> None:
     loop_next = asyncio.get_event_loop().time() + offset
 
     logger.info("Next Cleanup at %s", str(next))
-    asyncio.get_event_loop().call_at(loop_next, lambda: asyncio.create_task(cleanup()))
+    asyncio.get_event_loop().call_at(
+        loop_next, lambda: asyncio.create_task(cleanup())
+    )
 
-async def background_tasks(iapp: web.Application) -> AsyncGenerator[None, None]:
-    """ Create all the background tasks
+
+async def background_tasks(
+    iapp: web.Application,
+) -> AsyncGenerator[None, None]:
+    """Create all the background tasks
 
     For now, this is only the cleanup task
     """
@@ -765,6 +772,7 @@ async def background_tasks(iapp: web.Application) -> AsyncGenerator[None, None]:
 
     iapp["repeated_cleanup"].cancel()
     await iapp["repeated_cleanup"]
+
 
 def main() -> None:
     """

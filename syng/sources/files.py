@@ -35,7 +35,7 @@ class FilesSource(Source):
                 for file in files:
                     if file.endswith(".cdg"):
                         file_list.append(
-                            os.path.join(path, file)[len(self.dir):]
+                            os.path.join(path, file)[len(self.dir) :]
                         )
             return file_list
 
