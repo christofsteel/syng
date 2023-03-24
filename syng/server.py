@@ -178,7 +178,8 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     This should be called from a web client. Appends the entry, that is encoded
     within the data to the room the client is currently connected to. An entry
     constructed this way, will be given a UUID, to differentiate it from other
-    entries for the same song.
+    entries for the same song. Additionally an id of the web client is saved
+    for that entry.
 
     If the room is configured to no longer accept songs past a certain time
     (via the :py:attr:`Config.last_song` attribute), it is checked, if the
@@ -210,6 +211,8 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     if entry is None:
         await sio.emit("mst", {"msg": f"Unable to append {data['ident']}"})
         return
+
+    entry.uid = data["uid"] if "uid" in data else None
 
     first_song = state.queue.try_peek()
     if first_song is None or first_song.started_at is None:

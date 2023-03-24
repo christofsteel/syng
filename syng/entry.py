@@ -38,6 +38,8 @@ class Entry:
     :param uuid: The UUID, that identifies this exact entry in the queue.
         Will be automatically assigned on creation.
     :type uuid: UUID
+    :param uid: ID of the user that added this song to the queue.
+    :type uid: Optional[str]
     :param started_at: The timestamp this entry began playing. ``None``, if it
         is yet to be played.
     :type started_at: Optional[float]
@@ -55,6 +57,7 @@ class Entry:
     failed: bool = False
     skip: bool = False
     uuid: UUID = field(default_factory=uuid4)
+    uid: Optional[str] = None
     started_at: Optional[float] = None
 
     def update(self, **kwargs: Any) -> None:
