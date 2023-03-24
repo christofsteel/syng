@@ -14,6 +14,7 @@ Excerp from the help::
       --room ROOM, -r ROOM
       --secret SECRET, -s SECRET
       --config-file CONFIG_FILE, -C CONFIG_FILE
+      --key KEY, -k KEY
 
 The config file should be a json file in the following style::
 
@@ -82,6 +83,8 @@ class State:
         a room, this must be identical. Also, if a webclient wants to have
         admin privileges, this must be included.
     :type secret: str
+    :param key: An optional key, if registration on the server is limited.
+    :type key: Optional[str]
     :param preview_duration: Amount of seconds the preview before a song be
         displayed.
     :type preview_duration: int
@@ -98,6 +101,7 @@ class State:
     room: str = ""
     server: str = ""
     secret: str = ""
+    key: Optional[str] = None
     preview_duration: int = 3
     last_song: Optional[datetime.datetime] = None
 
@@ -187,16 +191,16 @@ async def handle_connect() -> None:
     :rtype: None
     """
     logging.info("Connected to server")
-    await sio.emit(
-        "register-client",
-        {
-            "queue": state.queue,
-            "recent": state.recent,
-            "room": state.room,
-            "secret": state.secret,
-            "config": state.get_config(),
-        },
-    )
+    data = {
+        "queue": state.queue,
+        "recent": state.recent,
+        "room": state.room,
+        "secret": state.secret,
+        "config": state.get_config(),
+    }
+    if state.key:
+        data["registration-key"] = state.key
+    await sio.emit("register-client", data)
 
 
 @sio.on("get-meta-info")
@@ -390,6 +394,7 @@ async def aiomain() -> None:
     parser.add_argument("--room", "-r")
     parser.add_argument("--secret", "-s")
     parser.add_argument("--config-file", "-C", default="syng-client.json")
+    parser.add_argument("--key", "-k", default=None)
     parser.add_argument("server")
 
     args = parser.parse_args()
@@ -405,6 +410,8 @@ async def aiomain() -> None:
             )
         if "preview_duration" in config["config"]:
             state.preview_duration = config["config"]["preview_duration"]
+
+    state.key = args.key if args.key else None
 
     if args.room:
         state.room = args.room

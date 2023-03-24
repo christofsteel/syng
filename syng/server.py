@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import hashlib
 import logging
 import os
 import random
@@ -350,10 +351,12 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     Handle the "register-client" message.
 
     The data dictionary should have the following keys:
+        - `registration_key` (Optional), a key corresponding to those stored
+                    in `app["registration-keyfile"]`
         - `room` (Optional), the requested room
         - `config`, an dictionary of initial configurations
         - `queue`, a list of initial entries for the queue. The entries are
-                   encoded as a dictionary.
+                    encoded as a dictionary.
         - `recent`, a list of initial entries for the recent list. The entries
                     are encoded as a dictionary.
         - `secret`, the secret of the room
@@ -362,6 +365,9 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     already exists a playback client registered for this room, this
     playback client will be replaced if and only if, the new playback
     client has the same secret.
+
+    If registration is restricted, abort, if the given key is not in the
+    registration keyfile.
 
     If no room is provided, a fresh room id is generated.
 
@@ -393,6 +399,25 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         if client_id in clients:
             client_id = gen_id(length + 1)
         return client_id
+
+    if not app["public"]:
+        with open(app["registration-keyfile"]) as f:
+            raw_keys = f.readlines()
+            keys = [key[:64] for key in raw_keys]
+
+            if (
+                "registration-key" not in data
+                or hashlib.sha256(
+                    data["registration-key"].encode()
+                ).hexdigest()
+                not in keys
+            ):
+                await sio.emit(
+                    "client-registered",
+                    {"success": False, "room": None},
+                    room=sid,
+                )
+                return
 
     room: str = data["room"] if "room" in data and data["room"] else gen_id()
     async with sio.session(sid) as session:
@@ -791,7 +816,13 @@ def main() -> None:
     parser.add_argument("--host", "-H", default="localhost")
     parser.add_argument("--port", "-p", default="8080")
     parser.add_argument("--root-folder", "-r", default="syng/static/")
+    parser.add_argument("--registration-keyfile", "-k", default=None)
     args = parser.parse_args()
+
+    app["public"] = True
+    if args.registration_keyfile:
+        app["public"] = False
+        app["registration-keyfile"] = args.registration_keyfile
 
     app["root_folder"] = args.root_folder
 
