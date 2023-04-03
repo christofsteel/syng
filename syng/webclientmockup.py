@@ -2,7 +2,7 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=missing-class-docstring
 import asyncio
-from typing import Any
+from typing import Any, Optional
 
 from aiocmd import aiocmd
 import socketio
@@ -30,6 +30,12 @@ async def handle_state(data: dict[str, Any]) -> None:
         print(
             f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})"
         )
+    print("Waiting Room")
+    for raw_item in data["shadow_queue"]:
+        item = Entry(**raw_item)
+        print(
+            f"\t{item.performer}:  {item.artist} - {item.title} ({item.duration})"
+        )
     print("Recent")
     for raw_item in data["recent"]:
         item = Entry(**raw_item)
@@ -38,8 +44,13 @@ async def handle_state(data: dict[str, Any]) -> None:
         )
 
 
+@sio.on("msg")
+async def handle_msg(data: dict[str, Any]) -> None:
+    print(data["msg"])
+
+
 @sio.on("connect")
-async def handle_connect(_: dict[str, Any]) -> None:
+async def handle_connect() -> None:
     print("Connected")
     await sio.emit("register-web", {"room": state["room"]})
 
@@ -64,6 +75,7 @@ class SyngShell(aiocmd.PromptToolkitCmd):
             {
                 "performer": "Hammy",
                 "source": "youtube",
+                "uid": "mockup",
                 # https://youtube.com/watch?v=x5bM5Bdizi4",
                 "ident": "https://www.youtube.com/watch?v=rqZqHXJm-UA",
             },
@@ -72,9 +84,30 @@ class SyngShell(aiocmd.PromptToolkitCmd):
     async def do_search(self, query: str) -> None:
         await sio.emit("search", {"query": query})
 
-    async def do_append(self, source: str, ident: str) -> None:
+    async def do_append(
+        self, source: str, ident: str, uid: Optional[str] = None
+    ) -> None:
         await sio.emit(
-            "append", {"performer": "Hammy", "source": source, "ident": ident}
+            "append",
+            {
+                "performer": "Mockup",
+                "source": source,
+                "ident": ident,
+                "uid": uid if uid is not None else "mockup",
+            },
+        )
+
+    async def do_waiting_room(
+        self, source: str, ident: str, uid: Optional[str] = None
+    ) -> None:
+        await sio.emit(
+            "shadow-append",
+            {
+                "performer": "Mockup",
+                "source": source,
+                "ident": ident,
+                "uid": uid if uid is not None else "mockup",
+            },
         )
 
     async def do_admin(self, data: str) -> None:

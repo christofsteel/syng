@@ -75,6 +75,8 @@ class State:
     :type current_source: Optional[Source]
     :param queue: A copy of the current playlist on the server.
     :type queue: list[Entry]
+    :param waiting_room: A copy of the waiting room on the server.
+    :type waiting_room: list[Entry]
     :param recent: A copy of all played songs this session.
     :type recent: list[Entry]
     :param room: The room on the server this playback client is connected to.
@@ -97,6 +99,7 @@ class State:
 
     current_source: Optional[Source] = None
     queue: list[Entry] = field(default_factory=list)
+    waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
     room: str = ""
     server: str = ""
@@ -164,6 +167,7 @@ async def handle_state(data: dict[str, Any]) -> None:
     :rtype: None
     """
     state.queue = [Entry(**entry) for entry in data["queue"]]
+    state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
     state.recent = [Entry(**entry) for entry in data["recent"]]
 
     for entry in state.queue[:2]:
@@ -193,6 +197,7 @@ async def handle_connect() -> None:
     logging.info("Connected to server")
     data = {
         "queue": state.queue,
+        "waiting_room": state.waiting_room,
         "recent": state.recent,
         "room": state.room,
         "secret": state.secret,
@@ -200,6 +205,7 @@ async def handle_connect() -> None:
     }
     if state.key:
         data["registration-key"] = state.key
+    print(data)
     await sio.emit("register-client", data)
 
 

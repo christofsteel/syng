@@ -1,8 +1,8 @@
 """A async queue with synchronization."""
 import asyncio
 from collections import deque
+from collections.abc import Callable, Iterable
 from typing import Any
-from typing import Callable
 from typing import Optional
 from uuid import UUID
 
@@ -95,6 +95,8 @@ class Queue:
         """
         Update entries in the queue, identified by their uuid.
 
+        If an entry with that uuid is not in the queue, nothing happens.
+
         :param uuid: The uuid of the entry to update
         :type uuid: UUID | str
         :param updater: A function, that updates the entry
@@ -118,6 +120,15 @@ class Queue:
             if item.uuid == uuid or str(item.uuid) == uuid:
                 return item
         return None
+
+    def find_by_uid(self, uid: str) -> Iterable[Entry]:
+        """
+        Find all entries for a given user id
+        """
+
+        for item in self._queue:
+            if item.uid == uid:
+                yield item
 
     def fold(self, func: Callable[[Entry, Any], Any], start_value: Any) -> Any:
         """Call ``func`` on each entry and accumulate the result."""

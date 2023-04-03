@@ -104,6 +104,9 @@ class State:
         are appended to this, and if a playback client requests a song, it is
         taken from the top.
     :type queue: Queue
+    :param waiting_room: Contains the Entries, that are hold back, until a
+        specific song is finished.
+    :type waiting_room: list[Entry]
     :param recent: A list of already played songs in order.
     :type recent: list[Entry]
     :param sid: The socket.io session id of the (unique) playback client. Once
@@ -116,6 +119,7 @@ class State:
 
     secret: str
     queue: Queue
+    waiting_room: list[Entry]
     recent: list[Entry]
     sid: str
     config: Config
@@ -145,7 +149,11 @@ async def send_state(state: State, sid: str) -> None:
     """
     await sio.emit(
         "state",
-        {"queue": state.queue, "recent": state.recent},
+        {
+            "queue": state.queue,
+            "recent": state.recent,
+            "waiting_room": state.waiting_room,
+        },
         room=sid,
     )
 
@@ -168,6 +176,85 @@ async def handle_state(sid: str) -> None:
     state = clients[room]
 
     await send_state(state, sid)
+
+
+@sio.on("waiting-room-append")
+async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
+    async with sio.session(sid) as session:
+        room = session["room"]
+    state = clients[room]
+
+    print(data)
+
+    source_obj = state.config.sources[data["source"]]
+    entry = await source_obj.get_entry(data["performer"], data["ident"])
+    if entry is None:
+        await sio.emit(
+            "msg",
+            {"msg": f"Unable to add to the waiting room: {data['ident']}"},
+        )
+        return
+
+    if (
+        "uid" not in data
+        or len(list(state.queue.find_by_uid(data["uid"]))) == 0
+    ):
+        await append_to_queue(room, entry, sid)
+        return
+
+    entry.uid = data["uid"]
+
+    state.waiting_room.append(entry)
+    print(state.waiting_room)
+    await send_state(state, room)
+    await sio.emit(
+        "get-meta-info",
+        entry,
+        room=clients[room].sid,
+    )
+
+    # Und jetzt iwie hinzufügen, oder direkt queuen :/
+
+
+async def append_to_queue(room, entry, report_to=None):
+    state = clients[room]
+
+    first_song = state.queue.try_peek()
+    if first_song is None or first_song.started_at is None:
+        start_time = datetime.datetime.now().timestamp()
+    else:
+        start_time = first_song.started_at
+
+    start_time = state.queue.fold(
+        lambda item, time: time
+        + item.duration
+        + state.config.preview_duration
+        + 1,
+        start_time,
+    )
+
+    if state.config.last_song:
+        if state.config.last_song < start_time:
+            end_time = datetime.datetime.fromtimestamp(state.config.last_song)
+            if report_to is not None:
+                await sio.emit(
+                    "msg",
+                    {
+                        "msg": f"The song queue ends at {end_time.hour:02d}:"
+                        f"{end_time.minute:02d}."
+                    },
+                    room=report_to,
+                )
+            return
+
+    state.queue.append(entry)
+    await send_state(state, room)
+
+    await sio.emit(
+        "get-meta-info",
+        entry,
+        room=clients[room].sid,
+    )
 
 
 @sio.on("append")
@@ -209,46 +296,12 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     source_obj = state.config.sources[data["source"]]
     entry = await source_obj.get_entry(data["performer"], data["ident"])
     if entry is None:
-        await sio.emit("mst", {"msg": f"Unable to append {data['ident']}"})
+        await sio.emit("msg", {"msg": f"Unable to append {data['ident']}"})
         return
 
     entry.uid = data["uid"] if "uid" in data else None
 
-    first_song = state.queue.try_peek()
-    if first_song is None or first_song.started_at is None:
-        start_time = datetime.datetime.now().timestamp()
-    else:
-        start_time = first_song.started_at
-
-    start_time = state.queue.fold(
-        lambda item, time: time
-        + item.duration
-        + state.config.preview_duration
-        + 1,
-        start_time,
-    )
-
-    if state.config.last_song:
-        if state.config.last_song < start_time:
-            end_time = datetime.datetime.fromtimestamp(state.config.last_song)
-            await sio.emit(
-                "msg",
-                {
-                    "msg": f"The song queue ends at {end_time.hour:02d}:"
-                    f"{end_time.minute:02d}."
-                },
-                room=sid,
-            )
-            return
-
-    state.queue.append(entry)
-    await send_state(state, room)
-
-    await sio.emit(
-        "get-meta-info",
-        entry,
-        room=clients[room].sid,
-    )
+    await append_to_queue(room, entry, sid)
 
 
 @sio.on("meta-info")
@@ -277,6 +330,10 @@ async def handle_meta_info(sid: str, data: dict[str, Any]) -> None:
         data["uuid"],
         lambda item: item.update(**data["meta"]),
     )
+
+    for entry in state.waiting_room:
+        if entry.uuid == data["uuid"] or str(entry.uuid) == data["uuid"]:
+            entry.update(**data["meta"])
 
     await send_state(state, room)
 
@@ -310,6 +367,28 @@ async def handle_get_first(sid: str) -> None:
     await sio.emit("play", current, room=sid)
 
 
+async def discard_first(room) -> Entry:
+    state = clients[room]
+
+    old_entry = await state.queue.popleft()
+
+    # append items from the waiting room
+    first_entry_for_uid = None
+    for wr_entry in state.waiting_room:
+        if wr_entry.uid == old_entry.uid:
+            first_entry_for_uid = wr_entry
+            break
+
+    if first_entry_for_uid is not None:
+        await append_to_queue(room, first_entry_for_uid)
+        state.waiting_room.remove(first_entry_for_uid)
+
+    state.recent.append(old_entry)
+    state.last_seen = datetime.datetime.now()
+
+    return old_entry
+
+
 @sio.on("pop-then-get-next")
 async def handle_pop_then_get_next(sid: str) -> None:
     """
@@ -336,11 +415,9 @@ async def handle_pop_then_get_next(sid: str) -> None:
     if sid != state.sid:
         return
 
-    old_entry = await state.queue.popleft()
-    state.recent.append(old_entry)
-    state.last_seen = datetime.datetime.now()
-
+    await discard_first(room)
     await send_state(state, room)
+
     current = await state.queue.peek()
     current.started_at = datetime.datetime.now().timestamp()
     await send_state(state, room)
@@ -448,12 +525,17 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             )
     else:
         logger.info("Registerd new client %s", room)
+        print(data)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
+        initial_waiting_room = [
+            Entry(**entry) for entry in data["waiting_room"]
+        ]
         initial_recent = [Entry(**entry) for entry in data["recent"]]
 
         clients[room] = State(
             secret=data["secret"],
             queue=Queue(initial_entries),
+            waiting_room=initial_waiting_room,
             recent=initial_recent,
             sid=sid,
             config=Config(sources={}, sources_prio=[], **data["config"]),
@@ -637,8 +719,7 @@ async def handle_skip_current(sid: str) -> None:
     state = clients[room]
 
     if is_admin:
-        old_entry = await state.queue.popleft()
-        state.recent.append(old_entry)
+        old_entry = await discard_first(room)
         await sio.emit("skip-current", old_entry, room=clients[room].sid)
         await send_state(state, room)
 
