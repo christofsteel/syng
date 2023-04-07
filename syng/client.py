@@ -205,7 +205,6 @@ async def handle_connect() -> None:
     }
     if state.key:
         data["registration-key"] = state.key
-    print(data)
     await sio.emit("register-client", data)
 
 

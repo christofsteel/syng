@@ -367,21 +367,26 @@ async def handle_get_first(sid: str) -> None:
     await sio.emit("play", current, room=sid)
 
 
-async def discard_first(room) -> Entry:
+async def add_uid_from_waiting_room(uid, room) -> None:
     state = clients[room]
 
-    old_entry = await state.queue.popleft()
-
-    # append items from the waiting room
     first_entry_for_uid = None
     for wr_entry in state.waiting_room:
-        if wr_entry.uid == old_entry.uid:
+        if wr_entry.uid == uid:
             first_entry_for_uid = wr_entry
             break
 
     if first_entry_for_uid is not None:
         await append_to_queue(room, first_entry_for_uid)
         state.waiting_room.remove(first_entry_for_uid)
+
+
+async def discard_first(room) -> Entry:
+    state = clients[room]
+
+    old_entry = await state.queue.popleft()
+
+    await add_uid_from_waiting_room(old_entry.uid, room)
 
     state.recent.append(old_entry)
     state.last_seen = datetime.datetime.now()
@@ -753,7 +758,7 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
     Handle the "skip" message.
 
     If on an admin connection, removes the entry specified by data["uuid"]
-    from the queue.
+    from the queue or the waiting room. Triggers the waiting room.
 
     :param sid: The session id of the client requesting.
     :type sid: str
@@ -770,8 +775,26 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
             logger.info("Skipping %s", entry)
+
+            await add_uid_from_waiting_room(entry.uid, room)
+
             await state.queue.remove(entry)
-            await send_state(state, room)
+
+        first_entry_index = None
+        for idx, wr_entry in enumerate(state.waiting_room):
+            if wr_entry.uuid == data["uuid"]:
+                first_entry_index = idx
+                break
+
+        print(first_entry_index)
+
+        if first_entry_index is not None:
+            logger.info(
+                "Deleting %s from waiting room",
+                state.waiting_room[first_entry_index],
+            )
+            del state.waiting_room[first_entry_index]
+        await send_state(state, room)
 
 
 @sio.on("disconnect")

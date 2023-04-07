@@ -137,11 +137,15 @@ class YoutubeSource(Source):
 
         def _get_entry(performer: str, url: str) -> Entry:
             yt_song = YouTube(url)
+            try:
+                length = yt_song.length
+            except TypeError:
+                length = 180
             return Entry(
                 ident=url,
                 source="youtube",
                 album="YouTube",
-                duration=yt_song.length,
+                duration=length,
                 title=yt_song.title,
                 artist=yt_song.author,
                 performer=performer,
