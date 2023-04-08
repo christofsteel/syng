@@ -107,6 +107,12 @@ class Queue:
             if item.uuid == uuid or str(item.uuid) == uuid:
                 updater(item)
 
+    def find_by_name(self, name: str) -> Optional[Entry]:
+        for item in self._queue:
+            if item.shares_performer(name):
+                return item
+        return None
+
     def find_by_uuid(self, uuid: UUID | str) -> Optional[Entry]:
         """
         Find an entry by its uuid and return it.

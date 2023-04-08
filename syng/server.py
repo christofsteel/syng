@@ -180,6 +180,10 @@ async def handle_state(sid: str) -> None:
 
 @sio.on("waiting-room-append")
 async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
+    """
+    Append a song to the waiting room.
+
+    """
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
@@ -187,17 +191,28 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     print(data)
 
     source_obj = state.config.sources[data["source"]]
+
     entry = await source_obj.get_entry(data["performer"], data["ident"])
+
     if entry is None:
         await sio.emit(
             "msg",
-            {"msg": f"Unable to add to the waiting room: {data['ident']}"},
+            {
+                "msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"
+            },
+            room=sid,
         )
         return
 
-    if (
-        "uid" not in data
-        or len(list(state.queue.find_by_uid(data["uid"]))) == 0
+    if "uid" not in data or (
+        (
+            data["uid"] is not None
+            and len(list(state.queue.find_by_uid(data["uid"]))) == 0
+        )
+        or (
+            data["uid"] is None
+            and state.queue.find_by_name(data["performer"]) is None
+        )
     ):
         await append_to_queue(room, entry, sid)
         return
@@ -213,10 +228,24 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
         room=clients[room].sid,
     )
 
-    # Und jetzt iwie hinzufügen, oder direkt queuen :/
 
+async def append_to_queue(
+    room: str, entry: Entry, report_to: Optional[str] = None
+) -> None:
+    """
+    Append an song to the queue for a given session.
 
-async def append_to_queue(room, entry, report_to=None):
+    Checks, if the computed start time is before the configured end time of the
+    event, and reports an error, if the end time is exceeded.
+
+    :param room: The room with the queue.
+    :type room: str
+    :param entry: The entry that contains the song.
+    :type entry: Entry
+    :param report_to: If an error occurs, who to report to.
+    :type report_to: Optional[str]
+    :rtype: None
+    """
     state = clients[room]
 
     first_song = state.queue.try_peek()
@@ -294,9 +323,15 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     state = clients[room]
 
     source_obj = state.config.sources[data["source"]]
+
     entry = await source_obj.get_entry(data["performer"], data["ident"])
+
     if entry is None:
-        await sio.emit("msg", {"msg": f"Unable to append {data['ident']}"})
+        await sio.emit(
+            "msg",
+            {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
+            room=sid,
+        )
         return
 
     entry.uid = data["uid"] if "uid" in data else None
@@ -367,12 +402,15 @@ async def handle_get_first(sid: str) -> None:
     await sio.emit("play", current, room=sid)
 
 
-async def add_uid_from_waiting_room(uid, room) -> None:
+async def add_song_from_waiting_room(old_entry: Entry, room: str) -> None:
     state = clients[room]
 
     first_entry_for_uid = None
     for wr_entry in state.waiting_room:
-        if wr_entry.uid == uid:
+        if wr_entry.uid == old_entry.uid or (
+            wr_entry.uid == None
+            and wr_entry.shares_performer(old_entry.performer)
+        ):
             first_entry_for_uid = wr_entry
             break
 
@@ -381,12 +419,12 @@ async def add_uid_from_waiting_room(uid, room) -> None:
         state.waiting_room.remove(first_entry_for_uid)
 
 
-async def discard_first(room) -> Entry:
+async def discard_first(room: str) -> Entry:
     state = clients[room]
 
     old_entry = await state.queue.popleft()
 
-    await add_uid_from_waiting_room(old_entry.uid, room)
+    await add_song_from_waiting_room(old_entry, room)
 
     state.recent.append(old_entry)
     state.last_seen = datetime.datetime.now()
@@ -776,7 +814,7 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
         if entry is not None:
             logger.info("Skipping %s", entry)
 
-            await add_uid_from_waiting_room(entry.uid, room)
+            await add_song_from_waiting_room(entry, room)
 
             await state.queue.remove(entry)
 
@@ -785,8 +823,6 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
             if wr_entry.uuid == data["uuid"]:
                 first_entry_index = idx
                 break
-
-        print(first_entry_index)
 
         if first_entry_index is not None:
             logger.info(

@@ -69,3 +69,13 @@ class Entry:
         :rtype: None
         """
         self.__dict__.update(kwargs)
+
+    def shares_performer(self, other_performer: str) -> bool:
+        e1_split_names = set(
+            filter(lambda x: len(x) > 3, self.performer.split(" "))
+        )
+        e2_split_names = set(
+            filter(lambda x: len(x) > 3, other_performer.split(" "))
+        )
+
+        return len(e1_split_names.intersection(e2_split_names)) > 0

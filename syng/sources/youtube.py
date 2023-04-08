@@ -19,6 +19,7 @@ from pytube import Search
 from pytube import Stream
 from pytube import StreamQuery
 from pytube import YouTube
+from pytube.exceptions import PytubeError
 
 try:
     from yt_dlp import YoutubeDL
@@ -120,7 +121,7 @@ class YoutubeSource(Source):
         else:
             await super().play(entry)
 
-    async def get_entry(self, performer: str, ident: str) -> Entry:
+    async def get_entry(self, performer: str, ident: str) -> Optional[Entry]:
         """
         Create an :py:class:`syng.entry.Entry` for the identifier.
 
@@ -132,24 +133,27 @@ class YoutubeSource(Source):
         :param ident: A url to a YouTube video.
         :type ident: str
         :return: An entry with the data.
-        :rtype: Entry
+        :rtype: Optional[Entry]
         """
 
-        def _get_entry(performer: str, url: str) -> Entry:
-            yt_song = YouTube(url)
+        def _get_entry(performer: str, url: str) -> Optional[Entry]:
             try:
-                length = yt_song.length
-            except TypeError:
-                length = 180
-            return Entry(
-                ident=url,
-                source="youtube",
-                album="YouTube",
-                duration=length,
-                title=yt_song.title,
-                artist=yt_song.author,
-                performer=performer,
-            )
+                yt_song = YouTube(url)
+                try:
+                    length = yt_song.length
+                except TypeError:
+                    length = 180
+                return Entry(
+                    ident=url,
+                    source="youtube",
+                    album="YouTube",
+                    duration=length,
+                    title=yt_song.title,
+                    artist=yt_song.author,
+                    performer=performer,
+                )
+            except PytubeError:
+                return None
 
         return await asyncio.to_thread(_get_entry, performer, ident)
 
