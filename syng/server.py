@@ -188,8 +188,6 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
         room = session["room"]
     state = clients[room]
 
-    print(data)
-
     source_obj = state.config.sources[data["source"]]
 
     entry = await source_obj.get_entry(data["performer"], data["ident"])
@@ -220,7 +218,6 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     entry.uid = data["uid"]
 
     state.waiting_room.append(entry)
-    print(state.waiting_room)
     await send_state(state, room)
     await sio.emit(
         "get-meta-info",
@@ -402,29 +399,39 @@ async def handle_get_first(sid: str) -> None:
     await sio.emit("play", current, room=sid)
 
 
-async def add_song_from_waiting_room(old_entry: Entry, room: str) -> None:
+async def add_song_from_waiting_room(room: str) -> None:
+    """
+    Add all songs from the waiting room, that should be added to the queue.
+
+    A song should be added if none of its performers are already queued.
+
+    This should be called every time a song leaves the queue.
+
+    :param room: The room holding the queue.
+    :type room: str
+    :rtype: None
+    """
     state = clients[room]
 
-    first_entry_for_uid = None
+    wrs_to_remove = []
     for wr_entry in state.waiting_room:
-        if wr_entry.uid == old_entry.uid or (
-            wr_entry.uid == None
-            and wr_entry.shares_performer(old_entry.performer)
-        ):
-            first_entry_for_uid = wr_entry
-            break
+        if state.queue.find_by_name(wr_entry.performer) is None:
+            await append_to_queue(room, wr_entry)
+            wrs_to_remove.append(wr_entry)
 
-    if first_entry_for_uid is not None:
-        await append_to_queue(room, first_entry_for_uid)
-        state.waiting_room.remove(first_entry_for_uid)
+    for wr_entry in wrs_to_remove:
+        state.waiting_room.remove(wr_entry)
 
 
 async def discard_first(room: str) -> Entry:
+    """
+    Gets the first element of the queue, handling resulting triggers.
+    """
     state = clients[room]
 
     old_entry = await state.queue.popleft()
 
-    await add_song_from_waiting_room(old_entry, room)
+    await add_song_from_waiting_room(room)
 
     state.recent.append(old_entry)
     state.last_seen = datetime.datetime.now()
@@ -568,7 +575,6 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             )
     else:
         logger.info("Registerd new client %s", room)
-        print(data)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
         initial_waiting_room = [
             Entry(**entry) for entry in data["waiting_room"]
@@ -814,7 +820,7 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
         if entry is not None:
             logger.info("Skipping %s", entry)
 
-            await add_song_from_waiting_room(entry, room)
+            await add_song_from_waiting_room(room)
 
             await state.queue.remove(entry)
 
