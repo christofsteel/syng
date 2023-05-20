@@ -61,7 +61,7 @@ class Entry:
     started_at: Optional[float] = None
 
     def update(self, **kwargs: Any) -> None:
-        r"""
+        """
         Update the attributes with given substitutions.
 
         :param \*\*kwargs: Keywords taken from the list of attributes.
@@ -71,11 +71,15 @@ class Entry:
         self.__dict__.update(kwargs)
 
     def shares_performer(self, other_performer: str) -> bool:
-        e1_split_names = set(
-            filter(lambda x: len(x) > 3, self.performer.split(" "))
-        )
-        e2_split_names = set(
-            filter(lambda x: len(x) > 3, other_performer.split(" "))
-        )
+        def normalize(performers: str) -> set[str]:
+            return set(
+                filter(
+                    lambda x: len(x) > 3,
+                    performers.replace(",", " ").replace(".", " ").split(" "),
+                )
+            )
+
+        e1_split_names = normalize(self.performer)
+        e2_split_names = normalize(other_performer)
 
         return len(e1_split_names.intersection(e2_split_names)) > 0

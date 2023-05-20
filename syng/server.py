@@ -230,7 +230,7 @@ async def append_to_queue(
     room: str, entry: Entry, report_to: Optional[str] = None
 ) -> None:
     """
-    Append an song to the queue for a given session.
+    Append a song to the queue for a given session.
 
     Checks, if the computed start time is before the configured end time of the
     event, and reports an error, if the end time is exceeded.
