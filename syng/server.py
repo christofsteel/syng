@@ -264,11 +264,8 @@ async def append_to_queue(
             end_time = datetime.datetime.fromtimestamp(state.config.last_song)
             if report_to is not None:
                 await sio.emit(
-                    "msg",
-                    {
-                        "msg": f"The song queue ends at {end_time.hour:02d}:"
-                        f"{end_time.minute:02d}."
-                    },
+                    "err",
+                    {"type": "QUEUE_FULL", "end_time": state.config.last_song},
                     room=report_to,
                 )
             return
