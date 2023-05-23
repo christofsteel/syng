@@ -44,7 +44,7 @@ from traceback import print_exc
 from typing import Any
 from typing import Optional
 
-import pyqrcode
+import pyqrcodeng as pyqrcode
 import socketio
 from PIL import Image
 
