@@ -14,7 +14,7 @@ syng-shell = "syng.webclientmockup:main"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-pytube = "^12.1.0"
+pytube = "*"
 aiohttp = "^3.8.3"
 python-socketio = "^5.7.2"
 minio = "^7.1.12"
@@ -22,7 +22,7 @@ mutagen = "^1.46.0"
 aiocmd = "^0.1.5"
 pyqrcode = "^1.2.1"
 pillow = "^9.3.0"
-yt-dlp = "^2023.0.0"
+yt-dlp = "*"
 
 [build-system]
 requires = ["poetry-core"]
