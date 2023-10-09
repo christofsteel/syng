@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+import re
 from typing import Any
 from typing import Optional
 from uuid import UUID
@@ -64,8 +65,8 @@ class Entry:
         """
         Update the attributes with given substitutions.
 
-        :param \*\*kwargs: Keywords taken from the list of attributes.
-        :type \*\*kwargs: Any
+        :param \\*\\*kwargs: Keywords taken from the list of attributes.
+        :type \\*\\*kwargs: Any
         :rtype: None
         """
         self.__dict__.update(kwargs)
@@ -74,8 +75,19 @@ class Entry:
         def normalize(performers: str) -> set[str]:
             return set(
                 filter(
-                    lambda x: len(x) > 3,
-                    performers.replace(",", " ").replace(".", " ").split(" "),
+                    lambda x: len(x) > 0
+                    and x not in ["der", "die", "das", "alle", "und"],
+                    re.sub(
+                        r"[^a-zA-Z0-9\s]",
+                        "",
+                        re.sub(
+                            r"\s",
+                            " ",
+                            performers.lower()
+                            .replace(".", " ")
+                            .replace(",", " "),
+                        ),
+                    ).split(" "),
                 )
             )
 
