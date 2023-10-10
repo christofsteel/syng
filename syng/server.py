@@ -396,7 +396,38 @@ async def handle_get_first(sid: str) -> None:
     await sio.emit("play", current, room=sid)
 
 
-async def add_song_from_waiting_room(room: str) -> None:
+@sio.on("waiting-room-to-queue")
+async def handle_waiting_room_to_queue(sid: str, data: dict[str, Any]) -> None:
+    """
+    Handle the "waiting-room-to-queue" message.
+
+    If on an admin-connection, removes a song from the waiting room and appends it to
+    the queue.
+
+    :param sid: The session id of the requesting client
+    :type sid: str
+    :rtype: None
+    """
+    async with sio.session(sid) as session:
+        room = session["room"]
+        is_admin = session["admin"]
+    state = clients[room]
+
+    if is_admin:
+        entry = next(
+            (
+                wr_entry
+                for wr_entry in state.waiting_room
+                if str(wr_entry.uuid) == data["uuid"]
+            ),
+            None,
+        )
+        if entry is not None:
+            state.waiting_room.remove(entry)
+            await append_to_queue(room, entry, sid)
+
+
+async def add_songs_from_waiting_room(room: str) -> None:
     """
     Add all songs from the waiting room, that should be added to the queue.
 
@@ -428,7 +459,7 @@ async def discard_first(room: str) -> Entry:
 
     old_entry = await state.queue.popleft()
 
-    await add_song_from_waiting_room(room)
+    await add_songs_from_waiting_room(room)
 
     state.recent.append(old_entry)
     state.last_seen = datetime.datetime.now()
@@ -817,7 +848,7 @@ async def handle_skip(sid: str, data: dict[str, Any]) -> None:
         if entry is not None:
             logger.info("Skipping %s", entry)
 
-            await add_song_from_waiting_room(room)
+            await add_songs_from_waiting_room(room)
 
             await state.queue.remove(entry)
 
