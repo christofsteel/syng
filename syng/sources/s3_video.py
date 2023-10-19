@@ -1,7 +1,7 @@
 """
-Construct the S3 source.
+Construct the S3Video source.
 
-Adds it to the ``available_sources`` with the name ``s3``
+Adds it to the ``available_sources`` with the name ``s3-video``
 """
 import asyncio
 import os
@@ -20,8 +20,8 @@ from .source import available_sources
 from .source import Source
 
 
-class S3Source(Source):
-    """A source for playing songs from a s3 compatible storage.
+class S3VideoSource(Source):
+    """A source for playing videos from a s3 compatible storage.
 
     Config options are:
         - ``endpoint``, ``access_key``, ``secret_key``, ``secure``, ``bucket``: These
@@ -36,7 +36,7 @@ class S3Source(Source):
     def __init__(self, config: dict[str, Any]):
         """Create the source."""
         super().__init__(config)
-        self.source_name = "s3"
+        self.source_name = "s3-video"
 
         if (
             "endpoint" in config
@@ -62,7 +62,7 @@ class S3Source(Source):
 
     async def get_file_list(self) -> list[str]:
         """
-        Return the list of ``cdg`` files on the s3 instance.
+        Return the list of ``mp4`` and ``webm`` files on the s3 instance.
 
         :return: see above
         :rtype: list[str]
@@ -78,7 +78,7 @@ class S3Source(Source):
             file_list = [
                 obj.object_name
                 for obj in self.minio.list_objects(self.bucket, recursive=True)
-                if obj.object_name.endswith(".cdg")
+                if obj.object_name.endswith(".mp4") or obj.object_name.endswith(".webm")
             ]
             if self.index_file is not None and not os.path.isfile(
                 self.index_file
@@ -87,6 +87,7 @@ class S3Source(Source):
                     self.index_file, "w", encoding="utf8"
                 ) as index_file_handle:
                     dump(file_list, index_file_handle)
+
             return file_list
 
         return await asyncio.to_thread(_get_file_list)
@@ -123,40 +124,32 @@ class S3Source(Source):
 
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
-        Download the ``cdg`` and the ``mp3`` file from the s3.
+        Download the ``mp4`` or ``webm`` file from the s3.
 
         :param entry: The entry to download
         :type entry: Entry
-        :return: A tuple with the location of the ``cdg`` and the ``mp3`` file.
+        :return: A tuple with the location of the ``mp4`` or ``webm`` file.
         :rtype: Tuple[str, Optional[str]]
         """
-        cdg_filename: str = os.path.basename(entry.ident)
+        video_filename: str = os.path.basename(entry.ident)
         path_to_file: str = os.path.dirname(entry.ident)
 
-        cdg_path: str = os.path.join(path_to_file, cdg_filename)
-        target_file_cdg: str = os.path.join(self.tmp_dir, cdg_path)
+        video_path: str = os.path.join(path_to_file, video_filename)
+        target_file_video: str = os.path.join(self.tmp_dir, video_path)
 
-        ident_mp3: str = entry.ident[:-3] + "mp3"
-        target_file_mp3: str = target_file_cdg[:-3] + "mp3"
-        os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
+        os.makedirs(os.path.dirname(target_file_video), exist_ok=True)
 
         video_task: asyncio.Task[Any] = asyncio.create_task(
             asyncio.to_thread(
                 self.minio.fget_object,
                 self.bucket,
                 entry.ident,
-                target_file_cdg,
-            )
-        )
-        audio_task: asyncio.Task[Any] = asyncio.create_task(
-            asyncio.to_thread(
-                self.minio.fget_object, self.bucket, ident_mp3, target_file_mp3
+                target_file_video,
             )
         )
 
         await video_task
-        await audio_task
-        return target_file_cdg, target_file_mp3
+        return target_file_video, None
 
 
-available_sources["s3"] = S3Source
+available_sources["s3-video"] = S3VideoSource
