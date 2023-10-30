@@ -591,7 +591,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
                 sources_prio=old_state.config.sources_prio,
                 **data["config"],
             )
-            sio.enter_room(sid, room)
+            await sio.enter_room(sid, room)
             await sio.emit(
                 "client-registered", {"success": True, "room": room}, room=sid
             )
@@ -617,7 +617,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             sid=sid,
             config=Config(sources={}, sources_prio=[], **data["config"]),
         )
-        sio.enter_room(sid, room)
+        await sio.enter_room(sid, room)
         await sio.emit(
             "client-registered", {"success": True, "room": room}, room=sid
         )
@@ -745,7 +745,7 @@ async def handle_register_web(sid: str, data: dict[str, Any]) -> bool:
     if data["room"] in clients:
         async with sio.session(sid) as session:
             session["room"] = data["room"]
-            sio.enter_room(sid, session["room"])
+            await sio.enter_room(sid, session["room"])
         state = clients[session["room"]]
         await send_state(state, sid)
         return True
@@ -882,7 +882,7 @@ async def handle_disconnect(sid: str) -> None:
     """
     async with sio.session(sid) as session:
         if "room" in session:
-            sio.leave_room(sid, session["room"])
+            await sio.leave_room(sid, session["room"])
 
 
 @sio.on("search")

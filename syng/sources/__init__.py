@@ -10,7 +10,6 @@ from .source import available_sources as available_sources
 from .source import Source as Source
 from .youtube import YoutubeSource
 from .s3 import S3Source
-from .s3_video import S3VideoSource
 from .files import FilesSource
 
 

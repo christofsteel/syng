@@ -28,9 +28,11 @@ class S3Source(Source):
           will simply be forwarded to the ``minio`` client.
         - ``tmp_dir``: The folder, where temporary files are stored. Default
           is ``/tmp/syng``
-        - ``index_file``: If the file does not exist, saves the list of
-          ``cdg``-files from the s3 instance to this file. If it exists, loads
+        - ``index_file``: If the file does not exist, saves the paths of
+          files from the s3 instance to this file. If it exists, loads
           the list of files from this file.
+        - ``extensions``: List of filename extensions. Index only files with these one
+          of these extensions (Default: ["cdg"])
     """
 
     def __init__(self, config: dict[str, Any]):
@@ -47,13 +49,18 @@ class S3Source(Source):
                 config["endpoint"],
                 access_key=config["access_key"],
                 secret_key=config["secret_key"],
-                secure=(config["secure"]
-                        if "secure" in config else True),
+                secure=(config["secure"] if "secure" in config else True),
             )
             self.bucket: str = config["bucket"]
             self.tmp_dir: str = (
                 config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
             )
+
+        self.extensions = (
+            [f".{ext}" for ext in config["extensions"]]
+            if "extensions" in config
+            else [".cdg"]
+        )
 
         self.index_file: Optional[str] = (
             config["index_file"] if "index_file" in config else None
@@ -62,7 +69,11 @@ class S3Source(Source):
 
     async def get_file_list(self) -> list[str]:
         """
-        Return the list of ``cdg`` files on the s3 instance.
+        Return the list of files on the s3 instance, according to the extensions.
+
+        If an index file exists, this will be read instead.
+
+        As a side effect, an index file is generated, if configured.
 
         :return: see above
         :rtype: list[str]
@@ -78,7 +89,7 @@ class S3Source(Source):
             file_list = [
                 obj.object_name
                 for obj in self.minio.list_objects(self.bucket, recursive=True)
-                if obj.object_name.endswith(".cdg")
+                if os.path.splitext(obj.object_name)[1] in self.extensions
             ]
             if self.index_file is not None and not os.path.isfile(
                 self.index_file
@@ -93,7 +104,7 @@ class S3Source(Source):
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """
-        Return the duration for the mp3 file.
+        Return the duration for the music file.
 
         :param entry: The entry with the associated mp3 file
         :type entry: Entry
@@ -123,40 +134,68 @@ class S3Source(Source):
 
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
-        Download the ``cdg`` and the ``mp3`` file from the s3.
+        Download the file from the s3.
+
+        If it is a ``cdg`` file, the accompaning ``mp3`` file is also downloaded
 
         :param entry: The entry to download
         :type entry: Entry
-        :return: A tuple with the location of the ``cdg`` and the ``mp3`` file.
+        :return: A tuple with the location of the main file. If the file a ``cdg`` file,
+                 the second position is the location of the ``mp3`` file, otherwise None
+                 .
         :rtype: Tuple[str, Optional[str]]
         """
-        cdg_filename: str = os.path.basename(entry.ident)
+
+        if os.path.splitext(entry.ident)[1] == ".cdg":
+            cdg_filename: str = os.path.basename(entry.ident)
+            path_to_file: str = os.path.dirname(entry.ident)
+
+            cdg_path: str = os.path.join(path_to_file, cdg_filename)
+            target_file_cdg: str = os.path.join(self.tmp_dir, cdg_path)
+
+            ident_mp3: str = entry.ident[:-3] + "mp3"
+            target_file_mp3: str = target_file_cdg[:-3] + "mp3"
+            os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
+
+            video_task: asyncio.Task[Any] = asyncio.create_task(
+                asyncio.to_thread(
+                    self.minio.fget_object,
+                    self.bucket,
+                    entry.ident,
+                    target_file_cdg,
+                )
+            )
+            audio_task: asyncio.Task[Any] = asyncio.create_task(
+                asyncio.to_thread(
+                    self.minio.fget_object,
+                    self.bucket,
+                    ident_mp3,
+                    target_file_mp3,
+                )
+            )
+
+            await video_task
+            await audio_task
+            return target_file_cdg, target_file_mp3
+        video_filename: str = os.path.basename(entry.ident)
         path_to_file: str = os.path.dirname(entry.ident)
 
-        cdg_path: str = os.path.join(path_to_file, cdg_filename)
-        target_file_cdg: str = os.path.join(self.tmp_dir, cdg_path)
+        video_path: str = os.path.join(path_to_file, video_filename)
+        target_file_video: str = os.path.join(self.tmp_dir, video_path)
 
-        ident_mp3: str = entry.ident[:-3] + "mp3"
-        target_file_mp3: str = target_file_cdg[:-3] + "mp3"
-        os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
+        os.makedirs(os.path.dirname(target_file_video), exist_ok=True)
 
         video_task: asyncio.Task[Any] = asyncio.create_task(
             asyncio.to_thread(
                 self.minio.fget_object,
                 self.bucket,
                 entry.ident,
-                target_file_cdg,
-            )
-        )
-        audio_task: asyncio.Task[Any] = asyncio.create_task(
-            asyncio.to_thread(
-                self.minio.fget_object, self.bucket, ident_mp3, target_file_mp3
+                target_file_video,
             )
         )
 
         await video_task
-        await audio_task
-        return target_file_cdg, target_file_mp3
+        return target_file_video, None
 
 
 available_sources["s3"] = S3Source
