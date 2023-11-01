@@ -21,6 +21,7 @@ import logging
 import os
 import random
 import string
+from json.decoder import JSONDecodeError
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from dataclasses import field
@@ -42,6 +43,12 @@ sio = socketio.AsyncServer(
 )
 app = web.Application()
 sio.attach(app)
+
+DEFAULT_CONFIG = {
+    "preview_duration": 3,
+    "waiting_room_policy": None,
+    "last_song": None,
+}
 
 
 async def root_handler(request: Any) -> Any:
@@ -68,7 +75,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Config:
+class Client:
     """This stores the configuration of a specific playback client.
 
     In case a new playback client connects to a room, these values can be
@@ -79,18 +86,23 @@ class Config:
     :type sources: Source
     :param sources_prio: A list defining the order of the search results.
     :type sources_prio: list[str]
-    :param preview_duration: The duration in seconds the playbackclients shows
-        a preview for the next song. This is accounted for in the calculation
-        of the ETA for songs later in the queue.
-    :type preview_duration: int
-    :param last_song: A timestamp, defining the end of the queue.
-    :type last_song: Optional[float]
+    :param config: Various configuration options for the client:
+        * `preview_duration` (`Optional[int]`): The duration in seconds the
+            playback client shows a preview for the next song. This is accounted for
+            in the calculation of the ETA for songs later in the queue.
+        * `last_song` (`Optional[float]`): A timestamp, defining the end of the queue.
+        * `waiting_room_policy` (Optional[str]): One of:
+            - `force`, if a performer is already in the queue, they are put in the
+                       waiting room.
+            - `optional`, if a performer is already in the queue, they have the option
+                          to be put in the waiting room.
+            - `None`, performers are always added to the queue.
+    :type config: dict[str, Any]:
     """
 
     sources: dict[str, Source]
     sources_prio: list[str]
-    preview_duration: int
-    last_song: Optional[float]
+    config: dict[str, Any]
 
 
 @dataclass
@@ -113,8 +125,8 @@ class State:
         a new playback client connects to a room (with the correct secret),
         this will be swapped with the new sid.
     :type sid: str
-    :param config: The config for the client
-    :type config: Config
+    :param client: The config for the playback client
+    :type client: Client
     """
 
     secret: str
@@ -122,7 +134,7 @@ class State:
     waiting_room: list[Entry]
     recent: list[Entry]
     sid: str
-    config: Config
+    client: Client
     last_seen: datetime.datetime = field(
         init=False, default_factory=datetime.datetime.now
     )
@@ -153,6 +165,7 @@ async def send_state(state: State, sid: str) -> None:
             "queue": state.queue,
             "recent": state.recent,
             "waiting_room": state.waiting_room,
+            "config": state.client.config,
         },
         room=sid,
     )
@@ -188,7 +201,7 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
         room = session["room"]
     state = clients[room]
 
-    source_obj = state.config.sources[data["source"]]
+    source_obj = state.client.sources[data["source"]]
 
     entry = await source_obj.get_entry(data["performer"], data["ident"])
 
@@ -254,18 +267,23 @@ async def append_to_queue(
     start_time = state.queue.fold(
         lambda item, time: time
         + item.duration
-        + state.config.preview_duration
+        + state.client.config["preview_duration"]
         + 1,
         start_time,
     )
 
-    if state.config.last_song:
-        if state.config.last_song < start_time:
-            end_time = datetime.datetime.fromtimestamp(state.config.last_song)
+    if state.client.config["last_song"]:
+        if state.client.config["last_song"] < start_time:
+            # end_time = datetime.datetime.fromtimestamp(
+            #     state.client.config["last_song"]
+            # )
             if report_to is not None:
                 await sio.emit(
                     "err",
-                    {"type": "QUEUE_FULL", "end_time": state.config.last_song},
+                    {
+                        "type": "QUEUE_FULL",
+                        "end_time": state.client.config["last_song"],
+                    },
                     room=report_to,
                 )
             return
@@ -278,6 +296,57 @@ async def append_to_queue(
         entry,
         room=clients[room].sid,
     )
+
+
+@sio.on("show_config")
+async def handle_show_config(sid: str) -> None:
+    """
+    Sends public config to webclient.
+
+    This will only be send if the client is on an admin connection.
+
+    :param sid: The session id of the client sending this request
+    :type sid: str
+    :rtype: None
+    """
+
+    async with sio.session(sid) as session:
+        room = session["room"]
+        is_admin = session["admin"]
+    state = clients[room]
+
+    if is_admin:
+        await sio.emit(
+            "config",
+            state.client.config,
+            sid,
+        )
+    else:
+        await sio.emit("err", {"type": "NO_ADMIN"}, sid)
+
+
+@sio.on("update_config")
+async def handle_update_config(sid: str, data: dict[str, Any]) -> None:
+    async with sio.session(sid) as session:
+        room = session["room"]
+        is_admin = session["admin"]
+    state = clients[room]
+
+    if is_admin:
+        try:
+            config = json.loads(data["config"])
+            await sio.emit(
+                "update_config",
+                DEFAULT_CONFIG | config,
+                state.sid,
+            )
+            state.client.config = DEFAULT_CONFIG | config
+            await sio.emit("update_config", config, room)
+        except JSONDecodeError:
+            await sio.emit("err", {"type": "JSON_MALFORMED"})
+
+    else:
+        await sio.emit("err", {"type": "NO_ADMIN"}, sid)
 
 
 @sio.on("append")
@@ -296,6 +365,10 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     start time of the song would exceed this time. If this is the case, the
     request is denied and a "msg" message is send to the client, detailing
     this.
+
+    If a waitingroom is forced or optional, it is checked, if one of the performers is
+    already in queue. In that case, a "ask_for_waitingroom" message is send to the
+    client.
 
     Otherwise the song is added to the queue. And all connected clients (web
     and playback client) are informed of the new state with a "state" message.
@@ -316,7 +389,30 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
         room = session["room"]
     state = clients[room]
 
-    source_obj = state.config.sources[data["source"]]
+    if state.client.config["waiting_room_policy"] and (
+        state.client.config["waiting_room_policy"].lower() == "force"
+        or state.client.config["waiting_room_policy"].lower() == "optional"
+    ):
+        old_entry = state.queue.find_by_name(data["performer"])
+        if old_entry is not None:
+            await sio.emit(
+                "ask_for_waitingroom",
+                {
+                    "current_entry": {
+                        "source": data["source"],
+                        "performer": data["performer"],
+                        "ident": data["ident"],
+                    },
+                    "old_entry": {
+                        "artist": old_entry.artist,
+                        "title": old_entry.title,
+                        "performer": old_entry.performer,
+                    },
+                },
+            )
+            return
+
+    source_obj = state.client.sources[data["source"]]
 
     entry = await source_obj.get_entry(data["performer"], data["ident"])
 
@@ -329,6 +425,47 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
         return
 
     entry.uid = data["uid"] if "uid" in data else None
+
+    await append_to_queue(room, entry, sid)
+
+
+@sio.on("append-anyway")
+async def handle_append_anyway(sid: str, data: dict[str, Any]) -> None:
+    """
+    Appends a song to the queue, even if the performer is already in queue.
+
+    Works the same as handle_append, but without the check if the performer is already
+    in queue.
+
+    Only if the waiting_room_policy is not configured as forced.
+    """
+    async with sio.session(sid) as session:
+        room = session["room"]
+    state = clients[room]
+
+    if state.client.config["waiting_room_policy"].lower() == "force":
+        await sio.emit(
+            "err",
+            {"type": "WAITING_ROOM_FORCED"},
+            room=sid,
+        )
+        return
+
+    source_obj = state.client.sources[data["source"]]
+
+    entry = await source_obj.get_entry(data["performer"], data["ident"])
+
+    if entry is None:
+        await sio.emit(
+            "msg",
+            {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
+            room=sid,
+        )
+        return
+
+    entry.uid = data["uid"] if "uid" in data else None
+
+    print(entry)
 
     await append_to_queue(room, entry, sid)
 
@@ -586,10 +723,10 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         if data["secret"] == old_state.secret:
             logger.info("Got new client connection for %s", room)
             old_state.sid = sid
-            old_state.config = Config(
-                sources=old_state.config.sources,
-                sources_prio=old_state.config.sources_prio,
-                **data["config"],
+            old_state.client = Client(
+                sources=old_state.client.sources,
+                sources_prio=old_state.client.sources_prio,
+                config=DEFAULT_CONFIG | data["config"],
             )
             await sio.enter_room(sid, room)
             await sio.emit(
@@ -615,8 +752,13 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             waiting_room=initial_waiting_room,
             recent=initial_recent,
             sid=sid,
-            config=Config(sources={}, sources_prio=[], **data["config"]),
+            client=Client(
+                sources={},
+                sources_prio=[],
+                config=DEFAULT_CONFIG | data["config"],
+            ),
         )
+
         await sio.enter_room(sid, room)
         await sio.emit(
             "client-registered", {"success": True, "room": room}, room=sid
@@ -653,13 +795,13 @@ async def handle_sources(sid: str, data: dict[str, Any]) -> None:
     if sid != state.sid:
         return
 
-    unused_sources = state.config.sources.keys() - data["sources"]
-    new_sources = data["sources"] - state.config.sources.keys()
+    unused_sources = state.client.sources.keys() - data["sources"]
+    new_sources = data["sources"] - state.client.sources.keys()
 
     for source in unused_sources:
-        del state.config.sources[source]
+        del state.client.sources[source]
 
-    state.config.sources_prio = data["sources"]
+    state.client.sources_prio = data["sources"]
 
     for name in new_sources:
         await sio.emit("request-config", {"source": name}, room=sid)
@@ -690,12 +832,12 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
     if sid != state.sid:
         return
 
-    if not data["source"] in state.config.sources:
-        state.config.sources[data["source"]] = available_sources[
+    if data["source"] not in state.client.sources:
+        state.client.sources[data["source"]] = available_sources[
             data["source"]
         ](data["config"])
     else:
-        state.config.sources[data["source"]].add_to_config(data["config"])
+        state.client.sources[data["source"]].add_to_config(data["config"])
 
 
 @sio.on("config")
@@ -722,7 +864,7 @@ async def handle_config(sid: str, data: dict[str, Any]) -> None:
     if sid != state.sid:
         return
 
-    state.config.sources[data["source"]] = available_sources[data["source"]](
+    state.client.sources[data["source"]] = available_sources[data["source"]](
         data["config"]
     )
 
@@ -910,8 +1052,8 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
     query = data["query"]
     results_list = await asyncio.gather(
         *[
-            state.config.sources[source].search(query)
-            for source in state.config.sources_prio
+            state.client.sources[source].search(query)
+            for source in state.client.sources_prio
         ]
     )
 

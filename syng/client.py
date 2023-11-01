@@ -62,6 +62,14 @@ sources: dict[str, Source] = {}
 currentLock: asyncio.Semaphore = asyncio.Semaphore(0)
 
 
+def default_config():
+    return {
+        "preview_duration": 3,
+        "last_song": None,
+        "waiting_room_policy": None,
+    }
+
+
 @dataclass
 class State:
     """This captures the current state of the playback client.
@@ -87,12 +95,19 @@ class State:
     :type secret: str
     :param key: An optional key, if registration on the server is limited.
     :type key: Optional[str]
-    :param preview_duration: Amount of seconds the preview before a song be
-        displayed.
-    :type preview_duration: int
-    :param last_song: At what time should the server not accept any more songs.
-        `None` if no such limit should exist.
-    :type last_song: Optional[datetime.datetime]
+    :param config: Various configuration options for the client:
+        * `preview_duration` (`Optional[int]`): The duration in seconds the
+            playback client shows a preview for the next song. This is accounted for
+            in the calculation of the ETA for songs later in the queue.
+        * `last_song` (`Optional[datetime.datetime]`): A timestamp, defining the end of
+            the queue.
+        * `waiting_room_policy` (Optional[str]): One of:
+            - `force`, if a performer is already in the queue, they are put in the
+                       waiting room.
+            - `optional`, if a performer is already in the queue, they have the option
+                          to be put in the waiting room.
+            - `None`, performers are always added to the queue.
+    :type config: dict[str, Any]:
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -105,29 +120,15 @@ class State:
     server: str = ""
     secret: str = ""
     key: Optional[str] = None
-    preview_duration: int = 3
-    last_song: Optional[datetime.datetime] = None
-
-    def get_config(self) -> dict[str, Any]:
-        """
-        Return a subset of values to be send to the server.
-
-        Currently this is:
-            - :py:attr:`State.preview_duration`
-            - :py:attr:`State.last_song` (As a timestamp)
-
-        :return: A dict resulting from the above values
-        :rtype: dict[str, Any]
-        """
-        return {
-            "preview_duration": self.preview_duration,
-            "last_song": self.last_song.timestamp()
-            if self.last_song
-            else None,
-        }
+    config: dict[str, Any] = field(default_factory=default_config)
 
 
 state: State = State()
+
+
+@sio.on("update_config")
+async def handle_update_config(data: dict[str, Any]) -> None:
+    state.config = default_config() | data
 
 
 @sio.on("skip-current")
@@ -201,7 +202,7 @@ async def handle_connect() -> None:
         "recent": state.recent,
         "room": state.room,
         "secret": state.secret,
-        "config": state.get_config(),
+        "config": state.config,
     }
     if state.key:
         data["registration-key"] = state.key
@@ -252,7 +253,7 @@ async def preview(entry: Entry) -> None:
         process = await asyncio.create_subprocess_exec(
             "mpv",
             tmpfile.name,
-            f"--image-display-duration={state.preview_duration}",
+            f"--image-display-duration={state.config['preview_duration']}",
             "--sub-pos=50",
             "--sub-file=-",
             "--fullscreen",
@@ -290,7 +291,7 @@ async def handle_play(data: dict[str, Any]) -> None:
     )
     try:
         state.current_source = sources[entry.source]
-        if state.preview_duration > 0:
+        if state.config["preview_duration"] > 0:
             await preview(entry)
         await sources[entry.source].play(entry)
     except Exception:  # pylint: disable=broad-except
@@ -409,12 +410,12 @@ async def aiomain() -> None:
     sources.update(configure_sources(config["sources"]))
 
     if "config" in config:
-        if "last_song" in config["config"]:
-            state.last_song = datetime.datetime.fromisoformat(
-                config["config"]["last_song"]
-            )
-        if "preview_duration" in config["config"]:
-            state.preview_duration = config["config"]["preview_duration"]
+        last_song = (
+            datetime.datetime.fromisoformat(config["config"]["last_song"])
+            if "last_song" in config["config"]
+            else None
+        )
+        state.config |= config["config"] | {"last_song": last_song}
 
     state.key = args.key if args.key else None
 
