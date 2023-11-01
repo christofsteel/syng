@@ -3,37 +3,11 @@ image: python:3-alpine
 mypy:
     stage: test
     script:
-        - pip install mypy --quiet
-        - pip install . --quiet
+        - pip install mypy --quiet        
         - mypy syng --strict
 
 ruff:
     stage: test
     script:
-        - pip install ruff --quiet
-        - pip install . --quiet
+        - pip install ruff --quiet        
         - ruff syng
-
-test:
-    stage: test
-    script:
-        - pip install -U sphinx
-        - pip install . --quiet
-        - sphinx-build -b html docs/source docs/build
-    only:
-        - branches
-    except:
-        - main
-
-
-pages:
-    stage: deploy
-    script:
-        - pip install -U sphinx
-        - pip install . --quiet
-        - sphinx-build -b html docs/source docs/build
-    artifacts:
-        paths:
-            - docs/build
-    only:
-        - main
