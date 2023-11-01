@@ -35,6 +35,7 @@ venv = ".venv"
 
 [[tool.mypy.overrides]]
 module = [
+  "aiohttp",
   "pytube",
   "minio",
   "aiocmd",
