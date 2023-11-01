@@ -7,12 +7,12 @@ mypy:
         - pip install . --quiet
         - mypy syng --strict
 
-pylint:
+ruff:
     stage: test
     script:
-        - pip install pylint --quiet
+        - pip install ruff --quiet
         - pip install . --quiet
-        - pylint syng
+        - ruff syng
 
 test:
     stage: test

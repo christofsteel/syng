@@ -34,9 +34,7 @@ class FilesSource(Source):
             for path, _, files in os.walk(self.dir):
                 for file in files:
                     if file.endswith(".cdg"):
-                        file_list.append(
-                            os.path.join(path, file)[len(self.dir) :]
-                        )
+                        file_list.append(os.path.join(path, file)[len(self.dir) :])
             return file_list
 
         return await asyncio.to_thread(_get_file_list)

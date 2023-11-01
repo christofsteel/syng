@@ -40,11 +40,7 @@ class S3Source(Source):
         super().__init__(config)
         self.source_name = "s3"
 
-        if (
-            "endpoint" in config
-            and "access_key" in config
-            and "secret_key" in config
-        ):
+        if "endpoint" in config and "access_key" in config and "secret_key" in config:
             self.minio: Minio = Minio(
                 config["endpoint"],
                 access_key=config["access_key"],
@@ -81,9 +77,7 @@ class S3Source(Source):
 
         def _get_file_list() -> list[str]:
             if self.index_file is not None and os.path.isfile(self.index_file):
-                with open(
-                    self.index_file, "r", encoding="utf8"
-                ) as index_file_handle:
+                with open(self.index_file, "r", encoding="utf8") as index_file_handle:
                     return cast(list[str], load(index_file_handle))
 
             file_list = [
@@ -91,12 +85,8 @@ class S3Source(Source):
                 for obj in self.minio.list_objects(self.bucket, recursive=True)
                 if os.path.splitext(obj.object_name)[1] in self.extensions
             ]
-            if self.index_file is not None and not os.path.isfile(
-                self.index_file
-            ):
-                with open(
-                    self.index_file, "w", encoding="utf8"
-                ) as index_file_handle:
+            if self.index_file is not None and not os.path.isfile(self.index_file):
+                with open(self.index_file, "w", encoding="utf8") as index_file_handle:
                     dump(file_list, index_file_handle)
             return file_list
 
@@ -119,16 +109,12 @@ class S3Source(Source):
 
         await self.ensure_playable(entry)
 
-        audio_file_name: Optional[str] = self.downloaded_files[
-            entry.ident
-        ].audio
+        audio_file_name: Optional[str] = self.downloaded_files[entry.ident].audio
 
         if audio_file_name is None:
             duration: int = 180
         else:
-            duration = await asyncio.to_thread(
-                mutagen_wrapped, audio_file_name
-            )
+            duration = await asyncio.to_thread(mutagen_wrapped, audio_file_name)
 
         return {"duration": int(duration)}
 

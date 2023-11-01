@@ -89,9 +89,7 @@ class Queue:
         """
         return list(self._queue)  # [item for item in self._queue]
 
-    def update(
-        self, uuid: UUID | str, updater: Callable[[Entry], None]
-    ) -> None:
+    def update(self, uuid: UUID | str, updater: Callable[[Entry], None]) -> None:
         """
         Update entries in the queue, identified by their uuid.
 

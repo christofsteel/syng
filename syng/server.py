@@ -64,9 +64,7 @@ async def root_handler(request: Any) -> Any:
     :rtype web.FileResponse:
     """
     if request.path.endswith("/favicon.ico"):
-        return web.FileResponse(
-            os.path.join(app["root_folder"], "favicon.ico")
-        )
+        return web.FileResponse(os.path.join(app["root_folder"], "favicon.ico"))
     return web.FileResponse(os.path.join(app["root_folder"], "index.html"))
 
 
@@ -220,10 +218,7 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
             data["uid"] is not None
             and len(list(state.queue.find_by_uid(data["uid"]))) == 0
         )
-        or (
-            data["uid"] is None
-            and state.queue.find_by_name(data["performer"]) is None
-        )
+        or (data["uid"] is None and state.queue.find_by_name(data["performer"]) is None)
     ):
         await append_to_queue(room, entry, sid)
         return
@@ -702,9 +697,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
 
             if (
                 "registration-key" not in data
-                or hashlib.sha256(
-                    data["registration-key"].encode()
-                ).hexdigest()
+                or hashlib.sha256(data["registration-key"].encode()).hexdigest()
                 not in keys
             ):
                 await sio.emit(
@@ -741,9 +734,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
-        initial_waiting_room = [
-            Entry(**entry) for entry in data["waiting_room"]
-        ]
+        initial_waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         initial_recent = [Entry(**entry) for entry in data["recent"]]
 
         clients[room] = State(
@@ -760,9 +751,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         )
 
         await sio.enter_room(sid, room)
-        await sio.emit(
-            "client-registered", {"success": True, "room": room}, room=sid
-        )
+        await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
         await send_state(clients[room], sid)
 
 
@@ -833,9 +822,9 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
         return
 
     if data["source"] not in state.client.sources:
-        state.client.sources[data["source"]] = available_sources[
-            data["source"]
-        ](data["config"])
+        state.client.sources[data["source"]] = available_sources[data["source"]](
+            data["config"]
+        )
     else:
         state.client.sources[data["source"]].add_to_config(data["config"])
 
@@ -1079,10 +1068,7 @@ async def cleanup() -> None:
     to_remove: list[str] = []
     for sid, state in clients.items():
         logger.info("Client %s, last seen: %s", sid, str(state.last_seen))
-        if (
-            state.last_seen + datetime.timedelta(hours=4)
-            < datetime.datetime.now()
-        ):
+        if state.last_seen + datetime.timedelta(hours=4) < datetime.datetime.now():
             logger.info("No activity for 4 hours, removing %s", sid)
             to_remove.append(sid)
     for sid in to_remove:
@@ -1101,9 +1087,7 @@ async def cleanup() -> None:
     loop_next = asyncio.get_event_loop().time() + offset
 
     logger.info("Next Cleanup at %s", str(next))
-    asyncio.get_event_loop().call_at(
-        loop_next, lambda: asyncio.create_task(cleanup())
-    )
+    asyncio.get_event_loop().call_at(loop_next, lambda: asyncio.create_task(cleanup()))
 
 
 async def background_tasks(

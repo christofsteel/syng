@@ -223,9 +223,7 @@ async def handle_get_meta_info(data: dict[str, Any]) -> None:
     :rtype: None
     """
     source: Source = sources[data["source"]]
-    meta_info: dict[str, Any] = await source.get_missing_metadata(
-        Entry(**data)
-    )
+    meta_info: dict[str, Any] = await source.get_missing_metadata(Entry(**data))
     await sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
 
 
@@ -328,16 +326,10 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
     if data["success"]:
         logging.info("Registered")
         print(f"Join here: {state.server}/{data['room']}")
-        print(
-            pyqrcode.create(f"{state.server}/{data['room']}").terminal(
-                quiet_zone=1
-            )
-        )
+        print(pyqrcode.create(f"{state.server}/{data['room']}").terminal(quiet_zone=1))
         state.room = data["room"]
         await sio.emit("sources", {"sources": list(sources.keys())})
-        if (
-            state.current_source is None
-        ):  # A possible race condition can occur here
+        if state.current_source is None:  # A possible race condition can occur here
             await sio.emit("get-first")
     else:
         logging.warning("Registration failed")
@@ -378,9 +370,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
                     },
                 )
         else:
-            await sio.emit(
-                "config", {"source": data["source"], "config": config}
-            )
+            await sio.emit("config", {"source": data["source"], "config": config})
 
 
 async def aiomain() -> None:
@@ -426,8 +416,7 @@ async def aiomain() -> None:
         state.secret = args.secret
     else:
         state.secret = "".join(
-            secrets.choice(string.ascii_letters + string.digits)
-            for _ in range(8)
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
         )
         print(f"Generated secret: {state.secret}")
 

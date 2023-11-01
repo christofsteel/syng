@@ -201,9 +201,7 @@ class Source:
         filtered: list[str] = self.filter_data_by_query(query, self._index)
         results: list[Result] = []
         for filename in filtered:
-            result: Optional[Result] = Result.from_filename(
-                filename, self.source_name
-            )
+            result: Optional[Result] = Result.from_filename(filename, self.source_name)
             if result is None:
                 continue
             results.append(result)
@@ -364,16 +362,12 @@ class Source:
 
         def contains_all_words(words: list[str], element: str) -> bool:
             for word in words:
-                if not word.lower() in os.path.basename(element).lower():
+                if word.lower() not in os.path.basename(element).lower():
                     return False
             return True
 
         splitquery = shlex.split(query)
-        return [
-            element
-            for element in data
-            if contains_all_words(splitquery, element)
-        ]
+        return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:
         """
@@ -411,10 +405,7 @@ class Source:
             self._index = await self.get_file_list()
             print(f"{self.source_name}: done")
         chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
-        return [
-            {"index": list(filter(lambda x: x != "", chunk))}
-            for chunk in chunked
-        ]
+        return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
 
     def add_to_config(self, config: dict[str, Any]) -> None:
         """

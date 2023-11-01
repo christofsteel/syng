@@ -83,9 +83,7 @@ class Entry:
                         re.sub(
                             r"\s",
                             " ",
-                            performers.lower()
-                            .replace(".", " ")
-                            .replace(",", " "),
+                            performers.lower().replace(".", " ").replace(",", " "),
                         ),
                     ).split(" "),
                 )
