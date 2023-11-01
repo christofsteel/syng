@@ -62,7 +62,7 @@ sources: dict[str, Source] = {}
 currentLock: asyncio.Semaphore = asyncio.Semaphore(0)
 
 
-def default_config():
+def default_config() -> dict[str, Optional[int | str]]:
     return {
         "preview_duration": 3,
         "last_song": None,

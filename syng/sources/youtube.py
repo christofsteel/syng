@@ -19,7 +19,7 @@ from pytube import Search
 from pytube import Stream
 from pytube import StreamQuery
 from pytube import YouTube
-from pytube.exceptions import PytubeError
+from pytube import exceptions
 
 try:
     from yt_dlp import YoutubeDL
@@ -152,7 +152,7 @@ class YoutubeSource(Source):
                     artist=yt_song.author,
                     performer=performer,
                 )
-            except PytubeError:
+            except exceptions.PytubeError:
                 return None
 
         return await asyncio.to_thread(_get_entry, performer, ident)

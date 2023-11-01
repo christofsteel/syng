@@ -148,16 +148,16 @@ class S3Source(Source):
 
         if os.path.splitext(entry.ident)[1] == ".cdg":
             cdg_filename: str = os.path.basename(entry.ident)
-            path_to_file: str = os.path.dirname(entry.ident)
+            path_to_files: str = os.path.dirname(entry.ident)
 
-            cdg_path: str = os.path.join(path_to_file, cdg_filename)
+            cdg_path: str = os.path.join(path_to_files, cdg_filename)
             target_file_cdg: str = os.path.join(self.tmp_dir, cdg_path)
 
             ident_mp3: str = entry.ident[:-3] + "mp3"
             target_file_mp3: str = target_file_cdg[:-3] + "mp3"
             os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
 
-            video_task: asyncio.Task[Any] = asyncio.create_task(
+            cdg_task: asyncio.Task[Any] = asyncio.create_task(
                 asyncio.to_thread(
                     self.minio.fget_object,
                     self.bucket,
@@ -174,7 +174,7 @@ class S3Source(Source):
                 )
             )
 
-            await video_task
+            await cdg_task
             await audio_task
             return target_file_cdg, target_file_mp3
         video_filename: str = os.path.basename(entry.ident)
