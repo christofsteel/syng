@@ -19,6 +19,7 @@ from typing import Any
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from abc import ABC, abstractmethod
 
 from ..entry import Entry
 from ..result import Result
@@ -65,7 +66,7 @@ class DLFilesEntry:
     buffer_task: Optional[asyncio.Task[Tuple[str, Optional[str]]]] = None
 
 
-class Source:
+class Source(ABC):
     """Parentclass for all sources.
 
     A new source should subclass this, and at least implement
@@ -103,6 +104,11 @@ class Source:
                  - ``source_name``, the string used to identify the source
     """
 
+    source_name: str = ""
+    config_schema: dict[str, tuple[type | list[type], str, Any]] = {
+        "enabled": (bool, "Enable this source", False)
+    }
+
     def __init__(self, config: dict[str, Any]):
         """
         Create and initialize a new source.
@@ -114,7 +120,6 @@ class Source:
           source for documentation.
         :type config: dict[str, Any]
         """
-        self.source_name: str = ""
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(
             DLFilesEntry
         )
@@ -143,6 +148,8 @@ class Source:
         args = ["--fullscreen", *options, video] + (
             [f"--audio-file={audio}"] if audio else []
         )
+
+        print(f"File is {video=} and {audio=}")
 
         mpv_process = asyncio.create_subprocess_exec(
             "mpv",
@@ -207,6 +214,7 @@ class Source:
             results.append(result)
         return results
 
+    @abstractmethod
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
         Source specific part of buffering.
@@ -223,7 +231,7 @@ class Source:
         :returns: A Tuple of the locations for the video and the audio file.
         :rtype: Tuple[str, Optional[str]]
         """
-        raise NotImplementedError
+        ...
 
     async def buffer(self, entry: Entry) -> None:
         """
@@ -399,6 +407,7 @@ class Source:
         :return: The part of the config, that should be sended to the server.
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
+        print("xzy")
         if not self._index:
             self._index = []
             print(f"{self.source_name}: generating index")

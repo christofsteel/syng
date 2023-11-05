@@ -12,15 +12,15 @@ from typing import cast
 from typing import Optional
 from typing import Tuple
 
-import mutagen
 from minio import Minio
+
+from .filebased import FileBasedSource
 
 from ..entry import Entry
 from .source import available_sources
-from .source import Source
 
 
-class S3Source(Source):
+class S3Source(FileBasedSource):
     """A source for playing songs from a s3 compatible storage.
 
     Config options are:
@@ -31,14 +31,21 @@ class S3Source(Source):
         - ``index_file``: If the file does not exist, saves the paths of
           files from the s3 instance to this file. If it exists, loads
           the list of files from this file.
-        - ``extensions``: List of filename extensions. Index only files with these one
-          of these extensions (Default: ["cdg"])
     """
+
+    source_name = "s3"
+    config_schema = FileBasedSource.config_schema | {
+        "endpoint": (str, "Endpoint of the s3", ""),
+        "access_key": (str, "Access Key of the s3", ""),
+        "secret_key": (str, "Secret Key of the s3", ""),
+        "secure": (bool, "Use SSL", True),
+        "bucket": (str, "Bucket of the s3", ""),
+        "tmp_dir": (str, "Folder for temporary download", "/tmp/syng"),
+    }
 
     def __init__(self, config: dict[str, Any]):
         """Create the source."""
         super().__init__(config)
-        self.source_name = "s3"
 
         if "endpoint" in config and "access_key" in config and "secret_key" in config:
             self.minio: Minio = Minio(
@@ -51,12 +58,6 @@ class S3Source(Source):
             self.tmp_dir: str = (
                 config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
             )
-
-        self.extensions = (
-            [f".{ext}" for ext in config["extensions"]]
-            if "extensions" in config
-            else [".cdg"]
-        )
 
         self.index_file: Optional[str] = (
             config["index_file"] if "index_file" in config else None
@@ -83,7 +84,7 @@ class S3Source(Source):
             file_list = [
                 obj.object_name
                 for obj in self.minio.list_objects(self.bucket, recursive=True)
-                if os.path.splitext(obj.object_name)[1] in self.extensions
+                if self.has_correct_extension(obj.object_name)
             ]
             if self.index_file is not None and not os.path.isfile(self.index_file):
                 with open(self.index_file, "w", encoding="utf8") as index_file_handle:
@@ -103,20 +104,13 @@ class S3Source(Source):
         :rtype: dict[str, Any]
         """
 
-        def mutagen_wrapped(file: str) -> int:
-            meta_infos = mutagen.File(file).info
-            return int(meta_infos.length)
-
         await self.ensure_playable(entry)
 
-        audio_file_name: Optional[str] = self.downloaded_files[entry.ident].audio
+        file_name: Optional[str] = self.downloaded_files[entry.ident].video
 
-        if audio_file_name is None:
-            duration: int = 180
-        else:
-            duration = await asyncio.to_thread(mutagen_wrapped, audio_file_name)
+        duration = await self.get_duration(file_name)
 
-        return {"duration": int(duration)}
+        return {"duration": duration}
 
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
@@ -132,56 +126,31 @@ class S3Source(Source):
         :rtype: Tuple[str, Optional[str]]
         """
 
-        if os.path.splitext(entry.ident)[1] == ".cdg":
-            cdg_filename: str = os.path.basename(entry.ident)
-            path_to_files: str = os.path.dirname(entry.ident)
-
-            cdg_path: str = os.path.join(path_to_files, cdg_filename)
-            target_file_cdg: str = os.path.join(self.tmp_dir, cdg_path)
-
-            ident_mp3: str = entry.ident[:-3] + "mp3"
-            target_file_mp3: str = target_file_cdg[:-3] + "mp3"
-            os.makedirs(os.path.dirname(target_file_cdg), exist_ok=True)
-
-            cdg_task: asyncio.Task[Any] = asyncio.create_task(
-                asyncio.to_thread(
-                    self.minio.fget_object,
-                    self.bucket,
-                    entry.ident,
-                    target_file_cdg,
-                )
-            )
-            audio_task: asyncio.Task[Any] = asyncio.create_task(
-                asyncio.to_thread(
-                    self.minio.fget_object,
-                    self.bucket,
-                    ident_mp3,
-                    target_file_mp3,
-                )
-            )
-
-            await cdg_task
-            await audio_task
-            return target_file_cdg, target_file_mp3
-        video_filename: str = os.path.basename(entry.ident)
-        path_to_file: str = os.path.dirname(entry.ident)
-
-        video_path: str = os.path.join(path_to_file, video_filename)
-        target_file_video: str = os.path.join(self.tmp_dir, video_path)
-
-        os.makedirs(os.path.dirname(target_file_video), exist_ok=True)
-
-        video_task: asyncio.Task[Any] = asyncio.create_task(
+        video_path, audio_path = self.get_video_audio_split(entry.ident)
+        video_dl_path: str = os.path.join(self.tmp_dir, video_path)
+        os.makedirs(os.path.dirname(video_dl_path), exist_ok=True)
+        video_dl_task: asyncio.Task[Any] = asyncio.create_task(
             asyncio.to_thread(
-                self.minio.fget_object,
-                self.bucket,
-                entry.ident,
-                target_file_video,
+                self.minio.fget_object, self.bucket, entry.ident, video_dl_path
             )
         )
 
-        await video_task
-        return target_file_video, None
+        if audio_path is not None:
+            audio_dl_path: Optional[str] = os.path.join(self.tmp_dir, audio_path)
+
+            audio_dl_task: asyncio.Task[Any] = asyncio.create_task(
+                asyncio.to_thread(
+                    self.minio.fget_object, self.bucket, audio_path, audio_dl_path
+                )
+            )
+        else:
+            audio_dl_path = None
+            audio_dl_task = asyncio.create_task(asyncio.sleep(0))
+
+        await video_dl_task
+        await audio_dl_task
+
+        return video_dl_path, audio_dl_path
 
 
 available_sources["s3"] = S3Source

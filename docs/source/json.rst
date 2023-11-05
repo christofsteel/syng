@@ -1,5 +1,5 @@
 JSON
 ====
 
-.. automodule:: syng.json
+.. automodule:: syng.jsonencoder
     :members:

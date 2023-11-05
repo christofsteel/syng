@@ -32,14 +32,14 @@ from typing import Optional
 import socketio
 from aiohttp import web
 
-from . import json
+from . import jsonencoder
 from .entry import Entry
 from .queue import Queue
 from .sources import available_sources
 from .sources import Source
 
 sio = socketio.AsyncServer(
-    cors_allowed_origins="*", logger=True, engineio_logger=False, json=json
+    cors_allowed_origins="*", logger=True, engineio_logger=False, json=jsonencoder
 )
 app = web.Application()
 sio.attach(app)
@@ -127,7 +127,6 @@ class State:
     :type client: Client
     """
 
-    secret: str
     queue: Queue
     waiting_room: list[Entry]
     recent: list[Entry]
@@ -329,7 +328,7 @@ async def handle_update_config(sid: str, data: dict[str, Any]) -> None:
 
     if is_admin:
         try:
-            config = json.loads(data["config"])
+            config = jsonencoder.loads(data["config"])
             await sio.emit(
                 "update_config",
                 DEFAULT_CONFIG | config,
@@ -707,13 +706,17 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
                 )
                 return
 
-    room: str = data["room"] if "room" in data and data["room"] else gen_id()
+    room: str = (
+        data["config"]["room"]
+        if "room" in data["config"] and data["config"]["room"]
+        else gen_id()
+    )
     async with sio.session(sid) as session:
         session["room"] = room
 
     if room in clients:
         old_state: State = clients[room]
-        if data["secret"] == old_state.secret:
+        if data["config"]["secret"] == old_state.client.config["secret"]:
             logger.info("Got new client connection for %s", room)
             old_state.sid = sid
             old_state.client = Client(
@@ -738,7 +741,6 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         initial_recent = [Entry(**entry) for entry in data["recent"]]
 
         clients[room] = State(
-            secret=data["secret"],
             queue=Queue(initial_entries),
             waiting_room=initial_waiting_room,
             recent=initial_recent,
@@ -902,7 +904,7 @@ async def handle_register_admin(sid: str, data: dict[str, Any]) -> bool:
         room = session["room"]
     state = clients[room]
 
-    is_admin: bool = data["secret"] == state.secret
+    is_admin: bool = data["secret"] == state.client.config["secret"]
     async with sio.session(sid) as session:
         session["admin"] = is_admin
     return is_admin

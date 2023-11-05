@@ -44,17 +44,18 @@ from traceback import print_exc
 from typing import Any
 from typing import Optional
 
-import pyqrcodeng as pyqrcode
+import qrcode
+
 import socketio
 from PIL import Image
 
-from . import json
+from . import jsonencoder
 from .entry import Entry
 from .sources import configure_sources
 from .sources import Source
 
 
-sio: socketio.AsyncClient = socketio.AsyncClient(json=json)
+sio: socketio.AsyncClient = socketio.AsyncClient(json=jsonencoder)
 logger: logging.Logger = logging.getLogger(__name__)
 sources: dict[str, Source] = {}
 
@@ -87,15 +88,13 @@ class State:
     :type waiting_room: list[Entry]
     :param recent: A copy of all played songs this session.
     :type recent: list[Entry]
-    :param room: The room on the server this playback client is connected to.
-    :type room: str
-    :param secret: The passcode of the room. If a playback client reconnects to
-        a room, this must be identical. Also, if a webclient wants to have
-        admin privileges, this must be included.
-    :type secret: str
-    :param key: An optional key, if registration on the server is limited.
-    :type key: Optional[str]
     :param config: Various configuration options for the client:
+        * `server` (`str`): The url of the server to connect to.
+        * `room` (`str`): The room on the server this playback client is connected to.
+        * `secret` (`str`): The passcode of the room. If a playback client reconnects to
+            a room, this must be identical. Also, if a webclient wants to have
+            admin privileges, this must be included.
+        * `key` (`Optional[str]`) An optional key, if registration on the server is limited.
         * `preview_duration` (`Optional[int]`): The duration in seconds the
             playback client shows a preview for the next song. This is accounted for
             in the calculation of the ETA for songs later in the queue.
@@ -116,10 +115,6 @@ class State:
     queue: list[Entry] = field(default_factory=list)
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
-    room: str = ""
-    server: str = ""
-    secret: str = ""
-    key: Optional[str] = None
     config: dict[str, Any] = field(default_factory=default_config)
 
 
@@ -200,12 +195,12 @@ async def handle_connect() -> None:
         "queue": state.queue,
         "waiting_room": state.waiting_room,
         "recent": state.recent,
-        "room": state.room,
-        "secret": state.secret,
+        # "room": state.config["room"],
+        # "secret": state.config["secret"],
         "config": state.config,
     }
-    if state.key:
-        data["registration-key"] = state.key
+    if state.config["key"]:
+        data["registration-key"] = state.config["key"]  # TODO: unify
     await sio.emit("register-client", data)
 
 
@@ -304,7 +299,7 @@ async def handle_play(data: dict[str, Any]) -> None:
 @sio.on("client-registered")
 async def handle_client_registered(data: dict[str, Any]) -> None:
     """
-    Handle the "client-registered" massage.
+    Handle the "client-registered" message.
 
     If the registration was successfull (`data["success"]` == `True`), store
     the room code in the global :py:class:`State` and print out a link to join
@@ -325,9 +320,12 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
     """
     if data["success"]:
         logging.info("Registered")
-        print(f"Join here: {state.server}/{data['room']}")
-        print(pyqrcode.create(f"{state.server}/{data['room']}").terminal(quiet_zone=1))
-        state.room = data["room"]
+        print(f"Join here: {state.config['server']}/{data['room']}")
+        qr = qrcode.QRCode(box_size=20, border=2)
+        qr.add_data(f"{state.config['server']}/{data['room']}")
+        qr.make()
+        qr.print_ascii()
+        state.config["room"] = data["room"]
         await sio.emit("sources", {"sources": list(sources.keys())})
         if state.current_source is None:  # A possible race condition can occur here
             await sio.emit("get-first")
@@ -373,30 +371,14 @@ async def handle_request_config(data: dict[str, Any]) -> None:
             await sio.emit("config", {"source": data["source"], "config": config})
 
 
-async def aiomain() -> None:
+async def start_client(config: dict[str, Any]) -> None:
     """
-    Async main function.
+    Initialize the client and connect to the server.
 
-    Parses the arguments, reads a config file and sets default values. Then
-    connects to a specified server.
-
-    If no secret is given, a random secret will be generated and presented to
-    the user.
-
+    :param config: Config options for the client
+    :type config: dict[str, Any]
     :rtype: None
     """
-    parser: ArgumentParser = ArgumentParser()
-
-    parser.add_argument("--room", "-r")
-    parser.add_argument("--secret", "-s")
-    parser.add_argument("--config-file", "-C", default="syng-client.json")
-    parser.add_argument("--key", "-k", default=None)
-    parser.add_argument("server")
-
-    args = parser.parse_args()
-
-    with open(args.config_file, encoding="utf8") as file:
-        config = load(file)
     sources.update(configure_sources(config["sources"]))
 
     if "config" in config:
@@ -407,28 +389,60 @@ async def aiomain() -> None:
         )
         state.config |= config["config"] | {"last_song": last_song}
 
-    state.key = args.key if args.key else None
-
-    if args.room:
-        state.room = args.room
-
-    if args.secret:
-        state.secret = args.secret
-    else:
-        state.secret = "".join(
+    if not ("secret" in state.config and state.config["secret"]):
+        state.config["secret"] = "".join(
             secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
         )
-        print(f"Generated secret: {state.secret}")
+        print(f"Generated secret: {state.config['secret']}")
 
-    state.server = args.server
+    if not ("key" in state.config and state.config["key"]):
+        state.config["key"] = ""
 
-    await sio.connect(args.server)
+    await sio.connect(state.config["server"])
     await sio.wait()
+
+
+async def aiomain() -> None:
+    """
+    Async main function.
+
+    Parses the arguments, reads a config file and sets default values. Then
+    connects to a specified server.
+
+    If no secret is given, a random secret will be generated and presented to
+    the user.
+
+    """
+    pass
 
 
 def main() -> None:
     """Entry point for the syng-client script."""
-    asyncio.run(aiomain())
+    parser: ArgumentParser = ArgumentParser()
+
+    parser.add_argument("--room", "-r")
+    parser.add_argument("--secret", "-s")
+    parser.add_argument("--config-file", "-C", default="syng-client.json")
+    parser.add_argument("--key", "-k", default=None)
+    parser.add_argument("--server", "-S")
+
+    args = parser.parse_args()
+
+    with open(args.config_file, encoding="utf8") as file:
+        config = load(file)
+
+    if "config" not in config:
+        config["config"] = {}
+
+    config["config"] |= {"key": args.key}
+    if args.room:
+        config["config"] |= {"room": args.room}
+    if args.secret:
+        config["config"] |= {"secret": args.secret}
+    if args.server:
+        config["config"] |= {"server": args.server}
+
+    asyncio.run(start_client(config))
 
 
 if __name__ == "__main__":
