@@ -66,6 +66,7 @@ currentLock: asyncio.Semaphore = asyncio.Semaphore(0)
 def default_config() -> dict[str, Optional[int | str]]:
     return {
         "preview_duration": 3,
+        "secret": None,
         "last_song": None,
         "waiting_room_policy": None,
     }
