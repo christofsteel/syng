@@ -12,12 +12,159 @@ from syng.client import default_config
 from .sources import available_sources
 
 
+class SourceTab(customtkinter.CTkFrame):
+    def updateStrVar(self, var: str, element: customtkinter.CTkTextbox, event):
+        value = element.get("0.0", "end").strip()
+        self.vars[var] = value
+
+    def updateBoolVar(self, var: str, element: customtkinter.CTkCheckBox, event):
+        value = True if element.get() == 1 else False
+        self.vars[var] = value
+
+    def updateListVar(self, var: str, element: customtkinter.CTkTextbox, event):
+        value = [v.strip() for v in element.get("0.0", "end").strip().split(",")]
+        self.vars[var] = value
+
+    def __init__(self, parent, source_name, config):
+        super().__init__(parent)
+        source = available_sources[source_name]
+        self.vars: dict[str, str | bool | list[str]] = {}
+        for row, (name, (typ, desc, default)) in enumerate(
+            source.config_schema.items()
+        ):
+            value = config[name] if name in config else default
+            self.vars[name] = value
+            label = customtkinter.CTkLabel(self, text=f"{desc} ({name})")
+            label.grid(column=0, row=row)
+            match typ:
+                case builtins.bool:
+                    checkbox = customtkinter.CTkCheckBox(
+                        self,
+                        text="",
+                        onvalue=True,
+                        offvalue=False,
+                    )
+                    checkbox.bind(
+                        "<ButtonRelease>", partial(self.updateBoolVar, name, checkbox)
+                    )
+                    checkbox.bind(
+                        "<KeyRelease>", partial(self.updateBoolVar, name, checkbox)
+                    )
+                    if value:
+                        checkbox.select()
+                    else:
+                        checkbox.deselect()
+                    checkbox.grid(column=1, row=row)
+                case builtins.list:
+                    inputfield = customtkinter.CTkTextbox(self, wrap="none", height=1)
+                    inputfield.bind(
+                        "<KeyRelease>", partial(self.updateStrVar, name, inputfield)
+                    )
+                    inputfield.bind(
+                        "<ButtonRelease>", partial(self.updateStrVar, name, inputfield)
+                    )
+                    inputfield.insert("0.0", ", ".join(value))
+                    inputfield.grid(column=1, row=row)
+                case builtins.str:
+                    inputfield = customtkinter.CTkTextbox(self, wrap="none", height=1)
+                    inputfield.bind(
+                        "<KeyRelease>", partial(self.updateStrVar, name, inputfield)
+                    )
+                    inputfield.bind(
+                        "<ButtonRelease>", partial(self.updateStrVar, name, inputfield)
+                    )
+                    inputfield.insert("0.0", value)
+                    inputfield.grid(column=1, row=row)
+
+    def get_config(self):
+        return self.vars
+
+
+class GeneralConfig(customtkinter.CTkFrame):
+    def __init__(self, parent, config, callback):
+        super().__init__(parent)
+        customtkinter.CTkLabel(self, text="Server", justify="left").grid(
+            column=0, row=0, padx=5, pady=5
+        )
+        self.serverTextbox = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.serverTextbox.grid(column=1, row=0)
+        self.serverTextbox.bind("<KeyRelease>", callback)
+
+        customtkinter.CTkLabel(self, text="Room", justify="left").grid(column=0, row=1)
+        self.roomTextbox = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.roomTextbox.grid(column=1, row=1)
+        self.roomTextbox.bind("<KeyRelease>", callback)
+
+        customtkinter.CTkLabel(self, text="Secret", justify="left").grid(
+            column=0, row=3
+        )
+        self.secretTextbox = customtkinter.CTkTextbox(self, wrap="none", height=1)
+
+        secret = "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+        )
+
+        self.secretTextbox.grid(column=1, row=3)
+
+        customtkinter.CTkLabel(self, text="Waiting room policy", justify="left").grid(
+            column=0, row=4
+        )
+        self.waitingRoomPolicy = customtkinter.CTkOptionMenu(
+            self, values=["forced", "optional", "none"]
+        )
+        self.waitingRoomPolicy.set("none")
+        self.waitingRoomPolicy.grid(column=1, row=4)
+
+        customtkinter.CTkLabel(self, text="Time of last Song", justify="left").grid(
+            column=0, row=5
+        )
+        self.last_song = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.last_song.grid(column=1, row=5)
+
+        customtkinter.CTkLabel(self, text="Preview Duration", justify="left").grid(
+            column=0, row=6
+        )
+        self.preview_duration = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.preview_duration.grid(column=1, row=6)
+
+        self.serverTextbox.insert("0.0", config["server"])
+        self.roomTextbox.insert("0.0", config["room"])
+        self.secretTextbox.insert(
+            "0.0", config["secret"] if "secret" in config else secret
+        )
+        self.waitingRoomPolicy.set(str(config["waiting_room_policy"]).lower())
+        if config["last_song"]:
+            self.last_song.insert("0.0", config["last_song"])
+        self.preview_duration.insert("0.0", config["preview_duration"])
+
+    def get_config(self):
+        config = {}
+        config["server"] = self.serverTextbox.get("0.0", "end").strip()
+        config["room"] = self.roomTextbox.get("0.0", "end").strip()
+        config["secret"] = self.secretTextbox.get("0.0", "end").strip()
+        config["waiting_room_policy"] = self.waitingRoomPolicy.get().strip()
+        config["last_song"] = self.last_song.get("0.0", "end").strip()
+        try:
+            config["preview_duration"] = int(
+                self.preview_duration.get("0.0", "end").strip()
+            )
+        except ValueError:
+            config["preview_duration"] = 0
+        return config
+
+
 class SyngGui(customtkinter.CTk):
     def loadConfig(self):
         filedialog.askopenfilename()
 
     def __init__(self):
         super().__init__(className="Syng")
+
+        with open("syng-client.json") as cfile:
+            loaded_config = load(cfile)
+        config = {"sources": {}, "config": {}}
+        if "config" in loaded_config:
+            config["config"] = default_config() | loaded_config["config"]
 
         self.wm_title("Syng")
         tabview = customtkinter.CTkTabview(self)
@@ -38,185 +185,42 @@ class SyngGui(customtkinter.CTk):
         )
         loadbutton.pack(side="left")
 
+        startbutton = customtkinter.CTkButton(self, text="Start", command=self.start)
+        startbutton.pack(side="right")
+
         frm = customtkinter.CTkFrame(tabview.tab("General"))
         frm.grid(ipadx=10)
 
         self.qrlabel = customtkinter.CTkLabel(frm, text="")
         self.qrlabel.grid(column=0, row=0)
 
-        optionframe = customtkinter.CTkFrame(frm)
-        optionframe.grid(column=1, row=0)
+        self.general_config = GeneralConfig(frm, config["config"], self.updateQr)
+        self.general_config.grid(column=1, row=0)
 
-        customtkinter.CTkLabel(optionframe, text="Server", justify="left").grid(
-            column=0, row=0, padx=5, pady=5
-        )
-        self.serverTextbox = customtkinter.CTkTextbox(
-            optionframe, wrap="none", height=1
-        )
-        self.serverTextbox.grid(column=1, row=0)
-        self.serverTextbox.bind("<KeyRelease>", self.updateQr)
+        self.tabs = {}
 
-        customtkinter.CTkLabel(optionframe, text="Room", justify="left").grid(
-            column=0, row=1
-        )
-        self.roomTextbox = customtkinter.CTkTextbox(optionframe, wrap="none", height=1)
-        self.roomTextbox.grid(column=1, row=1)
-        self.roomTextbox.bind("<KeyRelease>", self.updateQr)
+        for source_name in available_sources:
+            try:
+                source_config = loaded_config["sources"][source_name]
+            except KeyError:
+                source_config = {}
 
-        customtkinter.CTkLabel(optionframe, text="Secret", justify="left").grid(
-            column=0, row=3
-        )
-        self.secretTextbox = customtkinter.CTkTextbox(
-            optionframe, wrap="none", height=1
-        )
-        secret = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-        )
-        self.secretTextbox.grid(column=1, row=3)
-
-        customtkinter.CTkLabel(
-            optionframe, text="Waiting room policy", justify="left"
-        ).grid(column=0, row=4)
-        self.waitingRoomPolicy = customtkinter.CTkOptionMenu(
-            optionframe, values=["forced", "optional", "none"]
-        )
-        self.waitingRoomPolicy.set("none")
-        self.waitingRoomPolicy.grid(column=1, row=4)
-
-        customtkinter.CTkLabel(
-            optionframe, text="Time of last Song", justify="left"
-        ).grid(column=0, row=5)
-        self.last_song = customtkinter.CTkTextbox(optionframe, wrap="none", height=1)
-        self.last_song.grid(column=1, row=5)
-
-        customtkinter.CTkLabel(
-            optionframe, text="Preview Duration", justify="left"
-        ).grid(column=0, row=6)
-        self.preview_duration = customtkinter.CTkTextbox(
-            optionframe, wrap="none", height=1
-        )
-        self.preview_duration.grid(column=1, row=6)
-
-        customtkinter.CTkButton(optionframe, text="Start", command=self.start).grid(
-            column=0, row=7, columnspan=2, pady=10
-        )
-
-        with open("syng-client.json") as cfile:
-            loaded_config = load(cfile)
-        config = {"sources": {}, "config": {}}
-
-        self.source_config_elements = {}
-        for source_name, source in available_sources.items():
-            self.source_config_elements[source_name] = {}
-            config["sources"][source_name] = {}
-            sourcefrm = customtkinter.CTkFrame(tabview.tab(source_name))
-            sourcefrm.grid(ipadx=10)
-            for row, (name, (typ, desc, default)) in enumerate(
-                source.config_schema.items()
-            ):
-                if name in loaded_config["sources"][source_name]:
-                    config["sources"][source_name][name] = loaded_config["sources"][
-                        source_name
-                    ][name]
-                else:
-                    config["sources"][source_name][name] = default
-
-                label = customtkinter.CTkLabel(
-                    sourcefrm, text=f"{desc} ({name})", justify="right"
-                )
-                label.grid(column=0, row=row)
-                match typ:
-                    case builtins.bool:
-                        self.source_config_elements[source_name][
-                            name
-                        ] = customtkinter.CTkSwitch(sourcefrm, text="")
-                        self.source_config_elements[source_name][name].grid(
-                            column=1, row=row
-                        )
-                        if config["sources"][source_name][name]:
-                            self.source_config_elements[source_name][name].select()
-                        else:
-                            self.source_config_elements[source_name][name].deselect()
-
-                    case builtins.list:
-                        self.source_config_elements[source_name][
-                            name
-                        ] = customtkinter.CTkTextbox(sourcefrm, wrap="none", height=1)
-                        self.source_config_elements[source_name][name].grid(
-                            column=1, row=row
-                        )
-                        self.source_config_elements[source_name][name].insert(
-                            "0.0", ",".join(config["sources"][source_name][name])
-                        )
-
-                    case _:
-                        self.source_config_elements[source_name][
-                            name
-                        ] = customtkinter.CTkTextbox(sourcefrm, wrap="none", height=1)
-                        self.source_config_elements[source_name][name].grid(
-                            column=1, row=row
-                        )
-                        self.source_config_elements[source_name][name].insert(
-                            "0.0", config["sources"][source_name][name]
-                        )
-            if source_name in loaded_config["sources"]:
-                config["sources"][source_name] |= loaded_config["sources"][source_name]
-
-        if "config" in loaded_config:
-            config["config"] = default_config() | loaded_config["config"]
-
-        self.serverTextbox.insert("0.0", config["config"]["server"])
-        self.roomTextbox.insert("0.0", config["config"]["room"])
-        self.secretTextbox.insert("0.0", config["config"]["secret"])
-        self.waitingRoomPolicy.set(str(config["config"]["waiting_room_policy"]).lower())
-        if config["config"]["last_song"]:
-            self.last_song.insert("0.0", config["config"]["last_song"])
-        self.preview_duration.insert("0.0", config["config"]["preview_duration"])
+            self.tabs[source_name] = SourceTab(
+                tabview.tab(source_name), source_name, source_config
+            )
+            self.tabs[source_name].grid(ipadx=10)
 
         self.updateQr()
 
     def start(self):
-        config = {}
-        config["server"] = self.serverTextbox.get("0.0", "end").strip()
-        config["room"] = self.roomTextbox.get("0.0", "end").strip()
-        config["secret"] = self.secretTextbox.get("0.0", "end").strip()
-        config["waiting_room_policy"] = self.waitingRoomPolicy.get().strip()
-        config["last_song"] = self.last_song.get("0.0", "end").strip()
-        try:
-            config["preview_duration"] = int(
-                self.preview_duration.get("0.0", "end").strip()
-            )
-        except ValueError:
-            config["preview_duration"] = 0
-
         sources = {}
-        for source_name, config_elements in self.source_config_elements.items():
-            sources[source_name] = {}
-            for option, config_element in config_elements.items():
-                if isinstance(config_element, customtkinter.CTkSwitch):
-                    sources[source_name][option] = (
-                        True if config_element.get() == 1 else False
-                    )
-                elif isinstance(config_element, customtkinter.CTkTextbox):
-                    match available_sources[source_name].config_schema[option][0]:
-                        case builtins.list:
-                            sources[source_name][option] = [
-                                value.strip()
-                                for value in config_element.get("0.0", "end")
-                                .strip()
-                                .split(",")
-                            ]
+        for source, tab in self.tabs.items():
+            sources[source] = tab.get_config()
 
-                        case builtins.str:
-                            sources[source_name][option] = config_element.get(
-                                "0.0", "end"
-                            ).strip()
-                else:
-                    raise RuntimeError("IDK")
+        general_config = self.general_config.get_config()
 
-        syng_config = {"sources": sources, "config": config}
-
-        print(syng_config)
+        config = {"sources": sources, "config": general_config}
+        print(config)
 
     def changeQr(self, data: str):
         qr = qrcode.QRCode(box_size=20, border=2)
@@ -228,9 +232,10 @@ class SyngGui(customtkinter.CTk):
         self.qrlabel.configure(image=tkQrcode)
 
     def updateQr(self, _evt=None):
-        server = self.serverTextbox.get("0.0", "end").strip()
+        config = self.general_config.get_config()
+        server = config["server"]
         server += "" if server.endswith("/") else "/"
-        room = self.roomTextbox.get("0.0", "end").strip()
+        room = config["room"]
         print(server + room)
         self.changeQr(server + room)
 
