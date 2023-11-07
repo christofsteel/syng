@@ -81,73 +81,60 @@ class SourceTab(customtkinter.CTkFrame):
 
 
 class GeneralConfig(customtkinter.CTkFrame):
+    def add_option_label(self, text):
+        customtkinter.CTkLabel(self, text=text, justify="left").grid(
+            column=0, row=self.number_of_options, padx=5, pady=5
+        )
+
+    def add_string_option(self, name, description, callback=None):
+        self.add_option_label(description)
+
+        self.string_options[name] = customtkinter.CTkTextbox(
+            self, wrap="none", height=1
+        )
+        self.string_options[name].grid(column=1, row=self.number_of_options)
+        if callback is not None:
+            self.string_options[name].bind("<KeyRelease>", callback)
+        self.number_of_options += 1
+
+    def add_choose_option(self, name, description, values):
+        self.add_option_label(description)
+        self.choose_options[name] = customtkinter.CTkOptionMenu(self, values=values)
+        self.choose_options[name].grid(column=1, row=self.number_of_options)
+        self.number_of_options += 1
+
     def __init__(self, parent, config, callback):
         super().__init__(parent)
-        customtkinter.CTkLabel(self, text="Server", justify="left").grid(
-            column=0, row=0, padx=5, pady=5
-        )
-        self.serverTextbox = customtkinter.CTkTextbox(self, wrap="none", height=1)
-        self.serverTextbox.grid(column=1, row=0)
-        self.serverTextbox.bind("<KeyRelease>", callback)
+        self.number_of_options = 0
+        self.string_options = {}
+        self.choose_options = {}
 
-        customtkinter.CTkLabel(self, text="Room", justify="left").grid(column=0, row=1)
-        self.roomTextbox = customtkinter.CTkTextbox(self, wrap="none", height=1)
-        self.roomTextbox.grid(column=1, row=1)
-        self.roomTextbox.bind("<KeyRelease>", callback)
-
-        customtkinter.CTkLabel(self, text="Secret", justify="left").grid(
-            column=0, row=3
+        self.add_string_option("server", "Server", callback)
+        self.add_string_option("room", "Room", callback)
+        self.add_string_option("secret", "Secret")
+        self.add_choose_option(
+            "waiting_room_policy", "Waiting room policy", ["forced", "optional", "none"]
         )
-        self.secretTextbox = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.add_string_option("last_song", "Time of last song")
+        self.add_string_option("preview_duration", "Preview Duration")
 
-        secret = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-        )
+        for name, textbox in self.string_options.items():
+            if config[name]:
+                textbox.insert("0.0", config[name])
 
-        self.secretTextbox.grid(column=1, row=3)
-
-        customtkinter.CTkLabel(self, text="Waiting room policy", justify="left").grid(
-            column=0, row=4
-        )
-        self.waitingRoomPolicy = customtkinter.CTkOptionMenu(
-            self, values=["forced", "optional", "none"]
-        )
-        self.waitingRoomPolicy.set("none")
-        self.waitingRoomPolicy.grid(column=1, row=4)
-
-        customtkinter.CTkLabel(self, text="Time of last Song", justify="left").grid(
-            column=0, row=5
-        )
-        self.last_song = customtkinter.CTkTextbox(self, wrap="none", height=1)
-        self.last_song.grid(column=1, row=5)
-
-        customtkinter.CTkLabel(self, text="Preview Duration", justify="left").grid(
-            column=0, row=6
-        )
-        self.preview_duration = customtkinter.CTkTextbox(self, wrap="none", height=1)
-        self.preview_duration.grid(column=1, row=6)
-
-        self.serverTextbox.insert("0.0", config["server"])
-        self.roomTextbox.insert("0.0", config["room"])
-        self.secretTextbox.insert(
-            "0.0", config["secret"] if "secret" in config else secret
-        )
-        self.waitingRoomPolicy.set(str(config["waiting_room_policy"]).lower())
-        if config["last_song"]:
-            self.last_song.insert("0.0", config["last_song"])
-        self.preview_duration.insert("0.0", config["preview_duration"])
+        for name, optionmenu in self.choose_options.items():
+            optionmenu.set(str(config[name]).lower())
 
     def get_config(self):
         config = {}
-        config["server"] = self.serverTextbox.get("0.0", "end").strip()
-        config["room"] = self.roomTextbox.get("0.0", "end").strip()
-        config["secret"] = self.secretTextbox.get("0.0", "end").strip()
-        config["waiting_room_policy"] = self.waitingRoomPolicy.get().strip()
-        config["last_song"] = self.last_song.get("0.0", "end").strip()
+        for name, textbox in self.string_options.items():
+            config[name] = textbox.get("0.0", "end").strip()
+
+        for name, optionmenu in self.choose_options.items():
+            config[name] = optionmenu.get().strip()
+
         try:
-            config["preview_duration"] = int(
-                self.preview_duration.get("0.0", "end").strip()
-            )
+            config["preview_duration"] = int(config["preview_duration"])
         except ValueError:
             config["preview_duration"] = 0
         return config
@@ -162,9 +149,14 @@ class SyngGui(customtkinter.CTk):
 
         with open("syng-client.json") as cfile:
             loaded_config = load(cfile)
-        config = {"sources": {}, "config": {}}
+        config = {"sources": {}, "config": default_config()}
         if "config" in loaded_config:
-            config["config"] = default_config() | loaded_config["config"]
+            config["config"] |= loaded_config["config"]
+
+        if not config["config"]["secret"]:
+            config["config"]["secret"] = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+            )
 
         self.wm_title("Syng")
         tabview = customtkinter.CTkTabview(self)
@@ -185,7 +177,9 @@ class SyngGui(customtkinter.CTk):
         )
         loadbutton.pack(side="left")
 
-        startbutton = customtkinter.CTkButton(self, text="Start", command=self.start)
+        startbutton = customtkinter.CTkButton(
+            fileframe, text="Start", command=self.start
+        )
         startbutton.pack(side="right")
 
         frm = customtkinter.CTkFrame(tabview.tab("General"))
