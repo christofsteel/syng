@@ -1,5 +1,4 @@
 import builtins
-from functools import partial
 from json import load
 import customtkinter
 import qrcode
@@ -12,7 +11,88 @@ from syng.client import default_config
 from .sources import available_sources
 
 
-class SourceTab(customtkinter.CTkFrame):
+class OptionFrame(customtkinter.CTkFrame):
+    def add_option_label(self, text):
+        customtkinter.CTkLabel(self, text=text, justify="left").grid(
+            column=0, row=self.number_of_options, padx=5, pady=5
+        )
+
+    def add_bool_option(self, name, description, value=False):
+        self.add_option_label(description)
+        self.bool_options[name] = customtkinter.CTkCheckBox(
+            self,
+            text="",
+            onvalue=True,
+            offvalue=False,
+        )
+        if value:
+            self.bool_options[name].select()
+        else:
+            self.bool_options[name].deselect()
+        self.bool_options[name].grid(column=1, row=self.number_of_options)
+        self.number_of_options += 1
+
+    def add_string_option(self, name, description, value="", callback=None):
+        self.add_option_label(description)
+        if value is None:
+            value = ""
+
+        self.string_options[name] = customtkinter.CTkTextbox(
+            self, wrap="none", height=1
+        )
+        self.string_options[name].grid(column=1, row=self.number_of_options)
+        self.string_options[name].insert("0.0", value)
+        if callback is not None:
+            self.string_options[name].bind("<KeyRelease>", callback)
+            self.string_options[name].bind("<ButtonRelease>", callback)
+        self.number_of_options += 1
+
+    def add_list_option(self, name, description, value=[], callback=None):
+        self.add_option_label(description)
+
+        self.list_options[name] = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.list_options[name].grid(column=1, row=self.number_of_options)
+        self.list_options[name].insert("0.0", ", ".join(value))
+        if callback is not None:
+            self.list_options[name].bind("<KeyRelease>", callback)
+            self.list_options[name].bind("<ButtonRelease>", callback)
+        self.number_of_options += 1
+
+    def add_choose_option(self, name, description, values, value=""):
+        self.add_option_label(description)
+        self.choose_options[name] = customtkinter.CTkOptionMenu(self, values=values)
+        self.choose_options[name].grid(column=1, row=self.number_of_options)
+        self.choose_options[name].set(value)
+        self.number_of_options += 1
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.number_of_options = 0
+        self.string_options = {}
+        self.choose_options = {}
+        self.bool_options = {}
+        self.list_options = {}
+
+    def get_config(self):
+        config = {}
+        for name, textbox in self.string_options.items():
+            config[name] = textbox.get("0.0", "end").strip()
+
+        for name, optionmenu in self.choose_options.items():
+            config[name] = optionmenu.get().strip()
+
+        for name, checkbox in self.bool_options.items():
+            config[name] = checkbox.get() == 1
+
+        for name, textbox in self.list_options.items():
+            config[name] = [
+                v.strip() for v in textbox.get("0.0", "end").strip().split(",")
+            ]
+
+        return config
+
+
+class SourceTab(OptionFrame):
     def updateStrVar(self, var: str, element: customtkinter.CTkTextbox, event):
         value = element.get("0.0", "end").strip()
         self.vars[var] = value
@@ -33,90 +113,32 @@ class SourceTab(customtkinter.CTkFrame):
             source.config_schema.items()
         ):
             value = config[name] if name in config else default
-            self.vars[name] = value
-            label = customtkinter.CTkLabel(self, text=f"{desc} ({name})")
-            label.grid(column=0, row=row)
             match typ:
                 case builtins.bool:
-                    checkbox = customtkinter.CTkCheckBox(
-                        self,
-                        text="",
-                        onvalue=True,
-                        offvalue=False,
-                    )
-                    checkbox.bind(
-                        "<ButtonRelease>", partial(self.updateBoolVar, name, checkbox)
-                    )
-                    checkbox.bind(
-                        "<KeyRelease>", partial(self.updateBoolVar, name, checkbox)
-                    )
-                    if value:
-                        checkbox.select()
-                    else:
-                        checkbox.deselect()
-                    checkbox.grid(column=1, row=row)
+                    self.add_bool_option(name, desc, value=value)
                 case builtins.list:
-                    inputfield = customtkinter.CTkTextbox(self, wrap="none", height=1)
-                    inputfield.bind(
-                        "<KeyRelease>", partial(self.updateStrVar, name, inputfield)
-                    )
-                    inputfield.bind(
-                        "<ButtonRelease>", partial(self.updateStrVar, name, inputfield)
-                    )
-                    inputfield.insert("0.0", ", ".join(value))
-                    inputfield.grid(column=1, row=row)
+                    self.add_list_option(name, desc, value=value)
                 case builtins.str:
-                    inputfield = customtkinter.CTkTextbox(self, wrap="none", height=1)
-                    inputfield.bind(
-                        "<KeyRelease>", partial(self.updateStrVar, name, inputfield)
-                    )
-                    inputfield.bind(
-                        "<ButtonRelease>", partial(self.updateStrVar, name, inputfield)
-                    )
-                    inputfield.insert("0.0", value)
-                    inputfield.grid(column=1, row=row)
-
-    def get_config(self):
-        return self.vars
+                    self.add_string_option(name, desc, value=value)
 
 
-class GeneralConfig(customtkinter.CTkFrame):
-    def add_option_label(self, text):
-        customtkinter.CTkLabel(self, text=text, justify="left").grid(
-            column=0, row=self.number_of_options, padx=5, pady=5
-        )
-
-    def add_string_option(self, name, description, callback=None):
-        self.add_option_label(description)
-
-        self.string_options[name] = customtkinter.CTkTextbox(
-            self, wrap="none", height=1
-        )
-        self.string_options[name].grid(column=1, row=self.number_of_options)
-        if callback is not None:
-            self.string_options[name].bind("<KeyRelease>", callback)
-        self.number_of_options += 1
-
-    def add_choose_option(self, name, description, values):
-        self.add_option_label(description)
-        self.choose_options[name] = customtkinter.CTkOptionMenu(self, values=values)
-        self.choose_options[name].grid(column=1, row=self.number_of_options)
-        self.number_of_options += 1
-
+class GeneralConfig(OptionFrame):
     def __init__(self, parent, config, callback):
         super().__init__(parent)
-        self.number_of_options = 0
-        self.string_options = {}
-        self.choose_options = {}
 
-        self.add_string_option("server", "Server", callback)
-        self.add_string_option("room", "Room", callback)
-        self.add_string_option("secret", "Secret")
+        self.add_string_option("server", "Server", config["server"], callback)
+        self.add_string_option("room", "Room", config["room"], callback)
+        self.add_string_option("secret", "Secret", config["secret"])
         self.add_choose_option(
-            "waiting_room_policy", "Waiting room policy", ["forced", "optional", "none"]
+            "waiting_room_policy",
+            "Waiting room policy",
+            ["forced", "optional", "none"],
+            config["waiting_room_policy"],
         )
-        self.add_string_option("last_song", "Time of last song")
-        self.add_string_option("preview_duration", "Preview Duration")
+        self.add_string_option("last_song", "Time of last song", config["last_song"])
+        self.add_string_option(
+            "preview_duration", "Preview Duration", config["preview_duration"]
+        )
 
         for name, textbox in self.string_options.items():
             if config[name]:
@@ -126,17 +148,12 @@ class GeneralConfig(customtkinter.CTkFrame):
             optionmenu.set(str(config[name]).lower())
 
     def get_config(self):
-        config = {}
-        for name, textbox in self.string_options.items():
-            config[name] = textbox.get("0.0", "end").strip()
-
-        for name, optionmenu in self.choose_options.items():
-            config[name] = optionmenu.get().strip()
-
+        config = super().get_config()
         try:
             config["preview_duration"] = int(config["preview_duration"])
         except ValueError:
             config["preview_duration"] = 0
+
         return config
 
 
@@ -159,13 +176,6 @@ class SyngGui(customtkinter.CTk):
             )
 
         self.wm_title("Syng")
-        tabview = customtkinter.CTkTabview(self)
-        tabview.pack(side="top")
-
-        tabview.add("General")
-        for source in available_sources:
-            tabview.add(source)
-        tabview.set("General")
 
         fileframe = customtkinter.CTkFrame(self)
         fileframe.pack(side="bottom")
@@ -182,14 +192,24 @@ class SyngGui(customtkinter.CTk):
         )
         startbutton.pack(side="right")
 
-        frm = customtkinter.CTkFrame(tabview.tab("General"))
-        frm.grid(ipadx=10)
+        frm = customtkinter.CTkFrame(self)
+        frm.pack(ipadx=10, padx=10, fill="both", expand=True)
+
+        tabview = customtkinter.CTkTabview(frm)
+        tabview.pack(side="right", padx=10, pady=10, fill="both", expand=True)
+
+        tabview.add("General")
+        for source in available_sources:
+            tabview.add(source)
+        tabview.set("General")
 
         self.qrlabel = customtkinter.CTkLabel(frm, text="")
-        self.qrlabel.grid(column=0, row=0)
+        self.qrlabel.pack(side="left")
 
-        self.general_config = GeneralConfig(frm, config["config"], self.updateQr)
-        self.general_config.grid(column=1, row=0)
+        self.general_config = GeneralConfig(
+            tabview.tab("General"), config["config"], self.updateQr
+        )
+        self.general_config.pack(ipadx=10, fill="y")
 
         self.tabs = {}
 
@@ -202,7 +222,7 @@ class SyngGui(customtkinter.CTk):
             self.tabs[source_name] = SourceTab(
                 tabview.tab(source_name), source_name, source_config
             )
-            self.tabs[source_name].grid(ipadx=10)
+            self.tabs[source_name].pack(ipadx=10)
 
         self.updateQr()
 
