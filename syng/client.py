@@ -39,7 +39,7 @@ import tempfile
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from dataclasses import field
-from json import load
+from yaml import load, Loader
 from traceback import print_exc
 from typing import Any
 from typing import Optional
@@ -385,7 +385,7 @@ async def start_client(config: dict[str, Any]) -> None:
     if "config" in config:
         last_song = (
             datetime.datetime.fromisoformat(config["config"]["last_song"])
-            if "last_song" in config["config"]
+            if "last_song" in config["config"] and config["config"]["last_song"]
             else None
         )
         state.config |= config["config"] | {"last_song": last_song}
@@ -423,14 +423,14 @@ def main() -> None:
 
     parser.add_argument("--room", "-r")
     parser.add_argument("--secret", "-s")
-    parser.add_argument("--config-file", "-C", default="syng-client.json")
+    parser.add_argument("--config-file", "-C", default="syng-client.yaml")
     parser.add_argument("--key", "-k", default=None)
     parser.add_argument("--server", "-S")
 
     args = parser.parse_args()
 
     with open(args.config_file, encoding="utf8") as file:
-        config = load(file)
+        config = load(file, Loader=Loader)
 
     if "config" not in config:
         config["config"] = {}

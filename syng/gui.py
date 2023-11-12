@@ -1,5 +1,5 @@
 import builtins
-from json import load
+from yaml import load, Loader
 import customtkinter
 import qrcode
 import secrets
@@ -164,8 +164,8 @@ class SyngGui(customtkinter.CTk):
     def __init__(self):
         super().__init__(className="Syng")
 
-        with open("syng-client.json") as cfile:
-            loaded_config = load(cfile)
+        with open("syng-client.yaml") as cfile:
+            loaded_config = load(cfile, Loader=Loader)
         config = {"sources": {}, "config": default_config()}
         if "config" in loaded_config:
             config["config"] |= loaded_config["config"]

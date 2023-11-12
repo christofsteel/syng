@@ -25,6 +25,7 @@ yt-dlp = "*"
 customtkinter = "^5.2.1"
 qrcode = "^7.4.2"
 pymediainfo = "^6.1.0"
+pyyaml = "^6.0.1"
 
 [build-system]
 requires = ["poetry-core"]
