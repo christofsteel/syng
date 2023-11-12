@@ -13,7 +13,7 @@ syng-server = "syng.server:main"
 syng-shell = "syng.webclientmockup:main"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 pytube = "*"
 aiohttp = "^3.8.3"
 python-socketio = "^5.7.2"
@@ -26,6 +26,7 @@ customtkinter = "^5.2.1"
 qrcode = "^7.4.2"
 pymediainfo = "^6.1.0"
 pyyaml = "^6.0.1"
+async-tkinter-loop = "^0.9.2"
 
 [build-system]
 requires = ["poetry-core"]
