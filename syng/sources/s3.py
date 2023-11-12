@@ -40,7 +40,7 @@ class S3Source(FileBasedSource):
         "secret_key": (str, "Secret Key of the s3", ""),
         "secure": (bool, "Use SSL", True),
         "bucket": (str, "Bucket of the s3", ""),
-        "tmp_dir": (str, "Folder for temporary download", "/tmp/syng"),
+        "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
     }
 
     def __init__(self, config: dict[str, Any]):

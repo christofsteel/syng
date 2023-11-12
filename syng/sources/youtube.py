@@ -52,12 +52,12 @@ class YoutubeSource(Source):
 
     source_name = "youtube"
     config_schema = Source.config_schema | {
-        "channels": (list, "A list channels to search in", []),
-        "tmp_dir": (str, "Folder for temporary download", "/tmp/syng"),
-        "max_res": (int, "Maximum resolution to download", 720),
+        "channels": (list, "A list channels\nto search in", []),
+        "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
+        "max_res": (int, "Maximum resolution\nto download", 720),
         "start_streaming": (
             bool,
-            "Start streaming if download is not complete",
+            "Start streaming if\ndownload is not complete",
             False,
         ),
     }

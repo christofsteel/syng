@@ -18,7 +18,7 @@ class FileBasedSource(Source):
     config_schema = Source.config_schema | {
         "extensions": (
             list,
-            "List of filename extensions (mp3+cdg, mp4, ...)",
+            "List of filename extensions\n(mp3+cdg, mp4, ...)",
             "mp3+cdg",
         )
     }
