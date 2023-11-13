@@ -65,6 +65,8 @@ currentLock: asyncio.Semaphore = asyncio.Semaphore(0)
 
 def default_config() -> dict[str, Optional[int | str]]:
     return {
+        "server": "http://localhost:8080",
+        "room": "ABCD",
         "preview_duration": 3,
         "secret": None,
         "last_song": None,
@@ -416,6 +418,9 @@ async def aiomain() -> None:
     """
     pass
 
+def create_async_and_start_client(config):
+    asyncio.run(start_client(config))
+
 
 def main() -> None:
     """Entry point for the syng-client script."""
@@ -443,7 +448,7 @@ def main() -> None:
     if args.server:
         config["config"] |= {"server": args.server}
 
-    asyncio.run(start_client(config))
+    create_async_and_start_client(config)
 
 
 if __name__ == "__main__":

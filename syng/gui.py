@@ -1,19 +1,57 @@
 import asyncio
+from datetime import datetime, date, time
+import os
 import builtins
 from functools import partial
 import webbrowser
+import PIL
 from yaml import load, Loader
+import multiprocessing
 import customtkinter
 import qrcode
 import secrets
 import string
-from tkinter import filedialog
-from async_tkinter_loop import async_handler, async_mainloop
-from async_tkinter_loop.mixins import AsyncCTk
+from tkinter import PhotoImage, filedialog
+from tkcalendar import Calendar
+from tktimepicker import SpinTimePickerOld, AnalogPicker, AnalogThemes
+from tktimepicker import constants
 
-from .client import default_config, start_client
+from .client import create_async_and_start_client, default_config, start_client
 
 from .sources import available_sources
+from .server import main as server_main
+
+class DateAndTimePickerWindow(customtkinter.CTkToplevel):
+    def __init__(self, parent, input_field):
+        super().__init__(parent)
+        self.calendar = Calendar(self)
+        self.calendar.pack(expand=True, fill="both")
+        self.timepicker = AnalogPicker(self, type=constants.HOURS12)
+        theme = AnalogThemes(self.timepicker)
+        theme.setDracula()
+        # self.timepicker.addAll(constants.HOURS24)
+        self.timepicker.pack(expand=True, fill="both")
+
+        button = customtkinter.CTkButton(self, text="Ok", command=partial(self.insert, input_field))
+        button.pack(expand=True, fill='x')
+
+    def insert(self, input_field: customtkinter.CTkTextbox):
+        input_field.delete("0.0", "end")
+        selected_date = self.calendar.selection_get()
+        print(type(selected_date))
+        if not isinstance(selected_date, date):
+            return
+        hours, minutes, ampm = self.timepicker.time()
+        if ampm == "PM":
+            hours = (hours + 12) % 24
+
+        selected_datetime = datetime.combine(selected_date, time(hours, minutes))
+        input_field.insert("0.0", selected_datetime.isoformat())
+        self.withdraw()
+        self.destroy()
+
+
+
 
 
 class OptionFrame(customtkinter.CTkScrollableFrame):
@@ -104,6 +142,35 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self.choose_options[name].set(value)
         self.number_of_options += 1
 
+    def open_date_and_time_picker(self, name, input_field):
+        if name not in self.date_and_time_pickers or not self.date_and_time_pickers[name].winfo_exists():
+            self.date_and_time_pickers[name] = DateAndTimePickerWindow(self, input_field)
+        else:
+            self.date_and_time_pickers[name].focus()
+
+
+    def add_date_time_option(self, name, description, value):
+        self.add_option_label(description)
+        self.date_time_options[name] = None
+        input_and_button = customtkinter.CTkFrame(self)
+        input_and_button.grid(column=1, row=self.number_of_options, sticky="EW")
+        input_field = customtkinter.CTkTextbox(input_and_button, wrap="none", height=1)
+        input_field.pack(side="left", fill="x", expand=True)
+        try:
+            datetime.fromisoformat(value)
+        except TypeError:
+            value = ""
+        input_field.insert("0.0", value)
+
+        button = customtkinter.CTkButton(
+            input_and_button,
+            text="...",
+            width=40,
+            command=partial(self.open_date_and_time_picker, name, input_field),
+        )
+        button.pack(side="right")
+        self.number_of_options += 1
+
     def __init__(self, parent):
         super().__init__(parent)
         self.columnconfigure((1,), weight=1)
@@ -112,6 +179,8 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self.choose_options = {}
         self.bool_options = {}
         self.list_options = {}
+        self.date_time_options = {}
+        self.date_and_time_pickers = {}
 
     def get_config(self):
         config = {}
@@ -173,9 +242,10 @@ class GeneralConfig(OptionFrame):
             ["forced", "optional", "none"],
             str(config["waiting_room_policy"]).lower(),
         )
-        self.add_string_option(
-            "last_song", "Time of last song\nin ISO-8601", config["last_song"]
-        )
+        # self.add_string_option(
+        #     "last_song", "Time of last song\nin ISO-8601", config["last_song"]
+        # )
+        self.add_date_time_option("last_song", "Time of last song", config["last_song"])
         self.add_string_option(
             "preview_duration", "Preview Duration", config["preview_duration"]
         )
@@ -190,15 +260,37 @@ class GeneralConfig(OptionFrame):
         return config
 
 
-class SyngGui(customtkinter.CTk, AsyncCTk):
+class SyngGui(customtkinter.CTk):
     def loadConfig(self):
         filedialog.askopenfilename()
 
+    def on_close(self):
+        if self.server is not None:
+            self.server.kill()
+
+        if self.client is not None:
+            self.client.kill()
+
+        self.withdraw()
+        self.destroy()
+
     def __init__(self):
         super().__init__(className="Syng")
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        with open("syng-client.yaml") as cfile:
-            loaded_config = load(cfile, Loader=Loader)
+        rel_path = os.path.dirname(__file__)
+        img = PIL.ImageTk.PhotoImage(file=os.path.join(rel_path,"static/syng.png"))
+        self.wm_iconbitmap()
+        self.iconphoto(False, img)
+        
+        self.server = None
+        self.client = None
+
+        try:
+            with open("syng-client.yaml") as cfile:
+                loaded_config = load(cfile, Loader=Loader)
+        except FileNotFoundError:
+            loaded_config = {}
         config = {"sources": {}, "config": default_config()}
         if "config" in loaded_config:
             config["config"] |= loaded_config["config"]
@@ -222,9 +314,15 @@ class SyngGui(customtkinter.CTk, AsyncCTk):
         loadbutton.pack(side="left")
 
         startbutton = customtkinter.CTkButton(
-            fileframe, text="Start", command=self.start
+            fileframe, text="Start", command=self.start_client
         )
         startbutton.pack(side="right")
+
+        startserverbutton = customtkinter.CTkButton(
+            fileframe, text="Start Server", command=self.start_server
+        )
+        startserverbutton.pack(side="right")
+
 
         open_web_button = customtkinter.CTkButton(
             fileframe, text="Open Web", command=self.open_web
@@ -266,8 +364,7 @@ class SyngGui(customtkinter.CTk, AsyncCTk):
 
         self.updateQr()
 
-    @async_handler
-    async def start(self):
+    def start_client(self):
         sources = {}
         for source, tab in self.tabs.items():
             sources[source] = tab.get_config()
@@ -275,8 +372,14 @@ class SyngGui(customtkinter.CTk, AsyncCTk):
         general_config = self.general_config.get_config()
 
         config = {"sources": sources, "config": general_config}
-        print(config)
-        await start_client(config)
+        # print(config)
+        self.client = multiprocessing.Process(target=create_async_and_start_client, args=(config,))
+        self.client.start()
+
+    def start_server(self):
+        self.server = multiprocessing.Process(target=server_main)
+        self.server.start()
+        
 
     def open_web(self):
         config = self.general_config.get_config()
@@ -303,11 +406,9 @@ class SyngGui(customtkinter.CTk, AsyncCTk):
         self.changeQr(server + room)
 
 
-# async def main():
-#     gui = SyngGui()
-#     await gui.run()
+def main():
+    SyngGui().mainloop()
 
 
 if __name__ == "__main__":
-    # asyncio.run(main())
-    SyngGui().async_mainloop()
+    main()

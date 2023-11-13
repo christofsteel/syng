@@ -19,7 +19,7 @@ class FileBasedSource(Source):
         "extensions": (
             list,
             "List of filename extensions\n(mp3+cdg, mp4, ...)",
-            "mp3+cdg",
+            ["mp3+cdg"],
         )
     }
 
