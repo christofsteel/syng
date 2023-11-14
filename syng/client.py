@@ -36,6 +36,7 @@ import logging
 import secrets
 import string
 import tempfile
+import signal
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from dataclasses import field
@@ -374,6 +375,10 @@ async def handle_request_config(data: dict[str, Any]) -> None:
             await sio.emit("config", {"source": data["source"], "config": config})
 
 
+def terminate(*args):
+    print("OOPS")
+
+
 async def start_client(config: dict[str, Any]) -> None:
     """
     Initialize the client and connect to the server.
@@ -382,11 +387,12 @@ async def start_client(config: dict[str, Any]) -> None:
     :type config: dict[str, Any]
     :rtype: None
     """
+
     sources.update(configure_sources(config["sources"]))
 
     if "config" in config:
         last_song = (
-            datetime.datetime.fromisoformat(config["config"]["last_song"])
+            datetime.datetime.fromisoformat(config["config"]["last_song"]).timestamp()
             if "last_song" in config["config"] and config["config"]["last_song"]
             else None
         )
@@ -403,20 +409,8 @@ async def start_client(config: dict[str, Any]) -> None:
 
     await sio.connect(state.config["server"])
     await sio.wait()
+    print("exit")
 
-
-async def aiomain() -> None:
-    """
-    Async main function.
-
-    Parses the arguments, reads a config file and sets default values. Then
-    connects to a specified server.
-
-    If no secret is given, a random secret will be generated and presented to
-    the user.
-
-    """
-    pass
 
 def create_async_and_start_client(config):
     asyncio.run(start_client(config))

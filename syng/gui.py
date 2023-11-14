@@ -21,6 +21,7 @@ from .client import create_async_and_start_client, default_config, start_client
 from .sources import available_sources
 from .server import main as server_main
 
+
 class DateAndTimePickerWindow(customtkinter.CTkToplevel):
     def __init__(self, parent, input_field):
         super().__init__(parent)
@@ -32,8 +33,10 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
         # self.timepicker.addAll(constants.HOURS24)
         self.timepicker.pack(expand=True, fill="both")
 
-        button = customtkinter.CTkButton(self, text="Ok", command=partial(self.insert, input_field))
-        button.pack(expand=True, fill='x')
+        button = customtkinter.CTkButton(
+            self, text="Ok", command=partial(self.insert, input_field)
+        )
+        button.pack(expand=True, fill="x")
 
     def insert(self, input_field: customtkinter.CTkTextbox):
         input_field.delete("0.0", "end")
@@ -49,9 +52,6 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
         input_field.insert("0.0", selected_datetime.isoformat())
         self.withdraw()
         self.destroy()
-
-
-
 
 
 class OptionFrame(customtkinter.CTkScrollableFrame):
@@ -143,11 +143,15 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self.number_of_options += 1
 
     def open_date_and_time_picker(self, name, input_field):
-        if name not in self.date_and_time_pickers or not self.date_and_time_pickers[name].winfo_exists():
-            self.date_and_time_pickers[name] = DateAndTimePickerWindow(self, input_field)
+        if (
+            name not in self.date_and_time_pickers
+            or not self.date_and_time_pickers[name].winfo_exists()
+        ):
+            self.date_and_time_pickers[name] = DateAndTimePickerWindow(
+                self, input_field
+            )
         else:
             self.date_and_time_pickers[name].focus()
-
 
     def add_date_time_option(self, name, description, value):
         self.add_option_label(description)
@@ -279,10 +283,10 @@ class SyngGui(customtkinter.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         rel_path = os.path.dirname(__file__)
-        img = PIL.ImageTk.PhotoImage(file=os.path.join(rel_path,"static/syng.png"))
+        img = PIL.ImageTk.PhotoImage(file=os.path.join(rel_path, "static/syng.png"))
         self.wm_iconbitmap()
         self.iconphoto(False, img)
-        
+
         self.server = None
         self.client = None
 
@@ -313,16 +317,15 @@ class SyngGui(customtkinter.CTk):
         )
         loadbutton.pack(side="left")
 
-        startbutton = customtkinter.CTkButton(
+        self.startbutton = customtkinter.CTkButton(
             fileframe, text="Start", command=self.start_client
         )
-        startbutton.pack(side="right")
+        self.startbutton.pack(side="right")
 
         startserverbutton = customtkinter.CTkButton(
             fileframe, text="Start Server", command=self.start_server
         )
         startserverbutton.pack(side="right")
-
 
         open_web_button = customtkinter.CTkButton(
             fileframe, text="Open Web", command=self.open_web
@@ -365,21 +368,28 @@ class SyngGui(customtkinter.CTk):
         self.updateQr()
 
     def start_client(self):
-        sources = {}
-        for source, tab in self.tabs.items():
-            sources[source] = tab.get_config()
+        if self.client is None:
+            sources = {}
+            for source, tab in self.tabs.items():
+                sources[source] = tab.get_config()
 
-        general_config = self.general_config.get_config()
+            general_config = self.general_config.get_config()
 
-        config = {"sources": sources, "config": general_config}
-        # print(config)
-        self.client = multiprocessing.Process(target=create_async_and_start_client, args=(config,))
-        self.client.start()
+            config = {"sources": sources, "config": general_config}
+            # print(config)
+            self.client = multiprocessing.Process(
+                target=create_async_and_start_client, args=(config,)
+            )
+            self.client.start()
+            self.startbutton.configure(text="Stop")
+        else:
+            self.client.terminate()
+            self.client = None
+            self.startbutton.configure(text="Start")
 
     def start_server(self):
         self.server = multiprocessing.Process(target=server_main)
         self.server.start()
-        
 
     def open_web(self):
         config = self.general_config.get_config()

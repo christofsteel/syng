@@ -26,6 +26,6 @@ def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
     configured_sources = {}
     for source, config in configs.items():
         if source in available_sources:
-            if config["enabled"]:
+            if "enabled" in config and config["enabled"]:
                 configured_sources[source] = available_sources[source](config)
     return configured_sources
