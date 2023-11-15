@@ -1,8 +1,10 @@
 import asyncio
+from collections.abc import Callable
 from datetime import datetime, date, time
 import os
 import builtins
 from functools import partial
+from typing import Any, Optional
 import webbrowser
 import PIL
 from yaml import load, Loader
@@ -11,7 +13,7 @@ import customtkinter
 import qrcode
 import secrets
 import string
-from tkinter import PhotoImage, filedialog
+from tkinter import PhotoImage, Tk, filedialog
 from tkcalendar import Calendar
 from tktimepicker import SpinTimePickerOld, AnalogPicker, AnalogThemes
 from tktimepicker import constants
@@ -23,7 +25,11 @@ from .server import main as server_main
 
 
 class DateAndTimePickerWindow(customtkinter.CTkToplevel):
-    def __init__(self, parent, input_field):
+    def __init__(
+        self,
+        parent: customtkinter.CTkFrame | customtkinter.CTkScrollableFrame,
+        input_field: customtkinter.CTkTextbox,
+    ) -> None:
         super().__init__(parent)
 
         try:
@@ -56,7 +62,7 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
         )
         button.pack(expand=True, fill="x")
 
-    def insert(self, input_field: customtkinter.CTkTextbox):
+    def insert(self, input_field: customtkinter.CTkTextbox) -> None:
         input_field.delete("0.0", "end")
         selected_date = self.calendar.selection_get()
         if not isinstance(selected_date, date):
@@ -73,12 +79,12 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
 
 
 class OptionFrame(customtkinter.CTkScrollableFrame):
-    def add_option_label(self, text):
+    def add_option_label(self, text: str) -> None:
         customtkinter.CTkLabel(self, text=text, justify="left").grid(
             column=0, row=self.number_of_options, padx=5, pady=5, sticky="ne"
         )
 
-    def add_bool_option(self, name, description, value=False):
+    def add_bool_option(self, name: str, description: str, value: bool = False) -> None:
         self.add_option_label(description)
         self.bool_options[name] = customtkinter.CTkCheckBox(
             self,
@@ -93,7 +99,13 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self.bool_options[name].grid(column=1, row=self.number_of_options, sticky="EW")
         self.number_of_options += 1
 
-    def add_string_option(self, name, description, value="", callback=None):
+    def add_string_option(
+        self,
+        name: str,
+        description: str,
+        value: str = "",
+        callback: Optional[Callable[..., None]] = None,
+    ):
         self.add_option_label(description)
         if value is None:
             value = ""
@@ -110,11 +122,22 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
             self.string_options[name].bind("<ButtonRelease>", callback)
         self.number_of_options += 1
 
-    def del_list_element(self, name, element, frame):
+    def del_list_element(
+        self,
+        name: str,
+        element: customtkinter.CTkTextbox,
+        frame: customtkinter.CTkFrame,
+    ) -> None:
         self.list_options[name].remove(element)
         frame.destroy()
 
-    def add_list_element(self, name, frame, init, callback):
+    def add_list_element(
+        self,
+        name: str,
+        frame: customtkinter.CTkFrame,
+        init: str,
+        callback: Optional[Callable[..., None]],
+    ) -> None:
         input_and_minus = customtkinter.CTkFrame(frame)
         input_and_minus.pack(side="top", fill="x", expand=True)
         input_field = customtkinter.CTkTextbox(input_and_minus, wrap="none", height=1)
@@ -133,7 +156,13 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         minus_button.pack(side="right")
         self.list_options[name].append(input_field)
 
-    def add_list_option(self, name, description, value=[], callback=None):
+    def add_list_option(
+        self,
+        name: str,
+        description: str,
+        value: list[str] = [],
+        callback: Optional[Callable[..., None]] = None,
+    ) -> None:
         self.add_option_label(description)
 
         frame = customtkinter.CTkFrame(self)
@@ -151,7 +180,9 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
 
         self.number_of_options += 1
 
-    def add_choose_option(self, name, description, values, value=""):
+    def add_choose_option(
+        self, name: str, description: str, values: list[str], value: str = ""
+    ) -> None:
         self.add_option_label(description)
         self.choose_options[name] = customtkinter.CTkOptionMenu(self, values=values)
         self.choose_options[name].grid(
@@ -160,7 +191,9 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self.choose_options[name].set(value)
         self.number_of_options += 1
 
-    def open_date_and_time_picker(self, name, input_field):
+    def open_date_and_time_picker(
+        self, name: str, input_field: customtkinter.CTkTextbox
+    ) -> None:
         if (
             name not in self.date_and_time_pickers
             or not self.date_and_time_pickers[name].winfo_exists()
@@ -171,7 +204,7 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         else:
             self.date_and_time_pickers[name].focus()
 
-    def add_date_time_option(self, name, description, value):
+    def add_date_time_option(self, name: str, description: str, value: str) -> None:
         self.add_option_label(description)
         self.date_time_options[name] = None
         input_and_button = customtkinter.CTkFrame(self)
@@ -193,7 +226,7 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         button.pack(side="right")
         self.number_of_options += 1
 
-    def __init__(self, parent):
+    def __init__(self, parent: customtkinter.CTkFrame) -> None:
         super().__init__(parent)
         self.columnconfigure((1,), weight=1)
         self.number_of_options = 0
@@ -204,7 +237,7 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self.date_time_options = {}
         self.date_and_time_pickers = {}
 
-    def get_config(self):
+    def get_config(self) -> dict[str, Any]:
         config = {}
         for name, textbox in self.string_options.items():
             config[name] = textbox.get("0.0", "end").strip()
@@ -224,19 +257,9 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
 
 
 class SourceTab(OptionFrame):
-    def updateStrVar(self, var: str, element: customtkinter.CTkTextbox, event):
-        value = element.get("0.0", "end").strip()
-        self.vars[var] = value
-
-    def updateBoolVar(self, var: str, element: customtkinter.CTkCheckBox, event):
-        value = True if element.get() == 1 else False
-        self.vars[var] = value
-
-    def updateListVar(self, var: str, element: customtkinter.CTkTextbox, event):
-        value = [v.strip() for v in element.get("0.0", "end").strip().split(",")]
-        self.vars[var] = value
-
-    def __init__(self, parent, source_name, config):
+    def __init__(
+        self, parent: customtkinter.CTkFrame, source_name: str, config: dict[str, Any]
+    ) -> None:
         super().__init__(parent)
         source = available_sources[source_name]
         self.vars: dict[str, str | bool | list[str]] = {}
@@ -252,7 +275,12 @@ class SourceTab(OptionFrame):
 
 
 class GeneralConfig(OptionFrame):
-    def __init__(self, parent, config, callback):
+    def __init__(
+        self,
+        parent: customtkinter.CTkFrame,
+        config: dict[str, Any],
+        callback: Callable[..., None],
+    ) -> None:
         super().__init__(parent)
 
         self.add_string_option("server", "Server", config["server"], callback)
@@ -264,15 +292,12 @@ class GeneralConfig(OptionFrame):
             ["forced", "optional", "none"],
             str(config["waiting_room_policy"]).lower(),
         )
-        # self.add_string_option(
-        #     "last_song", "Time of last song\nin ISO-8601", config["last_song"]
-        # )
         self.add_date_time_option("last_song", "Time of last song", config["last_song"])
         self.add_string_option(
             "preview_duration", "Preview Duration", config["preview_duration"]
         )
 
-    def get_config(self):
+    def get_config(self) -> dict[str, Any]:
         config = super().get_config()
         try:
             config["preview_duration"] = int(config["preview_duration"])
@@ -283,10 +308,10 @@ class GeneralConfig(OptionFrame):
 
 
 class SyngGui(customtkinter.CTk):
-    def loadConfig(self):
+    def loadConfig(self) -> None:
         filedialog.askopenfilename()
 
-    def on_close(self):
+    def on_close(self) -> None:
         if self.server is not None:
             self.server.kill()
 
@@ -296,7 +321,7 @@ class SyngGui(customtkinter.CTk):
         self.withdraw()
         self.destroy()
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(className="Syng")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -385,7 +410,7 @@ class SyngGui(customtkinter.CTk):
 
         self.updateQr()
 
-    def start_client(self):
+    def start_client(self) -> None:
         if self.client is None:
             sources = {}
             for source, tab in self.tabs.items():
@@ -404,18 +429,18 @@ class SyngGui(customtkinter.CTk):
             self.client = None
             self.startbutton.configure(text="Start")
 
-    def start_server(self):
+    def start_server(self) -> None:
         self.server = multiprocessing.Process(target=server_main)
         self.server.start()
 
-    def open_web(self):
+    def open_web(self) -> None:
         config = self.general_config.get_config()
         server = config["server"]
         server += "" if server.endswith("/") else "/"
         room = config["room"]
         webbrowser.open(server + room)
 
-    def changeQr(self, data: str):
+    def changeQr(self, data: str) -> None:
         qr = qrcode.QRCode(box_size=20, border=2)
         qr.add_data(data)
         qr.make()
@@ -424,7 +449,7 @@ class SyngGui(customtkinter.CTk):
         tkQrcode = customtkinter.CTkImage(light_image=image, size=(280, 280))
         self.qrlabel.configure(image=tkQrcode)
 
-    def updateQr(self, _evt=None):
+    def updateQr(self, _evt: None = None) -> None:
         config = self.general_config.get_config()
         server = config["server"]
         server += "" if server.endswith("/") else "/"
@@ -433,7 +458,7 @@ class SyngGui(customtkinter.CTk):
         self.changeQr(server + room)
 
 
-def main():
+def main() -> None:
     SyngGui().mainloop()
 
 
