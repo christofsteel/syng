@@ -25,12 +25,30 @@ from .server import main as server_main
 class DateAndTimePickerWindow(customtkinter.CTkToplevel):
     def __init__(self, parent, input_field):
         super().__init__(parent)
+
+        try:
+            iso_string = input_field.get("0.0", "end").strip()
+            selected = datetime.fromisoformat(iso_string)
+        except ValueError:
+            selected = datetime.now()
+
         self.calendar = Calendar(self)
-        self.calendar.pack(expand=True, fill="both")
-        self.timepicker = AnalogPicker(self, type=constants.HOURS12)
+        self.calendar.pack(
+            expand=True,
+            fill="both",
+        )
+        self.timepicker = AnalogPicker(
+            self,
+            type=constants.HOURS12,
+            period=constants.AM if selected.hour < 12 else constants.PM,
+        )
         theme = AnalogThemes(self.timepicker)
         theme.setDracula()
-        # self.timepicker.addAll(constants.HOURS24)
+
+        self.calendar.selection_set(selected)
+        self.timepicker.setHours(selected.hour % 12)
+        self.timepicker.setMinutes(selected.minute)
+
         self.timepicker.pack(expand=True, fill="both")
 
         button = customtkinter.CTkButton(
@@ -41,12 +59,12 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
     def insert(self, input_field: customtkinter.CTkTextbox):
         input_field.delete("0.0", "end")
         selected_date = self.calendar.selection_get()
-        print(type(selected_date))
         if not isinstance(selected_date, date):
             return
         hours, minutes, ampm = self.timepicker.time()
+        hours = hours % 12
         if ampm == "PM":
-            hours = (hours + 12) % 24
+            hours = hours + 12
 
         selected_datetime = datetime.combine(selected_date, time(hours, minutes))
         input_field.insert("0.0", selected_datetime.isoformat())
@@ -376,7 +394,6 @@ class SyngGui(customtkinter.CTk):
             general_config = self.general_config.get_config()
 
             config = {"sources": sources, "config": general_config}
-            # print(config)
             self.client = multiprocessing.Process(
                 target=create_async_and_start_client, args=(config,)
             )
