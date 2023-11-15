@@ -322,10 +322,10 @@ class SyngGui(customtkinter.CTk):
         )
         self.startbutton.pack(side="right")
 
-        startserverbutton = customtkinter.CTkButton(
-            fileframe, text="Start Server", command=self.start_server
-        )
-        startserverbutton.pack(side="right")
+        # startserverbutton = customtkinter.CTkButton(
+        #     fileframe, text="Start Server", command=self.start_server
+        # )
+        # startserverbutton.pack(side="right")
 
         open_web_button = customtkinter.CTkButton(
             fileframe, text="Open Web", command=self.open_web

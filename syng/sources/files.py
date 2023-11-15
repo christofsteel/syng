@@ -18,7 +18,8 @@ class FilesSource(FileBasedSource):
 
     source_name = "files"
     config_schema = FileBasedSource.config_schema | {
-        "dir": (str, "Directory to index", ".")
+        "dir": (str, "Directory to index", "."),
+        "index_file": (str, "Index file", "files-index"),
     }
 
     def __init__(self, config: dict[str, Any]):

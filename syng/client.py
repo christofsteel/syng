@@ -48,6 +48,7 @@ from typing import Optional
 import qrcode
 
 import socketio
+import engineio
 from PIL import Image
 
 from . import jsonencoder
@@ -375,8 +376,11 @@ async def handle_request_config(data: dict[str, Any]) -> None:
             await sio.emit("config", {"source": data["source"], "config": config})
 
 
-def terminate(*args):
-    print("OOPS")
+def signal_handler():
+    engineio.async_client.async_signal_handler()
+    if state.current_source is not None:
+        if state.current_source.player is not None:
+            state.current_source.player.kill()
 
 
 async def start_client(config: dict[str, Any]) -> None:
@@ -408,8 +412,18 @@ async def start_client(config: dict[str, Any]) -> None:
         state.config["key"] = ""
 
     await sio.connect(state.config["server"])
-    await sio.wait()
-    print("exit")
+
+    asyncio.get_event_loop().add_signal_handler(signal.SIGINT, signal_handler)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, signal_handler)
+
+    try:
+        await sio.wait()
+    except asyncio.CancelledError:
+        pass
+    finally:
+        if state.current_source is not None:
+            if state.current_source.player is not None:
+                state.current_source.player.kill()
 
 
 def create_async_and_start_client(config):
