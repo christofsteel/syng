@@ -50,12 +50,23 @@ class YoutubeSource(Source):
           ``yt-dlp``. Default is False.
     """
 
+    source_name = "youtube"
+    config_schema = Source.config_schema | {
+        "channels": (list, "A list channels\nto search in", []),
+        "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
+        "max_res": (int, "Maximum resolution\nto download", 720),
+        "start_streaming": (
+            bool,
+            "Start streaming if\ndownload is not complete",
+            False,
+        ),
+    }
+
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self, config: dict[str, Any]):
         """Create the source."""
         super().__init__(config)
-        self.source_name = "youtube"
 
         self.innertube_client: innertube.InnerTube = innertube.InnerTube(client="WEB")
         self.channels: list[str] = config["channels"] if "channels" in config else []

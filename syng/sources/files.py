@@ -1,39 +1,42 @@
 """Module for the files Source."""
 import asyncio
 import os
-from typing import Any
+from typing import Any, Optional
 from typing import Tuple
-
-import mutagen
 
 from ..entry import Entry
 from .source import available_sources
-from .source import Source
+from .filebased import FileBasedSource
 
 
-class FilesSource(Source):
+class FilesSource(FileBasedSource):
     """A source for indexing and playing songs from a local folder.
 
     Config options are:
-        -``dir``, dirctory to index and server from.
+        -``dir``, dirctory to index and serve from.
     """
+
+    source_name = "files"
+    config_schema = FileBasedSource.config_schema | {
+        "dir": (str, "Directory to index", "."),
+        "index_file": (str, "Index file", "files-index"),
+    }
 
     def __init__(self, config: dict[str, Any]):
         """Initialize the file module."""
         super().__init__(config)
-        self.source_name = "files"
 
         self.dir = config["dir"] if "dir" in config else "."
         self.extra_mpv_arguments = ["--scale=oversample"]
 
     async def get_file_list(self) -> list[str]:
-        """Collect all ``cdg`` files in ``dir``."""
+        """Collect all files in ``dir``, that have the correct filename extension"""
 
         def _get_file_list() -> list[str]:
             file_list = []
             for path, _, files in os.walk(self.dir):
                 for file in files:
-                    if file.endswith(".cdg"):
+                    if self.has_correct_extension(file):
                         file_list.append(os.path.join(path, file)[len(self.dir) :])
             return file_list
 
@@ -41,35 +44,27 @@ class FilesSource(Source):
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """
-        Return the duration for the mp3 file.
+        Return the duration for the entry file.
 
-        :param entry: The entry with the associated mp3 file
+        :param entry: An entry
         :type entry: Entry
         :return: A dictionary containing the duration in seconds in the
           ``duration`` key.
         :rtype: dict[str, Any]
         """
 
-        def mutagen_wrapped(file: str) -> int:
-            meta_infos = mutagen.File(file).info
-            return int(meta_infos.length)
+        duration = await self.get_duration(os.path.join(self.dir, entry.ident))
 
-        audio_file_name: str = os.path.join(self.dir, entry.ident[:-3] + "mp3")
+        return {"duration": duration}
 
-        duration = await asyncio.to_thread(mutagen_wrapped, audio_file_name)
-
-        return {"duration": int(duration)}
-
-    async def do_buffer(self, entry: Entry) -> Tuple[str, str]:
+    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
         No buffering needs to be done, since the files are already on disk.
 
-        We just return the cdg file name and the inferred mp3 file name
+        We just return the file names.
         """
-        video_file_name: str = os.path.join(self.dir, entry.ident)
-        audio_file_name: str = os.path.join(self.dir, entry.ident[:-3] + "mp3")
 
-        return video_file_name, audio_file_name
+        return self.get_video_audio_split(os.path.join(self.dir, entry.ident))
 
 
 available_sources["files"] = FilesSource
