@@ -1,10 +1,12 @@
 image: python:3-alpine
 
+variables:
+    MYPYPATH: "stubs/"
+
 mypy:
     stage: test
     script:
-        - pip install mypy --quiet        
-        - mypy --install-types
+        - pip install mypy types-Pillow types-PyYAML --quiet
         - mypy syng --strict
 
 ruff:

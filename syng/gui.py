@@ -24,7 +24,7 @@ from .sources import available_sources
 from .server import main as server_main
 
 
-class DateAndTimePickerWindow(customtkinter.CTkToplevel):
+class DateAndTimePickerWindow(customtkinter.CTkToplevel):  # type: ignore
     def __init__(
         self,
         parent: customtkinter.CTkFrame | customtkinter.CTkScrollableFrame,
@@ -76,7 +76,7 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
         self.destroy()
 
 
-class OptionFrame(customtkinter.CTkScrollableFrame):
+class OptionFrame(customtkinter.CTkScrollableFrame):  # type:ignore
     def add_option_label(self, text: str) -> None:
         customtkinter.CTkLabel(self, text=text, justify="left").grid(
             column=0, row=self.number_of_options, padx=5, pady=5, sticky="ne"
@@ -296,7 +296,7 @@ class GeneralConfig(OptionFrame):
         return config
 
 
-class SyngGui(customtkinter.CTk):
+class SyngGui(customtkinter.CTk):  # type:ignore
     def on_close(self) -> None:
         if self.syng_server is not None:
             self.syng_server.kill()
