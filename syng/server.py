@@ -125,6 +125,9 @@ class State:
     :type sid: str
     :param client: The config for the playback client
     :type client: Client
+    :param last_seen: Timestamp of the last connected client. Used to determine
+        if a room is still in use.
+    :type last_seen: datetime
     """
 
     queue: Queue
@@ -156,7 +159,6 @@ async def send_state(state: State, sid: str) -> None:
     """
 
     safe_config = {k: v for k, v in state.client.config.items() if k not in ["secret", "key"]}
-    print(safe_config)
 
     await sio.emit(
         "state",
@@ -1085,10 +1087,12 @@ def main() -> None:
 
     :rtype: None
     """
+
+    root_path = os.path.join(os.path.dirname(__file__), "static")
     parser = ArgumentParser()
     parser.add_argument("--host", "-H", default="localhost")
     parser.add_argument("--port", "-p", type=int, default=8080)
-    parser.add_argument("--root-folder", "-r", default="syng/static/")
+    parser.add_argument("--root-folder", "-r", default=root_path)
     parser.add_argument("--registration-keyfile", "-k", default=None)
     args = parser.parse_args()
 

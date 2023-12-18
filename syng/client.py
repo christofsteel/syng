@@ -4,17 +4,15 @@ Module for the playback client.
 Excerp from the help::
 
     usage: client.py [-h] [--room ROOM] [--secret SECRET] \
-            [--config-file CONFIG_FILE] server
-
-    positional arguments:
-      server
+            [--config-file CONFIG_FILE] [--server server]
 
     options:
       -h, --help            show this help message and exit
-      --room ROOM, -r ROOM
+      --room ROOM, -r ROOM 
       --secret SECRET, -s SECRET
       --config-file CONFIG_FILE, -C CONFIG_FILE
       --key KEY, -k KEY
+      --server
 
 The config file should be a yaml file in the following style::
 
@@ -25,11 +23,18 @@ The config file should be a yaml file in the following style::
           configuration for SOURCE
         ...
       config:
-        configuration for the client
+        server: ...
+        room: ...
+        preview_duration: ...
+        secret: ...
+        last_song: ...
+        waiting_room_policy: ..
+
 """
 import asyncio
 import datetime
 import logging
+import os
 import secrets
 import string
 import tempfile
@@ -39,6 +44,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from traceback import print_exc
 from typing import Any, Optional
+import platformdirs
 
 import qrcode
 
@@ -425,14 +431,21 @@ def main() -> None:
 
     parser.add_argument("--room", "-r")
     parser.add_argument("--secret", "-s")
-    parser.add_argument("--config-file", "-C", default="syng-client.yaml")
+    parser.add_argument(
+        "--config-file",
+        "-C",
+        default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
+    )
     parser.add_argument("--key", "-k", default=None)
     parser.add_argument("--server", "-S")
 
     args = parser.parse_args()
 
-    with open(args.config_file, encoding="utf8") as file:
-        config = load(file, Loader=Loader)
+    try:
+        with open(args.config_file, encoding="utf8") as file:
+            config = load(file, Loader=Loader)
+    except FileNotFoundError:
+        config = {}
 
     if "config" not in config:
         config["config"] = {}

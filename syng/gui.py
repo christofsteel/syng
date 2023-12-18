@@ -300,9 +300,11 @@ class SyngGui(customtkinter.CTk):  # type:ignore
     def on_close(self) -> None:
         if self.syng_server is not None:
             self.syng_server.kill()
+            self.syng_server.join()
 
         if self.syng_client is not None:
-            self.syng_client.kill()
+            self.syng_client.terminate()
+            self.syng_client.join()
 
         self.withdraw()
         self.destroy()
@@ -422,6 +424,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
             self.startbutton.configure(text="Stop")
         else:
             self.syng_client.terminate()
+            self.syng_client.join()
             self.syng_client = None
             self.startbutton.configure(text="Save and Start")
 
