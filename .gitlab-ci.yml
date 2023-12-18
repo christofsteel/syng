@@ -4,6 +4,7 @@ mypy:
     stage: test
     script:
         - pip install mypy --quiet        
+        - mypy --install-types
         - mypy syng --strict
 
 ruff:
