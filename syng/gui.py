@@ -1,4 +1,4 @@
-import asyncio
+from multiprocessing import Process
 from collections.abc import Callable
 from datetime import datetime, date, time
 import os
@@ -6,19 +6,19 @@ import builtins
 from functools import partial
 from typing import Any, Optional
 import webbrowser
-import PIL
-from yaml import load, Loader
 import multiprocessing
-import customtkinter
-import qrcode
 import secrets
 import string
-from tkinter import PhotoImage, Tk, filedialog
-from tkcalendar import Calendar
-from tktimepicker import SpinTimePickerOld, AnalogPicker, AnalogThemes
-from tktimepicker import constants
 
-from .client import create_async_and_start_client, default_config, start_client
+from PIL import ImageTk
+from yaml import dump, load, Loader, Dumper
+import customtkinter
+from qrcode import QRCode
+from tkcalendar import Calendar
+from tktimepicker import AnalogPicker, AnalogThemes, constants
+import platformdirs
+
+from .client import create_async_and_start_client, default_config
 
 from .sources import available_sources
 from .server import main as server_main
@@ -57,9 +57,7 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):
 
         self.timepicker.pack(expand=True, fill="both")
 
-        button = customtkinter.CTkButton(
-            self, text="Ok", command=partial(self.insert, input_field)
-        )
+        button = customtkinter.CTkButton(self, text="Ok", command=partial(self.insert, input_field))
         button.pack(expand=True, fill="x")
 
     def insert(self, input_field: customtkinter.CTkTextbox) -> None:
@@ -105,17 +103,13 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         description: str,
         value: str = "",
         callback: Optional[Callable[..., None]] = None,
-    ):
+    ) -> None:
         self.add_option_label(description)
         if value is None:
             value = ""
 
-        self.string_options[name] = customtkinter.CTkTextbox(
-            self, wrap="none", height=1
-        )
-        self.string_options[name].grid(
-            column=1, row=self.number_of_options, sticky="EW"
-        )
+        self.string_options[name] = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.string_options[name].grid(column=1, row=self.number_of_options, sticky="EW")
         self.string_options[name].insert("0.0", value)
         if callback is not None:
             self.string_options[name].bind("<KeyRelease>", callback)
@@ -160,7 +154,7 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
         self,
         name: str,
         description: str,
-        value: list[str] = [],
+        value: list[str],
         callback: Optional[Callable[..., None]] = None,
     ) -> None:
         self.add_option_label(description)
@@ -185,32 +179,26 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
     ) -> None:
         self.add_option_label(description)
         self.choose_options[name] = customtkinter.CTkOptionMenu(self, values=values)
-        self.choose_options[name].grid(
-            column=1, row=self.number_of_options, sticky="EW"
-        )
+        self.choose_options[name].grid(column=1, row=self.number_of_options, sticky="EW")
         self.choose_options[name].set(value)
         self.number_of_options += 1
 
-    def open_date_and_time_picker(
-        self, name: str, input_field: customtkinter.CTkTextbox
-    ) -> None:
+    def open_date_and_time_picker(self, name: str, input_field: customtkinter.CTkTextbox) -> None:
         if (
             name not in self.date_and_time_pickers
             or not self.date_and_time_pickers[name].winfo_exists()
         ):
-            self.date_and_time_pickers[name] = DateAndTimePickerWindow(
-                self, input_field
-            )
+            self.date_and_time_pickers[name] = DateAndTimePickerWindow(self, input_field)
         else:
             self.date_and_time_pickers[name].focus()
 
     def add_date_time_option(self, name: str, description: str, value: str) -> None:
         self.add_option_label(description)
-        self.date_time_options[name] = None
         input_and_button = customtkinter.CTkFrame(self)
         input_and_button.grid(column=1, row=self.number_of_options, sticky="EW")
         input_field = customtkinter.CTkTextbox(input_and_button, wrap="none", height=1)
         input_field.pack(side="left", fill="x", expand=True)
+        self.date_time_options[name] = input_field
         try:
             datetime.fromisoformat(value)
         except TypeError:
@@ -229,16 +217,16 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
     def __init__(self, parent: customtkinter.CTkFrame) -> None:
         super().__init__(parent)
         self.columnconfigure((1,), weight=1)
-        self.number_of_options = 0
-        self.string_options = {}
-        self.choose_options = {}
-        self.bool_options = {}
-        self.list_options = {}
-        self.date_time_options = {}
-        self.date_and_time_pickers = {}
+        self.number_of_options: int = 0
+        self.string_options: dict[str, customtkinter.CTkTextbox] = {}
+        self.choose_options: dict[str, customtkinter.CTkOptionMenu] = {}
+        self.bool_options: dict[str, customtkinter.CTkCheckBox] = {}
+        self.list_options: dict[str, list[customtkinter.CTkTextbox]] = {}
+        self.date_time_options: dict[str, customtkinter.CTkTextbox] = {}
+        self.date_and_time_pickers: dict[str, DateAndTimePickerWindow] = {}
 
     def get_config(self) -> dict[str, Any]:
-        config = {}
+        config: dict[str, Any] = {}
         for name, textbox in self.string_options.items():
             config[name] = textbox.get("0.0", "end").strip()
 
@@ -252,6 +240,9 @@ class OptionFrame(customtkinter.CTkScrollableFrame):
             config[name] = []
             for textbox in textboxes:
                 config[name].append(textbox.get("0.0", "end").strip())
+
+        for name, picker in self.date_time_options.items():
+            config[name] = picker.get("0.0", "end").strip()
 
         return config
 
@@ -293,9 +284,7 @@ class GeneralConfig(OptionFrame):
             str(config["waiting_room_policy"]).lower(),
         )
         self.add_date_time_option("last_song", "Time of last song", config["last_song"])
-        self.add_string_option(
-            "preview_duration", "Preview Duration", config["preview_duration"]
-        )
+        self.add_string_option("preview_duration", "Preview Duration", config["preview_duration"])
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
@@ -308,15 +297,12 @@ class GeneralConfig(OptionFrame):
 
 
 class SyngGui(customtkinter.CTk):
-    def loadConfig(self) -> None:
-        filedialog.askopenfilename()
-
     def on_close(self) -> None:
-        if self.server is not None:
-            self.server.kill()
+        if self.syng_server is not None:
+            self.syng_server.kill()
 
-        if self.client is not None:
-            self.client.kill()
+        if self.syng_client is not None:
+            self.syng_client.kill()
 
         self.withdraw()
         self.destroy()
@@ -326,21 +312,30 @@ class SyngGui(customtkinter.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         rel_path = os.path.dirname(__file__)
-        img = PIL.ImageTk.PhotoImage(file=os.path.join(rel_path, "static/syng.png"))
+        img = ImageTk.PhotoImage(file=os.path.join(rel_path, "static/syng.png"))
         self.wm_iconbitmap()
         self.iconphoto(False, img)
 
-        self.server = None
-        self.client = None
+        self.syng_server: Optional[Process] = None
+        self.syng_client: Optional[Process] = None
+
+        self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
         try:
-            with open("syng-client.yaml") as cfile:
+            with open(self.configfile, encoding="utf8") as cfile:
                 loaded_config = load(cfile, Loader=Loader)
         except FileNotFoundError:
+            print("No config found, using default values")
             loaded_config = {}
-        config = {"sources": {}, "config": default_config()}
-        if "config" in loaded_config:
+        config: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
+
+        try:
             config["config"] |= loaded_config["config"]
+        except (KeyError, TypeError):
+            print("Could not load config")
+
+        # if "config" in loaded_config:
+        #     config["config"] |= loaded_config["config"]
 
         if not config["config"]["secret"]:
             config["config"]["secret"] = "".join(
@@ -350,30 +345,26 @@ class SyngGui(customtkinter.CTk):
         self.wm_title("Syng")
 
         # Buttons
-        fileframe = customtkinter.CTkFrame(self)
-        fileframe.pack(side="bottom")
+        button_line = customtkinter.CTkFrame(self)
+        button_line.pack(side="bottom", fill="x")
 
-        loadbutton = customtkinter.CTkButton(
-            fileframe,
-            text="load",
-            command=self.loadConfig,
+        startsyng_serverbutton = customtkinter.CTkButton(
+            button_line, text="Start Local Server", command=self.start_syng_server
         )
-        loadbutton.pack(side="left")
+        startsyng_serverbutton.pack(side="left", expand=True, anchor="w", padx=10, pady=5)
 
-        self.startbutton = customtkinter.CTkButton(
-            fileframe, text="Start", command=self.start_client
-        )
-        self.startbutton.pack(side="right")
-
-        # startserverbutton = customtkinter.CTkButton(
-        #     fileframe, text="Start Server", command=self.start_server
-        # )
-        # startserverbutton.pack(side="right")
+        savebutton = customtkinter.CTkButton(button_line, text="Save", command=self.save_config)
+        savebutton.pack(side="left", padx=10, pady=5)
 
         open_web_button = customtkinter.CTkButton(
-            fileframe, text="Open Web", command=self.open_web
+            button_line, text="Open Web", command=self.open_web
         )
-        open_web_button.pack(side="left")
+        open_web_button.pack(side="left", pady=5)
+
+        self.startbutton = customtkinter.CTkButton(
+            button_line, text="Save and Start", command=self.start_syng_client
+        )
+        self.startbutton.pack(side="left", padx=10, pady=10)
 
         # Tabs and QR Code
         frm = customtkinter.CTkFrame(self)
@@ -391,7 +382,7 @@ class SyngGui(customtkinter.CTk):
         self.qrlabel.pack(side="left", anchor="n", padx=10, pady=10)
 
         self.general_config = GeneralConfig(
-            tabview.tab("General"), config["config"], self.updateQr
+            tabview.tab("General"), config["config"], self.update_qr
         )
         self.general_config.pack(ipadx=10, fill="both", expand=True)
 
@@ -400,62 +391,67 @@ class SyngGui(customtkinter.CTk):
         for source_name in available_sources:
             try:
                 source_config = loaded_config["sources"][source_name]
-            except KeyError:
+            except (KeyError, TypeError):
                 source_config = {}
 
-            self.tabs[source_name] = SourceTab(
-                tabview.tab(source_name), source_name, source_config
-            )
+            self.tabs[source_name] = SourceTab(tabview.tab(source_name), source_name, source_config)
             self.tabs[source_name].pack(ipadx=10, expand=True, fill="both")
 
-        self.updateQr()
+        self.update_qr()
 
-    def start_client(self) -> None:
-        if self.client is None:
-            sources = {}
-            for source, tab in self.tabs.items():
-                sources[source] = tab.get_config()
+    def save_config(self) -> None:
+        with open(self.configfile, "w", encoding="utf-8") as f:
+            dump(self.gather_config(), f, Dumper=Dumper)
 
-            general_config = self.general_config.get_config()
+    def gather_config(self) -> dict[str, Any]:
+        sources = {}
+        for source, tab in self.tabs.items():
+            sources[source] = tab.get_config()
 
-            config = {"sources": sources, "config": general_config}
-            self.client = multiprocessing.Process(
+        general_config = self.general_config.get_config()
+
+        return {"sources": sources, "config": general_config}
+
+    def start_syng_client(self) -> None:
+        if self.syng_client is None:
+            config = self.gather_config()
+            self.syng_client = multiprocessing.Process(
                 target=create_async_and_start_client, args=(config,)
             )
-            self.client.start()
+            self.syng_client.start()
             self.startbutton.configure(text="Stop")
         else:
-            self.client.terminate()
-            self.client = None
-            self.startbutton.configure(text="Start")
+            self.syng_client.terminate()
+            self.syng_client = None
+            self.startbutton.configure(text="Save and Start")
 
-    def start_server(self) -> None:
-        self.server = multiprocessing.Process(target=server_main)
-        self.server.start()
+    def start_syng_server(self) -> None:
+        self.syng_server = multiprocessing.Process(target=server_main)
+        self.syng_server.start()
 
     def open_web(self) -> None:
         config = self.general_config.get_config()
-        server = config["server"]
-        server += "" if server.endswith("/") else "/"
+        syng_server = config["server"]
+        syng_server += "" if syng_server.endswith("/") else "/"
         room = config["room"]
-        webbrowser.open(server + room)
+        webbrowser.open(syng_server + room)
 
-    def changeQr(self, data: str) -> None:
-        qr = qrcode.QRCode(box_size=20, border=2)
+    def change_qr(self, data: str) -> None:
+        qr = QRCode(box_size=20, border=2)
         qr.add_data(data)
         qr.make()
         qr.print_ascii()
         image = qr.make_image().convert("RGB")
-        tkQrcode = customtkinter.CTkImage(light_image=image, size=(280, 280))
-        self.qrlabel.configure(image=tkQrcode)
+        tk_qrcode = customtkinter.CTkImage(light_image=image, size=(280, 280))
+        self.qrlabel.configure(image=tk_qrcode)
 
-    def updateQr(self, _evt: None = None) -> None:
+    def update_qr(self, _evt: None = None) -> None:
         config = self.general_config.get_config()
-        server = config["server"]
-        server += "" if server.endswith("/") else "/"
+        syng_server = config["server"]
+        syng_server += "" if syng_server.endswith("/") else "/"
         room = config["room"]
-        print(server + room)
-        self.changeQr(server + room)
+        print(syng_server + room)
+        self.change_qr(syng_server + room)
 
 
 def main() -> None:

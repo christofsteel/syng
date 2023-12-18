@@ -16,19 +16,16 @@ Excerp from the help::
       --config-file CONFIG_FILE, -C CONFIG_FILE
       --key KEY, -k KEY
 
-The config file should be a json file in the following style::
+The config file should be a yaml file in the following style::
 
-    {
-      "sources": {
-        "SOURCE1": { configuration for SOURCE },
-        "SOURCE2": { configuration for SOURCE },
+      sources:
+        SOURCE1:  
+          configuration for SOURCE
+        SOURCE2: 
+          configuration for SOURCE
         ...
-        },
-      },
-      "config": {
+      config:
         configuration for the client
-      }
-    }
 """
 import asyncio
 import datetime
@@ -40,21 +37,19 @@ import signal
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from dataclasses import field
-from yaml import load, Loader
 from traceback import print_exc
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import qrcode
 
 import socketio
 import engineio
 from PIL import Image
+from yaml import load, Loader
 
 from . import jsonencoder
 from .entry import Entry
-from .sources import configure_sources
-from .sources import Source
+from .sources import configure_sources, Source
 
 
 sio: socketio.AsyncClient = socketio.AsyncClient(json=jsonencoder)
@@ -106,7 +101,7 @@ class State:
         * `last_song` (`Optional[datetime.datetime]`): A timestamp, defining the end of
             the queue.
         * `waiting_room_policy` (Optional[str]): One of:
-            - `force`, if a performer is already in the queue, they are put in the
+            - `forced`, if a performer is already in the queue, they are put in the
                        waiting room.
             - `optional`, if a performer is already in the queue, they have the option
                           to be put in the waiting room.
@@ -200,12 +195,8 @@ async def handle_connect() -> None:
         "queue": state.queue,
         "waiting_room": state.waiting_room,
         "recent": state.recent,
-        # "room": state.config["room"],
-        # "secret": state.config["secret"],
         "config": state.config,
     }
-    if state.config["key"]:
-        data["registration-key"] = state.config["key"]  # TODO: unify
     await sio.emit("register-client", data)
 
 
@@ -357,9 +348,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
     :rtype: None
     """
     if data["source"] in sources:
-        config: dict[str, Any] | list[dict[str, Any]] = await sources[
-            data["source"]
-        ].get_config()
+        config: dict[str, Any] | list[dict[str, Any]] = await sources[data["source"]].get_config()
         if isinstance(config, list):
             num_chunks: int = len(config)
             for current, chunk in enumerate(config):
@@ -376,7 +365,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
             await sio.emit("config", {"source": data["source"], "config": config})
 
 
-def signal_handler():
+def signal_handler() -> None:
     engineio.async_client.async_signal_handler()
     if state.current_source is not None:
         if state.current_source.player is not None:
@@ -426,7 +415,7 @@ async def start_client(config: dict[str, Any]) -> None:
                 state.current_source.player.kill()
 
 
-def create_async_and_start_client(config):
+def create_async_and_start_client(config: dict[str, Any]) -> None:
     asyncio.run(start_client(config))
 
 

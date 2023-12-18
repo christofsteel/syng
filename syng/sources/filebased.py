@@ -66,7 +66,8 @@ class FileBasedSource(Source):
             info: str | MediaInfo = MediaInfo.parse(file)
             if isinstance(info, str):
                 return 180
-            return info.audio_tracks[0].to_data()["duration"] // 1000
+            duration: int = info.audio_tracks[0].to_data()["duration"]
+            return duration // 1000
 
         video_path, audio_path = self.get_video_audio_split(path)
 

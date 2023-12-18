@@ -120,9 +120,7 @@ class Source(ABC):
           source for documentation.
         :type config: dict[str, Any]
         """
-        self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(
-            DLFilesEntry
-        )
+        self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
         self.player: Optional[asyncio.subprocess.Process] = None
         self._index: list[str] = config["index"] if "index" in config else []
@@ -145,9 +143,7 @@ class Source(ABC):
         :returns: An async reference to the process
         :rtype: asyncio.subprocess.Process
         """
-        args = ["--fullscreen", *options, video] + (
-            [f"--audio-file={audio}"] if audio else []
-        )
+        args = ["--fullscreen", *options, video] + ([f"--audio-file={audio}"] if audio else [])
 
         print(f"File is {video=} and {audio=}")
 
@@ -231,7 +227,6 @@ class Source(ABC):
         :returns: A Tuple of the locations for the video and the audio file.
         :rtype: Tuple[str, Optional[str]]
         """
-        ...
 
     async def buffer(self, entry: Entry) -> None:
         """
@@ -407,7 +402,6 @@ class Source(ABC):
         :return: The part of the config, that should be sended to the server.
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
-        print("xzy")
         if not self._index:
             self._index = []
             print(f"{self.source_name}: generating index")

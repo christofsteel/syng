@@ -107,7 +107,7 @@ class S3Source(FileBasedSource):
 
         await self.ensure_playable(entry)
 
-        file_name: Optional[str] = self.downloaded_files[entry.ident].video
+        file_name: str = self.downloaded_files[entry.ident].video
 
         duration = await self.get_duration(file_name)
 
