@@ -397,6 +397,7 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
                         "performer": old_entry.performer,
                     },
                 },
+                room=sid,
             )
             return
 
