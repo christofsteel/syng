@@ -5,18 +5,18 @@ Adds it to the ``available_sources`` with the name ``s3``
 """
 import asyncio
 import os
-from json import load
-from json import dump
-from typing import Any
-from typing import cast
-from typing import Optional
-from typing import Tuple
+from json import dump, load
+from typing import Any, Optional, Tuple, cast
 
-from minio import Minio
+try:
+    from minio import Minio
 
-from .filebased import FileBasedSource
+    MINIO_AVAILABE = True
+except ImportError:
+    MINIO_AVAILABE = False
 
 from ..entry import Entry
+from .filebased import FileBasedSource
 from .source import available_sources
 
 
@@ -48,7 +48,12 @@ class S3Source(FileBasedSource):
         """Create the source."""
         super().__init__(config)
 
-        if "endpoint" in config and "access_key" in config and "secret_key" in config:
+        if (
+            MINIO_AVAILABE
+            and "endpoint" in config
+            and "access_key" in config
+            and "secret_key" in config
+        ):
             self.minio: Minio = Minio(
                 config["endpoint"],
                 access_key=config["access_key"],
@@ -56,13 +61,9 @@ class S3Source(FileBasedSource):
                 secure=(config["secure"] if "secure" in config else True),
             )
             self.bucket: str = config["bucket"]
-            self.tmp_dir: str = (
-                config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
-            )
+            self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
 
-        self.index_file: Optional[str] = (
-            config["index_file"] if "index_file" in config else None
-        )
+        self.index_file: Optional[str] = config["index_file"] if "index_file" in config else None
         self.extra_mpv_arguments = ["--scale=oversample"]
 
     async def get_file_list(self) -> list[str]:
@@ -131,18 +132,14 @@ class S3Source(FileBasedSource):
         video_dl_path: str = os.path.join(self.tmp_dir, video_path)
         os.makedirs(os.path.dirname(video_dl_path), exist_ok=True)
         video_dl_task: asyncio.Task[Any] = asyncio.create_task(
-            asyncio.to_thread(
-                self.minio.fget_object, self.bucket, entry.ident, video_dl_path
-            )
+            asyncio.to_thread(self.minio.fget_object, self.bucket, entry.ident, video_dl_path)
         )
 
         if audio_path is not None:
             audio_dl_path: Optional[str] = os.path.join(self.tmp_dir, audio_path)
 
             audio_dl_task: asyncio.Task[Any] = asyncio.create_task(
-                asyncio.to_thread(
-                    self.minio.fget_object, self.bucket, audio_path, audio_dl_path
-                )
+                asyncio.to_thread(self.minio.fget_object, self.bucket, audio_path, audio_dl_path)
             )
         else:
             audio_dl_path = None

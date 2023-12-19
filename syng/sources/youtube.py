@@ -6,32 +6,31 @@ used.
 
 Adds it to the ``available_sources`` with the name ``youtube``.
 """
+from __future__ import annotations
+
 import asyncio
 import shlex
 from functools import partial
-from typing import Any
-from typing import Optional
-from typing import Tuple
+from typing import Any, Optional, Tuple
 
-from pytube import Channel
-from pytube import innertube
-from pytube import Search
-from pytube import Stream
-from pytube import StreamQuery
-from pytube import YouTube
-from pytube import exceptions
+try:
+    from pytube import Channel, Search, YouTube, exceptions, innertube
+
+    PYTUBE_AVAILABLE = True
+except ImportError:
+    PYTUBE_AVAILABLE = False
 
 try:
     from yt_dlp import YoutubeDL
 
-    USE_YT_DLP = True
+    YT_DLP_AVAILABLE = True
 except ImportError:
-    USE_YT_DLP = False
+    print("No yt-dlp")
+    YT_DLP_AVAILABLE = False
 
 from ..entry import Entry
 from ..result import Result
-from .source import available_sources
-from .source import Source
+from .source import Source, available_sources
 
 
 class YoutubeSource(Source):
@@ -68,7 +67,8 @@ class YoutubeSource(Source):
         """Create the source."""
         super().__init__(config)
 
-        self.innertube_client: innertube.InnerTube = innertube.InnerTube(client="WEB")
+        if PYTUBE_AVAILABLE:
+            self.innertube_client: innertube.InnerTube = innertube.InnerTube(client="WEB")
         self.channels: list[str] = config["channels"] if "channels" in config else []
         self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
         self.max_res: int = config["max_res"] if "max_res" in config else 720
@@ -76,10 +76,9 @@ class YoutubeSource(Source):
             config["start_streaming"] if "start_streaming" in config else False
         )
         self.formatstring = (
-            f"bestvideo[height<={self.max_res}]+"
-            f"bestaudio/best[height<={self.max_res}]"
+            f"bestvideo[height<={self.max_res}]+" f"bestaudio/best[height<={self.max_res}]"
         )
-        if USE_YT_DLP:
+        if YT_DLP_AVAILABLE:
             self._yt_dlp = YoutubeDL(
                 params={
                     "paths": {"home": self.tmp_dir},
@@ -114,8 +113,7 @@ class YoutubeSource(Source):
             self.player = await self.play_mpv(
                 entry.ident,
                 None,
-                "--script-opts=ytdl_hook-ytdl_path=yt-dlp,"
-                "ytdl_hook-exclude='%.pls$'",
+                "--script-opts=ytdl_hook-ytdl_path=yt-dlp," "ytdl_hook-exclude='%.pls$'",
                 f"--ytdl-format={self.formatstring}",
                 "--fullscreen",
             )
@@ -139,6 +137,9 @@ class YoutubeSource(Source):
         """
 
         def _get_entry(performer: str, url: str) -> Optional[Entry]:
+            if not PYTUBE_AVAILABLE:
+                return None
+
             try:
                 yt_song = YouTube(url)
                 try:
@@ -190,15 +191,10 @@ class YoutubeSource(Source):
 
         results: list[YouTube] = []
         results_lists: list[list[YouTube]] = await asyncio.gather(
-            *[
-                asyncio.to_thread(self._channel_search, query, channel)
-                for channel in self.channels
-            ],
+            *[asyncio.to_thread(self._channel_search, query, channel) for channel in self.channels],
             asyncio.to_thread(self._yt_search, query),
         )
-        results = [
-            search_result for yt_result in results_lists for search_result in yt_result
-        ]
+        results = [search_result for yt_result in results_lists for search_result in yt_result]
 
         results.sort(key=partial(_contains_index, query))
 
@@ -242,11 +238,9 @@ class YoutubeSource(Source):
         results: dict[str, Any] = self.innertube_client._call_api(
             endpoint, self.innertube_client.base_params, data
         )
-        items: list[dict[str, Any]] = results["contents"][
-            "twoColumnBrowseResultsRenderer"
-        ]["tabs"][-1]["expandableTabRenderer"]["content"]["sectionListRenderer"][
-            "contents"
-        ]
+        items: list[dict[str, Any]] = results["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][
+            -1
+        ]["expandableTabRenderer"]["content"]["sectionListRenderer"]["contents"]
 
         list_of_videos: list[YouTube] = []
         for item in items:
@@ -257,16 +251,14 @@ class YoutubeSource(Source):
                 ):
                     yt_url: str = (
                         "https://youtube.com/watch?v="
-                        + item["itemSectionRenderer"]["contents"][0]["videoRenderer"][
-                            "videoId"
-                        ]
+                        + item["itemSectionRenderer"]["contents"][0]["videoRenderer"]["videoId"]
                     )
-                    author: str = item["itemSectionRenderer"]["contents"][0][
-                        "videoRenderer"
-                    ]["ownerText"]["runs"][0]["text"]
-                    title: str = item["itemSectionRenderer"]["contents"][0][
-                        "videoRenderer"
-                    ]["title"]["runs"][0]["text"]
+                    author: str = item["itemSectionRenderer"]["contents"][0]["videoRenderer"][
+                        "ownerText"
+                    ]["runs"][0]["text"]
+                    title: str = item["itemSectionRenderer"]["contents"][0]["videoRenderer"][
+                        "title"
+                    ]["runs"][0]["text"]
                     yt_song: YouTube = YouTube(yt_url)
                     yt_song.author = author
                     yt_song.title = title
@@ -276,9 +268,12 @@ class YoutubeSource(Source):
                 pass
         return list_of_videos
 
-    async def _buffer_with_yt_dlp(self, entry: Entry) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
-        Download the video using yt-dlp.
+        Download the video.
+
+        Downloads the highest quality stream respecting the ``max_res``.
+        For higher resolution videos (1080p and above).
 
         Yt-dlp automatically merges the audio and video, so only the video
         location exists, the return value for the audio part will always be
@@ -286,68 +281,12 @@ class YoutubeSource(Source):
 
         :param entry: The entry to download.
         :type entry: Entry
-        :return: The location of the video file and ```None```
+        :return: The location of the video file and ``None``.
         :rtype: Tuple[str, Optional[str]]
         """
         info = await asyncio.to_thread(self._yt_dlp.extract_info, entry.ident)
         combined_path = info["requested_downloads"][0]["filepath"]
         return combined_path, None
-
-    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
-        """
-        Download the video.
-
-        Downloads the highest quality stream respecting the ``max_res``.
-        For higher resolution videos (1080p and above), YouTube will give you
-        the video and audio seperatly. If that is the case, both will be
-        downloaded.
-
-        If yt-dlp is installed it will be used, otherwise pytube will be used.
-
-
-        :param entry: The entry to download.
-        :type entry: Entry
-        :return: The location of the video file and (if applicable) the
-          location of the audio file.
-        :rtype: Tuple[str, Optional[str]]
-        """
-        if USE_YT_DLP:
-            return await self._buffer_with_yt_dlp(entry)
-
-        yt_song: YouTube = YouTube(entry.ident)
-
-        streams: StreamQuery = await asyncio.to_thread(lambda: yt_song.streams)
-
-        video_streams: StreamQuery = streams.filter(
-            type="video",
-            custom_filter_functions=[lambda s: int(s.resolution[:-1]) <= self.max_res],
-        )
-        audio_streams: StreamQuery = streams.filter(only_audio=True)
-
-        best_video_stream: Stream = sorted(
-            video_streams,
-            key=lambda s: int(s.resolution[:-1]) + (1 if s.is_progressive else 0),
-        )[-1]
-        best_audio_stream: Stream = sorted(
-            audio_streams, key=lambda s: int(s.abr[:-4])
-        )[-1]
-
-        audio: Optional[str] = (
-            await asyncio.to_thread(
-                best_audio_stream.download,
-                output_path=self.tmp_dir,
-                filename_prefix="audio-",
-            )
-            if best_video_stream.is_adaptive
-            else None
-        )
-
-        video: str = await asyncio.to_thread(
-            best_video_stream.download,
-            output_path=self.tmp_dir,
-        )
-
-        return video, audio
 
 
 available_sources["youtube"] = YoutubeSource

@@ -21,7 +21,13 @@ import platformdirs
 from .client import create_async_and_start_client, default_config
 
 from .sources import available_sources
-from .server import main as server_main
+
+try:
+    from .server import main as server_main
+
+    SERVER_AVAILABLE = True
+except ImportError:
+    SERVER_AVAILABLE = False
 
 
 class DateAndTimePickerWindow(customtkinter.CTkToplevel):  # type: ignore
@@ -201,7 +207,7 @@ class OptionFrame(customtkinter.CTkScrollableFrame):  # type:ignore
         self.date_time_options[name] = input_field
         try:
             datetime.fromisoformat(value)
-        except TypeError:
+        except (TypeError, ValueError):
             value = ""
         input_field.insert("0.0", value)
 

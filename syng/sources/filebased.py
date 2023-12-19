@@ -3,7 +3,12 @@ import asyncio
 import os
 from typing import Any, Optional
 
-from pymediainfo import MediaInfo
+try:
+    from pymediainfo import MediaInfo
+
+    PYMEDIAINFO_AVAILABLE = True
+except ImportError:
+    PYMEDIAINFO_AVAILABLE = False
 
 from .source import Source
 
@@ -27,9 +32,7 @@ class FileBasedSource(Source):
         """Initialize the file module."""
         super().__init__(config)
 
-        self.extensions: list[str] = (
-            config["extensions"] if "extensions" in config else ["mp3+cdg"]
-        )
+        self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
         self.extra_mpv_arguments = ["--scale=oversample"]
 
     def has_correct_extension(self, path: str) -> bool:
@@ -40,29 +43,25 @@ class FileBasedSource(Source):
         :return: True iff path has correct extension.
         :rtype: bool
         """
-        return os.path.splitext(path)[1][1:] in [
-            ext.split("+")[-1] for ext in self.extensions
-        ]
+        return os.path.splitext(path)[1][1:] in [ext.split("+")[-1] for ext in self.extensions]
 
     def get_video_audio_split(self, path: str) -> tuple[str, Optional[str]]:
         extension_of_path = os.path.splitext(path)[1][1:]
         splitted_extensions = [ext.split("+") for ext in self.extensions if "+" in ext]
-        splitted_extensions_dict = {
-            video: audio for [audio, video] in splitted_extensions
-        }
+        splitted_extensions_dict = {video: audio for [audio, video] in splitted_extensions}
 
         if extension_of_path in splitted_extensions_dict:
             audio_path = (
-                os.path.splitext(path)[0]
-                + "."
-                + splitted_extensions_dict[extension_of_path]
+                os.path.splitext(path)[0] + "." + splitted_extensions_dict[extension_of_path]
             )
             return (path, audio_path)
         return (path, None)
 
     async def get_duration(self, path: str) -> int:
+        if not PYMEDIAINFO_AVAILABLE:
+            return 180
+
         def _get_duration(file: str) -> int:
-            print(file)
             info: str | MediaInfo = MediaInfo.parse(file)
             if isinstance(info, str):
                 return 180
