@@ -411,7 +411,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         self.update_qr()
 
     def save_config(self) -> None:
-        os.makedirs(os.path.dirname(self.configfile))
+        os.makedirs(os.path.dirname(self.configfile), exist_ok=True)
 
         with open(self.configfile, "w", encoding="utf-8") as f:
             dump(self.gather_config(), f, Dumper=Dumper)
