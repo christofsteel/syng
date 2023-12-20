@@ -364,10 +364,10 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         savebutton = customtkinter.CTkButton(button_line, text="Save", command=self.save_config)
         savebutton.pack(side="left", padx=10, pady=5)
 
-        open_web_button = customtkinter.CTkButton(
-            button_line, text="Open Web", command=self.open_web
-        )
-        open_web_button.pack(side="left", pady=5)
+        # open_web_button = customtkinter.CTkButton(
+        #     button_line, text="Open Web", command=self.open_web
+        # )
+        # open_web_button.pack(side="left", pady=5)
 
         self.startbutton = customtkinter.CTkButton(
             button_line, text="Save and Start", command=self.start_syng_client
@@ -387,7 +387,10 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         tabview.set("General")
 
         self.qrlabel = customtkinter.CTkLabel(frm, text="")
-        self.qrlabel.pack(side="left", anchor="n", padx=10, pady=10)
+        self.qrlabel.pack(side="top", anchor="n", padx=10, pady=10)
+        self.linklabel = customtkinter.CTkLabel(frm, text="")
+        self.linklabel.bind("<Button-1>", lambda _: self.open_web())
+        self.linklabel.pack()
 
         self.general_config = GeneralConfig(
             tabview.tab("General"), config["config"], self.update_qr
@@ -408,6 +411,8 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         self.update_qr()
 
     def save_config(self) -> None:
+        os.makedirs(os.path.dirname(self.configfile))
+
         with open(self.configfile, "w", encoding="utf-8") as f:
             dump(self.gather_config(), f, Dumper=Dumper)
 
@@ -422,6 +427,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
 
     def start_syng_client(self) -> None:
         if self.syng_client is None:
+            self.save_config()
             config = self.gather_config()
             self.syng_client = multiprocessing.Process(
                 target=create_async_and_start_client, args=(config,)
@@ -449,7 +455,6 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         qr = QRCode(box_size=20, border=2)
         qr.add_data(data)
         qr.make()
-        qr.print_ascii()
         image = qr.make_image().convert("RGB")
         tk_qrcode = customtkinter.CTkImage(light_image=image, size=(280, 280))
         self.qrlabel.configure(image=tk_qrcode)
@@ -459,7 +464,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         syng_server = config["server"]
         syng_server += "" if syng_server.endswith("/") else "/"
         room = config["room"]
-        print(syng_server + room)
+        self.linklabel.configure(text=syng_server + room)
         self.change_qr(syng_server + room)
 
 
