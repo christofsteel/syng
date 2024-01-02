@@ -17,6 +17,7 @@ Preliminaries
  - **Web client**: User facing part of the software. Used to search and add _entries_ to the _queue_. Has an admin view to manipulate the queue and the _waiting room_.
  - **Room**: One specific karaoke event, consisting of one _queue_, one _recents_, up to one _waiting room_, one _playback client_ and several _web clients_. It has an identifier and a _secret_, used to authenticate as an admin.
  - **Server**: Manages all _rooms_.
+ - **State**: The state of a _room_ consists of its _queue_, _waiting room_, _recents_ and the configuration values of the _playback client_
 
 We will use the abbreviations _P_, _W_, and _S_ when talking about the _playback client_, _web client_ and the _server_.
 
@@ -54,24 +55,77 @@ Workflow
 
 ### Connect P ↔ S
 
-When a playback client connects to a server, it can provide a room identifier and a room secret. 
+When a playback client connects (or reconnects) to a server, it can provide a room identifier and a room secret. 
 If none are given, the server will generate both and send them to the client.
 If the server does not know a room with that identifier, a new room is created with the given secret. 
-The client sends its initial configuration to the server (including an initial possible empty queue, waiting room and recent list), 
-and the configuration of each configured source.
+
 If the server has already registered a room with the given identifier, if the secret is the same, the connection to the new playback client is stored and the old connection is forgotten.
-The server-side config is updated with the values of the new client.
+
+In case of a reconnect, client and server agree on a state. First the client sends its state (meaning Queue, Waiting Room, Recents and configuration) to the server. 
+Configuration is merged and if Queue, Waiting Room and Recents are each non-empty, the respective value on the server-side is overwritten.
+Then the server returns its (possible) new Queue, Waiting Room and Recents to the Client.
+
 
 The following messages are exchanged during connection:
-
-  - **Direction:** P -> S, **Message**: `connect`, **Parameters** None
-    Socket.io connect
 
 | Communication | Message             | Params                                                                                    | Notes                                                                                                                                                                                                    |
 |---------------|---------------------|-------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | P → S         | `connect`           | --                                                                                        | Socket.io connect                                                                                                                                                                                        |
 | S → P         | `connect`           | --                                                                                        | Socket.io connect                                                                                                                                                                                        |
-| P → S         | `register-client`   | `{ queue: list[Entry], waiting_room: list[Entry], recents: list[Entry], config: Config }` | The playback client can push an initial queue, waiting_room and recents to the server.                                                                                                                                                                                                          |
-| S -> P        | `client-registered` | `{ success: bool, room: str }`                                                            | sucess is `true` if requested room is not in use or secrets match, otherwise `false`. The server confirms the room name, if it was requested in `register-client`, otherwise a new room name is returned |
-| S -> P        | `state`             | `{ queue: list[Entry], waiting_room: list[Entry], recents: list[Entry], config: Config}`  | The server returns 
+| P → S         | `register-client`   | `{ queue: list[Entry], waiting_room: list[Entry], recents: list[Entry], config: Config }` | The playback client can push an initial state to the server.    |                                                                                                                                                                                                      |
+| S -> P        | `client-registered` | `{ success: bool, room: str }`                                                            | success is `true` if requested room is not in use or secrets match, otherwise `false`. The server confirms the room name, if it was requested in `register-client`, otherwise a new room name is returned |
+| S -> P        | `state`             | `{ queue: list[Entry], waiting_room: list[Entry], recents: list[Entry], config: Config}`  | The server returns its updated state (without the secret) |
+| P -> S        | `sources`           | `{ sources: list[str] }`                                                                  | sources are the names of the configured sources, the server updates its list |
+| P -> S        | `get-first`         | -- | See playback workflow. This is only sent if no song is currently playing |
+| S -> P        | `request-config`    | `{ source: str, update: True }` | This messsage is sent for each newly added source |
+| P -> S        | `config-chunk`      | `{ source: str, config: dict[str, Any], number: int, total: int }` | Configuration for each configured source. Potentially uses cached values on the client side. Can optionally be sent in chunks, will be merged on the server side |
+| P -> S        | `request-resend-config` | `{ source: str }` | Cached values are should be updated before sending this message |
+| S -> P        | `request-config`    | `{ source: str, update: False }` | Old config on the server-side is discarded |
+| P -> S        | `config-chunk`      | see above |
+
+### Connect W <-> S
+
+When a web client connects to a server, it adds itself to a room.
+Optionally it can upgrade its connection to an admin connection, that allows manipulation messages for the queue and the waiting_room.
+
+| Communication | Message | Params | Returns | Notes |
+|---------------|---------|--------|---------|-------|
+| W -> S        | `connect` | -- | -- | Socket.io connect |
+| S -> W        | `connect` | -- | -- | Socket.io connect |
+| W -> S        | `register-web` | `{ room: str}` | bool | Connect to a room, server returns true if room exists |
+| S -> W        | `state` | `{ queue: list[Entry], waiting_room: list[Entry], recents: list[Entry], config: Config}` | -- | The server returns its initial state (without the secret) |
+| W -> S        | `register-admin` | `{ secret: str }` | bool | Optional, enables admin mode, if secret matches configured room secret |
+
+### Playback
+
+While the playback client handles the playback and is aware of the queue, the client must always explicitly request the next song from the server.
+
+| Communication | Message | Params | Notes |
+|---------------|---------|--------|-------|
+| P -> S        | `get-first` | -- | This blocks until an entry is added to the queue |
+| S -> P        | `play`      | Entry | A field `started_at` is added to the entries |
+| P -> S        | `pop-then-get-next` | -- | This should be sent after a song is completed |
+| S -> P,W      | `state` | see above | All web clients and the playback client are notified of the new state |
+| S -> P        | `play`  | see above | see above |
+
+### Search
+
+| Communication | Message | Params | Notes |
+|---------------|---------|--------|-------|
+| W -> S        | `search` | `{ query: str} ` | -- |
+| S -> W        | `search-results` | `{ results: list[Result]}` | A _Result_ is an entry only consiting of `ident`, `source`, `title`, `artist`, `album` |
+
+### Append
+
+When appending, the web client does not get direct feedback in the success case, but the server sends a `state` message after each change in state.
+
+| Communication | Message | Params | Notes |
+|---------------|---------|--------|-------|
+| W -> S        | `append` | `{ident: str, performer: str, source: str, uid: str}` | `ident` and `source` identify the song. `uid` is currently unused. |
+| S -> P,W      | `state` | see above | All web clients and the playback client are notified of the new state |
+| S -> W        | `msg`             | `{ msg: "Unable to append `ident`. Maybe try again?" }` | When something goes wrong |
+| S -> W        | `ask_for_waiting` | `{ current_entry: Entry, old_entry: Entry }` | Response if waitingroom is configured and already in queue |
+| W -> S        | `append-anyway` | `{ident: str, performer: str, source: str, uid: str}` | Append it anyway. Will be ignored, if `waiting_room_policy` is set to `forced` |
+| W -> S        | `waiting-room-append` | `{ident: str, performer: str, source: str, uid: str}` | Append to the waiting room |
+
 

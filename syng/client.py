@@ -369,7 +369,9 @@ async def handle_request_config(data: dict[str, Any]) -> None:
                     },
                 )
         else:
-            await sio.emit("config", {"source": source, "config": config})
+            await sio.emit(
+                "config-chunk", {"source": source, "config": config, "number": 1, "total": 1}
+            )
 
     if data["source"] in sources:
         await send_config(data["source"], False)
