@@ -454,8 +454,6 @@ async def handle_append_anyway(sid: str, data: dict[str, Any]) -> None:
 
     entry.uid = data["uid"] if "uid" in data else None
 
-    print(entry)
-
     await append_to_queue(room, entry, sid)
 
 
@@ -637,9 +635,10 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         - `config`, an dictionary of initial configurations
         - `queue`, a list of initial entries for the queue. The entries are
                     encoded as a dictionary.
+        - `waiting_room`, a list of initial entries for the waiting room. The
+                    entries are encoded as a dictionary.
         - `recent`, a list of initial entries for the recent list. The entries
                     are encoded as a dictionary.
-        - `secret`, the secret of the room
 
     This will register a new playback client to a specific room. If there
     already exists a playback client registered for this room, this
@@ -777,7 +776,7 @@ async def handle_sources(sid: str, data: dict[str, Any]) -> None:
     state.client.sources_prio = data["sources"]
 
     for name in new_sources:
-        await sio.emit("request-config", {"source": name}, room=sid)
+        await sio.emit("request-config", {"source": name, "update": True}, room=sid)
 
 
 @sio.on("config-chunk")
@@ -809,6 +808,32 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
         state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
     else:
         state.client.sources[data["source"]].add_to_config(data["config"])
+
+
+@sio.on("request-resend-config")
+async def handle_request_resend_config(sid: str, data: dict[str, Any]) -> None:
+    """
+    Handle the "request-resend-config" message.
+
+    Clears the config for a given source and requests a resend of the config
+    from the playback client.
+
+    :param sid: The session id of the playback client
+    :type sid: str
+    :param data: A dictionary with the "source" (str) entry
+    :rtype: None
+    """
+
+    async with sio.session(sid) as session:
+        room = session["room"]
+    state = clients[room]
+
+    if sid != state.sid:
+        return
+
+    state.client.sources[data["source"]] = available_sources[data["source"]]({})
+    print(f"Rerequesting {data['source']}")
+    await sio.emit("request-config", {"source": data["source"], "update": False}, sid)
 
 
 @sio.on("config")

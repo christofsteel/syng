@@ -145,7 +145,7 @@ class Source(ABC):
         """
         args = ["--fullscreen", *options, video] + ([f"--audio-file={audio}"] if audio else [])
 
-        print(f"File is {video=} and {audio=}")
+        # print(f"File is {video=} and {audio=}")
 
         mpv_process = asyncio.create_subprocess_exec(
             "mpv",
@@ -372,19 +372,21 @@ class Source(ABC):
         splitquery = shlex.split(query)
         return [element for element in data if contains_all_words(splitquery, element)]
 
-    async def get_file_list(self) -> list[str]:
+    async def get_file_list(self, update: bool = False) -> list[str]:
         """
         Gather a list of all files belonging to the source.
 
         This list will be send to the server. When the server searches, this
         list will be searched.
 
+        :param update: If true, regenerates caches
+        :type: bool
         :return: List of filenames belonging to the source
         :rtype: list[str]
         """
         return []
 
-    async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
+    async def get_config(self, update: bool = False) -> dict[str, Any] | list[dict[str, Any]]:
         """
         Return the part of the config, that should be send to the server.
 
@@ -399,14 +401,16 @@ class Source(ABC):
         But this can be any other values, as long as the respective source can
         handle that data.
 
+        :param update: If true, forces an update of caches
+        :type update: bool
         :return: The part of the config, that should be sended to the server.
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
-        if not self._index:
+        if update or not self._index:
             self._index = []
-            print(f"{self.source_name}: generating index")
-            self._index = await self.get_file_list()
-            print(f"{self.source_name}: done")
+            # print(f"{self.source_name}: generating index")
+            self._index = await self.get_file_list(update)
+            # print(f"{self.source_name}: done")
         chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
         return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
 

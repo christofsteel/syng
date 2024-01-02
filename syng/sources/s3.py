@@ -8,6 +8,8 @@ import os
 from json import dump, load
 from typing import Any, Optional, Tuple, cast
 
+from platformdirs import user_cache_path
+
 try:
     from minio import Minio
 
@@ -31,6 +33,7 @@ class S3Source(FileBasedSource):
         - ``index_file``: If the file does not exist, saves the paths of
           files from the s3 instance to this file. If it exists, loads
           the list of files from this file.
+        -``recreate_index``, rebuild index even if it exists
     """
 
     source_name = "s3"
@@ -41,7 +44,7 @@ class S3Source(FileBasedSource):
         "secure": (bool, "Use SSL", True),
         "bucket": (str, "Bucket of the s3", ""),
         "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
-        "index_file": (str, "Index file", "s3-index"),
+        "index_file": (str, "Index file", str(user_cache_path("syng") / "s3" / "index")),
     }
 
     def __init__(self, config: dict[str, Any]):
@@ -66,7 +69,7 @@ class S3Source(FileBasedSource):
         self.index_file: Optional[str] = config["index_file"] if "index_file" in config else None
         self.extra_mpv_arguments = ["--scale=oversample"]
 
-    async def get_file_list(self) -> list[str]:
+    async def get_file_list(self, update: bool = False) -> list[str]:
         """
         Return the list of files on the s3 instance, according to the extensions.
 
@@ -78,8 +81,8 @@ class S3Source(FileBasedSource):
         :rtype: list[str]
         """
 
-        def _get_file_list() -> list[str]:
-            if self.index_file is not None and os.path.isfile(self.index_file):
+        def _get_file_list(update: bool) -> list[str]:
+            if not update and self.index_file is not None and os.path.isfile(self.index_file):
                 with open(self.index_file, "r", encoding="utf8") as index_file_handle:
                     return cast(list[str], load(index_file_handle))
 
@@ -89,11 +92,12 @@ class S3Source(FileBasedSource):
                 if self.has_correct_extension(obj.object_name)
             ]
             if self.index_file is not None and not os.path.isfile(self.index_file):
+                os.makedirs(os.path.dirname(self.index_file), exist_ok=True)
                 with open(self.index_file, "w", encoding="utf8") as index_file_handle:
                     dump(file_list, index_file_handle)
             return file_list
 
-        return await asyncio.to_thread(_get_file_list)
+        return await asyncio.to_thread(_get_file_list, update)
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """

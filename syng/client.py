@@ -353,22 +353,30 @@ async def handle_request_config(data: dict[str, Any]) -> None:
     :type data: dict[str, Any]
     :rtype: None
     """
-    if data["source"] in sources:
-        config: dict[str, Any] | list[dict[str, Any]] = await sources[data["source"]].get_config()
+
+    async def send_config(source: str, update: bool) -> None:
+        config: dict[str, Any] | list[dict[str, Any]] = await sources[source].get_config(update)
         if isinstance(config, list):
             num_chunks: int = len(config)
             for current, chunk in enumerate(config):
                 await sio.emit(
                     "config-chunk",
                     {
-                        "source": data["source"],
+                        "source": source,
                         "config": chunk,
                         "number": current + 1,
                         "total": num_chunks,
                     },
                 )
         else:
-            await sio.emit("config", {"source": data["source"], "config": config})
+            await sio.emit("config", {"source": source, "config": config})
+
+    if data["source"] in sources:
+        await send_config(data["source"], False)
+
+        if data["update"]:
+            await sources[data["source"]].get_config(True)
+            await sio.emit("request-resend-config", {"source": data["source"]})
 
 
 def signal_handler() -> None:

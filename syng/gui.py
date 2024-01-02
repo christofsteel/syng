@@ -234,7 +234,8 @@ class OptionFrame(customtkinter.CTkScrollableFrame):  # type:ignore
     def get_config(self) -> dict[str, Any]:
         config: dict[str, Any] = {}
         for name, textbox in self.string_options.items():
-            config[name] = textbox.get("0.0", "end").strip()
+            value = textbox.get("0.0", "end").strip()
+            config[name] = value if value else None
 
         for name, optionmenu in self.choose_options.items():
             config[name] = optionmenu.get().strip()
@@ -338,7 +339,9 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         config: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
 
         try:
-            config["config"] |= loaded_config["config"]
+            for option, value in loaded_config["config"].items():
+                if value:
+                    config["config"][option] = value
         except (KeyError, TypeError):
             print("Could not load config")
 
@@ -400,8 +403,11 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         self.tabs = {}
 
         for source_name in available_sources:
+            source_config = {}
             try:
-                source_config = loaded_config["sources"][source_name]
+                for option, value in loaded_config["sources"][source_name].items():
+                    if value:
+                        source_config[option] = value
             except (KeyError, TypeError):
                 source_config = {}
 

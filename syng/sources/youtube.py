@@ -87,7 +87,7 @@ class YoutubeSource(Source):
                 }
             )
 
-    async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
+    async def get_config(self, update: bool = False) -> dict[str, Any] | list[dict[str, Any]]:
         """
         Return the list of channels in a dictionary with key ``channels``.
 

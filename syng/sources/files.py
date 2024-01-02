@@ -19,7 +19,8 @@ class FilesSource(FileBasedSource):
     source_name = "files"
     config_schema = FileBasedSource.config_schema | {
         "dir": (str, "Directory to index", "."),
-        "index_file": (str, "Index file", "files-index"),
+        # "index_file": (str, "Index file", str(user_cache_path("syng") / "files" / "index")),
+        # "recreate_index": (bool, "Recreate index file", False),
     }
 
     def __init__(self, config: dict[str, Any]):
@@ -29,7 +30,7 @@ class FilesSource(FileBasedSource):
         self.dir = config["dir"] if "dir" in config else "."
         self.extra_mpv_arguments = ["--scale=oversample"]
 
-    async def get_file_list(self) -> list[str]:
+    async def get_file_list(self, update: bool = False) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension"""
 
         def _get_file_list() -> list[str]:
