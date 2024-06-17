@@ -3,6 +3,7 @@ Construct the S3 source.
 
 Adds it to the ``available_sources`` with the name ``s3``
 """
+
 import asyncio
 import os
 from json import dump, load
@@ -135,8 +136,9 @@ class S3Source(FileBasedSource):
             asyncio.to_thread(self.minio.fget_object, self.bucket, entry.ident, video_dl_path)
         )
 
+        audio_dl_path: Optional[str]
         if audio_path is not None:
-            audio_dl_path: Optional[str] = os.path.join(self.tmp_dir, audio_path)
+            audio_dl_path = os.path.join(self.tmp_dir, audio_path)
 
             audio_dl_task: asyncio.Task[Any] = asyncio.create_task(
                 asyncio.to_thread(self.minio.fget_object, self.bucket, audio_path, audio_dl_path)
