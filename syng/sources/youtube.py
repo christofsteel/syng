@@ -6,31 +6,91 @@ used.
 
 Adds it to the ``available_sources`` with the name ``youtube``.
 """
+
 from __future__ import annotations
 
 import asyncio
 import shlex
 from functools import partial
+from urllib.parse import urlencode
 from typing import Any, Optional, Tuple
 
-try:
-    from pytube import Channel, Search, YouTube, exceptions, innertube
-
-    PYTUBE_AVAILABLE = True
-except ImportError:
-    PYTUBE_AVAILABLE = False
-
-try:
-    from yt_dlp import YoutubeDL
-
-    YT_DLP_AVAILABLE = True
-except ImportError:
-    print("No yt-dlp")
-    YT_DLP_AVAILABLE = False
+from yt_dlp import YoutubeDL
 
 from ..entry import Entry
 from ..result import Result
 from .source import Source, available_sources
+
+
+class YouTube:
+    """
+    A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
+    """
+
+    def __init__(self, url: Optional[str] = None):
+        if url is not None:
+            self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
+            if self._infos is None:
+                raise RuntimeError(f'Extraction not possible for "{url}"')
+            self.length = self._infos["duration"]
+            self.title = self._infos["title"]
+            self.author = self._infos["channel"]
+            self.watch_url = url
+        else:
+            self.length = 0
+            self.title = ""
+            self.channel = ""
+            self.author = ""
+            self.watch_url = ""
+
+    @classmethod
+    def from_result(cls, search_result: dict[str, Any]) -> YouTube:
+        """
+        Construct a YouTube object from yt-dlp results.
+        """
+        obj = YouTube()
+        obj.length = search_result["duration"]
+        obj.title = search_result["title"]
+        obj.author = search_result["channel"]
+        obj.watch_url = search_result["url"]
+        return obj
+
+
+class Search:
+    """
+    A minimal compatibility layer for the Search object of pytube, implemented via yt-dlp
+    """
+
+    def __init__(self, query: str, channel: Optional[str] = None):
+        sp = "EgIQAfABAQ=="
+        if channel is None:
+            query_url = f"https://youtube.com/results?{urlencode({'search_query': query, 'sp':sp})}"
+        else:
+            if channel[0] == "/":
+                channel = channel[1:]
+            query_url = (
+                f"https://www.youtube.com/{channel}/search?{urlencode({'query': query, 'sp':sp})}"
+            )
+
+        results = YoutubeDL(
+            {
+                "extract_flat": True,
+                "quiet": True,
+                "playlist_items": ",".join(map(str, range(1, 51))),
+            }
+        ).extract_info(
+            query_url,
+            download=False,
+        )
+        self.results = []
+        if results is not None:
+            filtered_entries = filter(lambda entry: "short" not in entry["url"], results["entries"])
+
+            for r in filtered_entries:
+                try:
+                    self.results.append(YouTube.from_result(r))
+                except KeyError:
+                    pass
 
 
 class YoutubeSource(Source):
@@ -62,13 +122,10 @@ class YoutubeSource(Source):
     }
 
     # pylint: disable=too-many-instance-attributes
-
     def __init__(self, config: dict[str, Any]):
         """Create the source."""
         super().__init__(config)
 
-        if PYTUBE_AVAILABLE:
-            self.innertube_client: innertube.InnerTube = innertube.InnerTube(client="WEB")
         self.channels: list[str] = config["channels"] if "channels" in config else []
         self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
         self.max_res: int = config["max_res"] if "max_res" in config else 720
@@ -78,14 +135,13 @@ class YoutubeSource(Source):
         self.formatstring = (
             f"bestvideo[height<={self.max_res}]+" f"bestaudio/best[height<={self.max_res}]"
         )
-        if YT_DLP_AVAILABLE:
-            self._yt_dlp = YoutubeDL(
-                params={
-                    "paths": {"home": self.tmp_dir},
-                    "format": self.formatstring,
-                    "quiet": True,
-                }
-            )
+        self._yt_dlp = YoutubeDL(
+            params={
+                "paths": {"home": self.tmp_dir},
+                "format": self.formatstring,
+                "quiet": True,
+            }
+        )
 
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """
@@ -113,7 +169,7 @@ class YoutubeSource(Source):
             self.player = await self.play_mpv(
                 entry.ident,
                 None,
-                "--script-opts=ytdl_hook-ytdl_path=yt-dlp," "ytdl_hook-exclude='%.pls$'",
+                "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
                 f"--ytdl-format={self.formatstring}",
                 "--fullscreen",
             )
@@ -128,7 +184,7 @@ class YoutubeSource(Source):
         The identifier should be a youtube url. An entry is created with
         all available metadata for the video.
 
-        :param performer: The persong singing.
+        :param performer: The person singing.
         :type performer: str
         :param ident: A url to a YouTube video.
         :type ident: str
@@ -137,26 +193,20 @@ class YoutubeSource(Source):
         """
 
         def _get_entry(performer: str, url: str) -> Optional[Entry]:
-            if not PYTUBE_AVAILABLE:
-                return None
-
+            yt_song = YouTube(url)
             try:
-                yt_song = YouTube(url)
-                try:
-                    length = yt_song.length
-                except TypeError:
-                    length = 180
-                return Entry(
-                    ident=url,
-                    source="youtube",
-                    album="YouTube",
-                    duration=length,
-                    title=yt_song.title,
-                    artist=yt_song.author,
-                    performer=performer,
-                )
-            except exceptions.PytubeError:
-                return None
+                length = yt_song.length
+            except TypeError:
+                length = 180
+            return Entry(
+                ident=url,
+                source="youtube",
+                album="YouTube",
+                duration=length,
+                title=yt_song.title,
+                artist=yt_song.author,
+                performer=performer,
+            )
 
         return await asyncio.to_thread(_get_entry, performer, ident)
 
@@ -214,59 +264,15 @@ class YoutubeSource(Source):
 
         Adds "karaoke" to the query.
         """
-        results: Optional[list[YouTube]] = Search(f"{query} karaoke").results
-        if results is not None:
-            return results
-        return []
+        return Search(f"{query} karaoke").results
 
-    # pylint: disable=protected-access
     def _channel_search(self, query: str, channel: str) -> list[YouTube]:
         """
         Search a channel for a query.
 
         A lot of black Magic happens here.
         """
-        browse_id: str = Channel(f"https://www.youtube.com{channel}").channel_id
-        endpoint: str = f"{self.innertube_client.base_url}/browse"
-
-        data: dict[str, str] = {
-            "query": query,
-            "browseId": browse_id,
-            "params": "EgZzZWFyY2g%3D",
-        }
-        data.update(self.innertube_client.base_data)
-        results: dict[str, Any] = self.innertube_client._call_api(
-            endpoint, self.innertube_client.base_params, data
-        )
-        items: list[dict[str, Any]] = results["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][
-            -1
-        ]["expandableTabRenderer"]["content"]["sectionListRenderer"]["contents"]
-
-        list_of_videos: list[YouTube] = []
-        for item in items:
-            try:
-                if (
-                    "itemSectionRenderer" in item
-                    and "videoRenderer" in item["itemSectionRenderer"]["contents"][0]
-                ):
-                    yt_url: str = (
-                        "https://youtube.com/watch?v="
-                        + item["itemSectionRenderer"]["contents"][0]["videoRenderer"]["videoId"]
-                    )
-                    author: str = item["itemSectionRenderer"]["contents"][0]["videoRenderer"][
-                        "ownerText"
-                    ]["runs"][0]["text"]
-                    title: str = item["itemSectionRenderer"]["contents"][0]["videoRenderer"][
-                        "title"
-                    ]["runs"][0]["text"]
-                    yt_song: YouTube = YouTube(yt_url)
-                    yt_song.author = author
-                    yt_song.title = title
-                    list_of_videos.append(yt_song)
-
-            except KeyError:
-                pass
-        return list_of_videos
+        return Search(f"{query} karaoke", channel).results
 
     async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
         """
