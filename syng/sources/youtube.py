@@ -39,10 +39,10 @@ class YouTube:
                 self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
                 if self._infos is None:
                     raise RuntimeError(f'Extraction not possible for "{url}"')
-                self.length = self._infos["duration"]
-                self.title = self._infos["title"]
-                self.author = self._infos["channel"]
-                self.watch_url = url
+            self.length = self._infos["duration"]
+            self.title = self._infos["title"]
+            self.author = self._infos["channel"]
+            self.watch_url = url
         else:
             self.length = 0
             self.title = ""
