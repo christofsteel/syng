@@ -57,10 +57,10 @@ class YouTube:
         """
         url = search_result["url"]
         cls.__cache__[url] = {
-            "length": search_result["duration"],
+            "duration": search_result["duration"],
             "title": search_result["title"],
-            "author": search_result["channel"],
-            "watch_url": url,
+            "channel": search_result["channel"],
+            "url": url,
         }
         return cls(url)
 
