@@ -27,7 +27,9 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    __cache__ = {}  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
+    __cache__: dict[
+        str, Any
+    ] = {}  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
 
     def __init__(self, url: Optional[str] = None):
         if url is not None:
