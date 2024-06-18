@@ -1,15 +1,11 @@
-from typing import Any
+from typing import Any, Awaitable
 from typing import Callable
 from typing import Optional
-from typing import TypeVar
+from typing import TypeVar, TypeAlias
 
-Handler = TypeVar(
-    "Handler",
-    bound=Callable[[str, dict[str, Any]], Any] | Callable[[str], Any],
-)
-ClientHandler = TypeVar(
-    "ClientHandler", bound=Callable[[dict[str, Any]], Any] | Callable[[], Any]
-)
+Handler: TypeAlias = Callable[[str], Awaitable[Any]]
+DictHandler: TypeAlias = Callable[[str, dict[str, Any]], Awaitable[Any]]
+ClientHandler = TypeVar("ClientHandler", bound=Callable[[dict[str, Any]], Any] | Callable[[], Any])
 
 class _session_context_manager:
     async def __aenter__(self) -> dict[str, Any]: ...
@@ -30,7 +26,7 @@ class AsyncServer:
         room: Optional[str] = None,
     ) -> None: ...
     def session(self, sid: str) -> _session_context_manager: ...
-    def on(self, event: str) -> Callable[[Handler], Handler]: ...
+    def on(self, event: str) -> Callable[[Handler | DictHandler], Handler | DictHandler]: ...
     async def enter_room(self, sid: str, room: str) -> None: ...
     async def leave_room(self, sid: str, room: str) -> None: ...
     def attach(self, app: Any) -> None: ...

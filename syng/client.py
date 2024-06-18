@@ -31,6 +31,7 @@ The config file should be a yaml file in the following style::
         waiting_room_policy: ..
 
 """
+
 import asyncio
 import datetime
 import logging
@@ -46,7 +47,7 @@ from traceback import print_exc
 from typing import Any, Optional
 import platformdirs
 
-import qrcode
+from qrcode.main import QRCode
 
 import socketio
 import engineio
@@ -323,7 +324,7 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
     if data["success"]:
         logging.info("Registered")
         print(f"Join here: {state.config['server']}/{data['room']}")
-        qr = qrcode.QRCode(box_size=20, border=2)
+        qr = QRCode(box_size=20, border=2)
         qr.add_data(f"{state.config['server']}/{data['room']}")
         qr.make()
         qr.print_ascii()

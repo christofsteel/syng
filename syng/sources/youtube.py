@@ -299,7 +299,7 @@ class YoutubeSource(Source):
         :return: The location of the video file and ``None``.
         :rtype: Tuple[str, Optional[str]]
         """
-        info = await asyncio.to_thread(self._yt_dlp.extract_info, entry.ident)
+        info: Any = await asyncio.to_thread(self._yt_dlp.extract_info, entry.ident)
         combined_path = info["requested_downloads"][0]["filepath"]
         return combined_path, None
 

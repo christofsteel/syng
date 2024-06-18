@@ -4,7 +4,7 @@ from datetime import datetime, date, time
 import os
 import builtins
 from functools import partial
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 import webbrowser
 import multiprocessing
 import secrets
@@ -13,7 +13,7 @@ import string
 from PIL import ImageTk
 from yaml import dump, load, Loader, Dumper
 import customtkinter
-from qrcode import QRCode
+from qrcode.main import QRCode
 from tkcalendar import Calendar
 from tktimepicker import AnalogPicker, AnalogThemes, constants
 import platformdirs
@@ -27,6 +27,9 @@ try:
 
     SERVER_AVAILABLE = True
 except ImportError:
+    if TYPE_CHECKING:
+        from .server import main as server_main
+
     SERVER_AVAILABLE = False
 
 

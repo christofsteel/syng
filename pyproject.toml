@@ -31,15 +31,15 @@ tkcalendar = { version = "^1.6.1", optional = true }
 tktimepicker = { version = "^2.0.2", optional = true }
 platformdirs = { version = "^4.0.0", optional = true }
 packaging = {version = "^23.2", optional = true}
-
-[tool.poetry.group.dev.dependencies]
-types-pyyaml = "^6.0.12.12"
-types-pillow = "^10.1.0.2"
+types-pyyaml = {version = "^6.0.12.12", optional = true}
+types-pillow = {version = "^10.1.0.2", optional = true}
+mypy = {version = "^1.10.0", optional = true}
 
 [tool.poetry.extras]
 client = ["minio", "mutagen", "pillow", "customtkinter", "qrcode",
   "pymediainfo", "pyyaml", "tkcalendar", "tktimepicker", "platformdirs",
   "packaging"]
+dev = ["types-pillow", "types-pillow", "mypy"]
 
 [build-system]
 requires = ["poetry-core"]
@@ -54,6 +54,9 @@ venv = ".venv"
 disable = '''too-many-lines,
 too-many-ancestors
 '''
+
+[tool.mypy]
+mypy_path = "typings"
 
 [[tool.mypy.overrides]]
 module = [

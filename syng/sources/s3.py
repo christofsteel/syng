@@ -7,13 +7,15 @@ Adds it to the ``available_sources`` with the name ``s3``
 import asyncio
 import os
 from json import dump, load
-from typing import Any, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
 
 try:
     from minio import Minio
 
     MINIO_AVAILABE = True
 except ImportError:
+    if TYPE_CHECKING:
+        from minio import Minio
     MINIO_AVAILABE = False
 
 from ..entry import Entry
@@ -87,8 +89,8 @@ class S3Source(FileBasedSource):
             file_list = [
                 obj.object_name
                 for obj in self.minio.list_objects(self.bucket, recursive=True)
-                if self.has_correct_extension(obj.object_name)
-            ]
+                if obj.object_name is not None
+            ]  # and self.has_correct_extension(obj.object_name)
             if self.index_file is not None and not os.path.isfile(self.index_file):
                 with open(self.index_file, "w", encoding="utf8") as index_file_handle:
                     dump(file_list, index_file_handle)

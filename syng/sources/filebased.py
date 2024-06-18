@@ -1,13 +1,16 @@
 """Module for an abstract filebased Source."""
+
 import asyncio
 import os
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 try:
     from pymediainfo import MediaInfo
 
     PYMEDIAINFO_AVAILABLE = True
 except ImportError:
+    if TYPE_CHECKING:
+        from pymediainfo import MediaInfo
     PYMEDIAINFO_AVAILABLE = False
 
 from .source import Source
@@ -35,7 +38,7 @@ class FileBasedSource(Source):
         self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
         self.extra_mpv_arguments = ["--scale=oversample"]
 
-    def has_correct_extension(self, path: str) -> bool:
+    def has_correct_extension(self, path: Optional[str]) -> bool:
         """Check if a `path` has a correct extension.
 
         For A+B type extensions (like mp3+cdg) only the latter halve is checked
@@ -43,7 +46,9 @@ class FileBasedSource(Source):
         :return: True iff path has correct extension.
         :rtype: bool
         """
-        return os.path.splitext(path)[1][1:] in [ext.split("+")[-1] for ext in self.extensions]
+        return path is not None and os.path.splitext(path)[1][1:] in [
+            ext.split("+")[-1] for ext in self.extensions
+        ]
 
     def get_video_audio_split(self, path: str) -> tuple[str, Optional[str]]:
         extension_of_path = os.path.splitext(path)[1][1:]
