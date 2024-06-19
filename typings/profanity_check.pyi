@@ -1,0 +1,3 @@
+from typing import Literal
+
+def predict(strings: list[str]) -> list[Literal[0] | Literal[1]]: ...

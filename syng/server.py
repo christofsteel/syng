@@ -32,6 +32,7 @@ from typing import Optional
 
 import socketio
 from aiohttp import web
+from profanity_check import predict
 
 from . import jsonencoder
 from .entry import Entry
@@ -136,9 +137,7 @@ class State:
     recent: list[Entry]
     sid: str
     client: Client
-    last_seen: datetime.datetime = field(
-        init=False, default_factory=datetime.datetime.now
-    )
+    last_seen: datetime.datetime = field(init=False, default_factory=datetime.datetime.now)
 
 
 clients: dict[str, State] = {}
@@ -161,9 +160,7 @@ async def send_state(state: State, sid: str) -> None:
     :rtype: None
     """
 
-    safe_config = {
-        k: v for k, v in state.client.config.items() if k not in ["secret", "key"]
-    }
+    safe_config = {k: v for k, v in state.client.config.items() if k not in ["secret", "key"]}
 
     await sio.emit(
         "state",
@@ -214,18 +211,13 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     if entry is None:
         await sio.emit(
             "msg",
-            {
-                "msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"
-            },
+            {"msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"},
             room=sid,
         )
         return
 
     if "uid" not in data or (
-        (
-            data["uid"] is not None
-            and len(list(state.queue.find_by_uid(data["uid"]))) == 0
-        )
+        (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
         or (data["uid"] is None and state.queue.find_by_name(data["performer"]) is None)
     ):
         await append_to_queue(room, entry, sid)
@@ -242,9 +234,7 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     )
 
 
-async def append_to_queue(
-    room: str, entry: Entry, report_to: Optional[str] = None
-) -> None:
+async def append_to_queue(room: str, entry: Entry, report_to: Optional[str] = None) -> None:
     """
     Append a song to the queue for a given session.
 
@@ -268,10 +258,7 @@ async def append_to_queue(
         start_time = first_song.started_at
 
     start_time = state.queue.fold(
-        lambda item, time: time
-        + item.duration
-        + state.client.config["preview_duration"]
-        + 1,
+        lambda item, time: time + item.duration + state.client.config["preview_duration"] + 1,
         start_time,
     )
 
@@ -392,6 +379,14 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
         room = session["room"]
     state = clients[room]
 
+    if len(data["performer"]) > 50:
+        await sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
+        return
+
+    if predict([data["performer"]]) == [1]:
+        await sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
+        return
+
     if state.client.config["waiting_room_policy"] and (
         state.client.config["waiting_room_policy"].lower() == "forced"
         or state.client.config["waiting_room_policy"].lower() == "optional"
@@ -446,6 +441,14 @@ async def handle_append_anyway(sid: str, data: dict[str, Any]) -> None:
     async with sio.session(sid) as session:
         room = session["room"]
     state = clients[room]
+
+    if len(data["performer"]) > 50:
+        await sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
+        return
+
+    if predict([data["performer"]]) == [1]:
+        await sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
+        return
 
     if state.client.config["waiting_room_policy"].lower() == "forced":
         await sio.emit(
@@ -556,11 +559,7 @@ async def handle_waiting_room_to_queue(sid: str, data: dict[str, Any]) -> None:
 
     if is_admin:
         entry = next(
-            (
-                wr_entry
-                for wr_entry in state.waiting_room
-                if str(wr_entry.uuid) == data["uuid"]
-            ),
+            (wr_entry for wr_entry in state.waiting_room if str(wr_entry.uuid) == data["uuid"]),
             None,
         )
         if entry is not None:
@@ -692,9 +691,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     """
 
     def gen_id(length: int = 4) -> str:
-        client_id = "".join(
-            [random.choice(string.ascii_letters) for _ in range(length)]
-        )
+        client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
         if client_id in clients:
             client_id = gen_id(length + 1)
         return client_id
@@ -706,8 +703,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
 
             if (
                 "key" not in data["config"]
-                or hashlib.sha256(data["config"]["key"].encode()).hexdigest()
-                not in keys
+                or hashlib.sha256(data["config"]["key"].encode()).hexdigest() not in keys
             ):
                 await sio.emit(
                     "client-registered",
@@ -717,9 +713,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
                 return
 
     room: str = (
-        data["config"]["room"]
-        if "room" in data["config"] and data["config"]["room"]
-        else gen_id()
+        data["config"]["room"] if "room" in data["config"] and data["config"]["room"] else gen_id()
     )
     async with sio.session(sid) as session:
         session["room"] = room
@@ -735,15 +729,11 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
                 config=DEFAULT_CONFIG | data["config"],
             )
             await sio.enter_room(sid, room)
-            await sio.emit(
-                "client-registered", {"success": True, "room": room}, room=sid
-            )
+            await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
             await send_state(clients[room], sid)
         else:
             logger.warning("Got wrong secret for %s", room)
-            await sio.emit(
-                "client-registered", {"success": False, "room": room}, room=sid
-            )
+            await sio.emit("client-registered", {"success": False, "room": room}, room=sid)
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
@@ -834,9 +824,7 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
         return
 
     if data["source"] not in state.client.sources:
-        state.client.sources[data["source"]] = available_sources[data["source"]](
-            data["config"]
-        )
+        state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
     else:
         state.client.sources[data["source"]].add_to_config(data["config"])
 
@@ -865,9 +853,7 @@ async def handle_config(sid: str, data: dict[str, Any]) -> None:
     if sid != state.sid:
         return
 
-    state.client.sources[data["source"]] = available_sources[data["source"]](
-        data["config"]
-    )
+    state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
 
 
 @sio.on("register-web")
@@ -1052,17 +1038,10 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
 
     query = data["query"]
     results_list = await asyncio.gather(
-        *[
-            state.client.sources[source].search(query)
-            for source in state.client.sources_prio
-        ]
+        *[state.client.sources[source].search(query) for source in state.client.sources_prio]
     )
 
-    results = [
-        search_result
-        for source_result in results_list
-        for search_result in source_result
-    ]
+    results = [search_result for source_result in results_list for search_result in source_result]
     await sio.emit(
         "search-results",
         {"results": results},
@@ -1143,9 +1122,7 @@ def main() -> None:
 
     app["root_folder"] = args.root_folder
 
-    app.add_routes(
-        [web.static("/assets/", os.path.join(app["root_folder"], "assets/"))]
-    )
+    app.add_routes([web.static("/assets/", os.path.join(app["root_folder"], "assets/"))])
 
     app.router.add_route("*", "/", root_handler)
     app.router.add_route("*", "/{room}", root_handler)
