@@ -10,4 +10,4 @@ ruff:
     stage: test
     script:
         - pip install ruff --quiet        
-        - ruff syng
+        - ruff check syng
