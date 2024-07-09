@@ -33,6 +33,9 @@ class YouTube:
     )  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
 
     def __init__(self, url: Optional[str] = None):
+        self._title: Optional[str]
+        self._author: Optional[str]
+
         if url is not None:
             if url in YouTube.__cache__:
                 self._infos = YouTube.__cache__[url]
@@ -62,11 +65,17 @@ class YouTube:
 
     @property
     def title(self) -> str:
-        return "" if self._title is None else self._title
+        if self._title is None:
+            return ""
+        else:
+            return self._title
 
     @property
     def author(self) -> str:
-        return "" if self._author is None else self._author
+        if self._author is None:
+            return ""
+        else:
+            return self._author
 
     @classmethod
     def from_result(cls, search_result: dict[str, Any]) -> YouTube:

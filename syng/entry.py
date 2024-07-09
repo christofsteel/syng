@@ -1,4 +1,5 @@
 """Module for the entry of the queue."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,9 +23,9 @@ class Entry:
     :param duration: The duration of the song in seconds.
     :type duration: int
     :param title: The title of the song.
-    :type title: str
+    :type title: Optional[str]
     :param artist: The name of the original artist.
-    :type artist: str
+    :type artist: Optional[str]
     :param album: The name of the album or compilation, this particular
         version is from.
     :type album: str
@@ -51,8 +52,8 @@ class Entry:
     ident: str
     source: str
     duration: int
-    title: str
-    artist: str
+    title: Optional[str]
+    artist: Optional[str]
     album: str
     performer: str
     failed: bool = False
