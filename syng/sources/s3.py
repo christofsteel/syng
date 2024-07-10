@@ -64,9 +64,13 @@ class S3Source(FileBasedSource):
                 secure=(config["secure"] if "secure" in config else True),
             )
             self.bucket: str = config["bucket"]
-            self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            self.tmp_dir: str = (
+                config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            )
 
-        self.index_file: Optional[str] = config["index_file"] if "index_file" in config else None
+        self.index_file: Optional[str] = (
+            config["index_file"] if "index_file" in config else None
+        )
         self.extra_mpv_arguments = ["--scale=oversample"]
 
     async def get_file_list(self) -> list[str]:
@@ -90,7 +94,8 @@ class S3Source(FileBasedSource):
                 obj.object_name
                 for obj in self.minio.list_objects(self.bucket, recursive=True)
                 if obj.object_name is not None
-            ]  # and self.has_correct_extension(obj.object_name)
+                and self.has_correct_extension(obj.object_name)
+            ]
             if self.index_file is not None and not os.path.isfile(self.index_file):
                 with open(self.index_file, "w", encoding="utf8") as index_file_handle:
                     dump(file_list, index_file_handle)
@@ -135,7 +140,9 @@ class S3Source(FileBasedSource):
         video_dl_path: str = os.path.join(self.tmp_dir, video_path)
         os.makedirs(os.path.dirname(video_dl_path), exist_ok=True)
         video_dl_task: asyncio.Task[Any] = asyncio.create_task(
-            asyncio.to_thread(self.minio.fget_object, self.bucket, entry.ident, video_dl_path)
+            asyncio.to_thread(
+                self.minio.fget_object, self.bucket, entry.ident, video_dl_path
+            )
         )
 
         audio_dl_path: Optional[str]
@@ -143,7 +150,9 @@ class S3Source(FileBasedSource):
             audio_dl_path = os.path.join(self.tmp_dir, audio_path)
 
             audio_dl_task: asyncio.Task[Any] = asyncio.create_task(
-                asyncio.to_thread(self.minio.fget_object, self.bucket, audio_path, audio_dl_path)
+                asyncio.to_thread(
+                    self.minio.fget_object, self.bucket, audio_path, audio_dl_path
+                )
             )
         else:
             audio_dl_path = None
