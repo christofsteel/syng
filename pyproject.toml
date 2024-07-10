@@ -11,6 +11,7 @@ include = ["syng/static"]
 syng-client = "syng.client:main"
 syng-server = "syng.server:main"
 syng-gui = "syng.gui:main"
+syng = "syng.main:main"
 # syng-shell = "syng.webclientmockup:main"
 
 [tool.poetry.dependencies]

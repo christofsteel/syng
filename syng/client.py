@@ -38,9 +38,10 @@ import logging
 import os
 import secrets
 import string
+from sys import argv, stderr
 import tempfile
 import signal
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from dataclasses import field
 from traceback import print_exc
@@ -355,7 +356,9 @@ async def handle_request_config(data: dict[str, Any]) -> None:
     :rtype: None
     """
     if data["source"] in sources:
-        config: dict[str, Any] | list[dict[str, Any]] = await sources[data["source"]].get_config()
+        config: dict[str, Any] | list[dict[str, Any]] = await sources[
+            data["source"]
+        ].get_config()
         if isinstance(config, list):
             num_chunks: int = len(config)
             for current, chunk in enumerate(config):
@@ -426,22 +429,7 @@ def create_async_and_start_client(config: dict[str, Any]) -> None:
     asyncio.run(start_client(config))
 
 
-def main() -> None:
-    """Entry point for the syng-client script."""
-    parser: ArgumentParser = ArgumentParser()
-
-    parser.add_argument("--room", "-r")
-    parser.add_argument("--secret", "-s")
-    parser.add_argument(
-        "--config-file",
-        "-C",
-        default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
-    )
-    parser.add_argument("--key", "-k", default=None)
-    parser.add_argument("--server", "-S")
-
-    args = parser.parse_args()
-
+def run_client(args: Namespace) -> None:
     try:
         with open(args.config_file, encoding="utf8") as file:
             config = load(file, Loader=Loader)
@@ -460,6 +448,30 @@ def main() -> None:
         config["config"] |= {"server": args.server}
 
     create_async_and_start_client(config)
+
+
+def main() -> None:
+    """Entry point for the syng-client script."""
+
+    print(
+        f"Starting the client with {argv[0]} is deprecated. Please use `syng client` to start the client",
+        file=stderr,
+    )
+    parser: ArgumentParser = ArgumentParser()
+
+    parser.add_argument("--room", "-r")
+    parser.add_argument("--secret", "-s")
+    parser.add_argument(
+        "--config-file",
+        "-C",
+        default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
+    )
+    parser.add_argument("--key", "-k", default=None)
+    parser.add_argument("--server", "-S")
+
+    args = parser.parse_args()
+
+    run_client(args)
 
 
 if __name__ == "__main__":

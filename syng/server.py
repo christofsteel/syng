@@ -23,9 +23,10 @@ import os
 import random
 import string
 from json.decoder import JSONDecodeError
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from dataclasses import field
+from sys import argv, stderr
 from typing import Any
 from typing import AsyncGenerator
 from typing import Optional
@@ -137,7 +138,9 @@ class State:
     recent: list[Entry]
     sid: str
     client: Client
-    last_seen: datetime.datetime = field(init=False, default_factory=datetime.datetime.now)
+    last_seen: datetime.datetime = field(
+        init=False, default_factory=datetime.datetime.now
+    )
 
 
 clients: dict[str, State] = {}
@@ -160,7 +163,9 @@ async def send_state(state: State, sid: str) -> None:
     :rtype: None
     """
 
-    safe_config = {k: v for k, v in state.client.config.items() if k not in ["secret", "key"]}
+    safe_config = {
+        k: v for k, v in state.client.config.items() if k not in ["secret", "key"]
+    }
 
     await sio.emit(
         "state",
@@ -211,13 +216,18 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     if entry is None:
         await sio.emit(
             "msg",
-            {"msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"},
+            {
+                "msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"
+            },
             room=sid,
         )
         return
 
     if "uid" not in data or (
-        (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
+        (
+            data["uid"] is not None
+            and len(list(state.queue.find_by_uid(data["uid"]))) == 0
+        )
         or (data["uid"] is None and state.queue.find_by_name(data["performer"]) is None)
     ):
         await append_to_queue(room, entry, sid)
@@ -234,7 +244,9 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     )
 
 
-async def append_to_queue(room: str, entry: Entry, report_to: Optional[str] = None) -> None:
+async def append_to_queue(
+    room: str, entry: Entry, report_to: Optional[str] = None
+) -> None:
     """
     Append a song to the queue for a given session.
 
@@ -258,7 +270,10 @@ async def append_to_queue(room: str, entry: Entry, report_to: Optional[str] = No
         start_time = first_song.started_at
 
     start_time = state.queue.fold(
-        lambda item, time: time + item.duration + state.client.config["preview_duration"] + 1,
+        lambda item, time: time
+        + item.duration
+        + state.client.config["preview_duration"]
+        + 1,
         start_time,
     )
 
@@ -380,11 +395,15 @@ async def handle_append(sid: str, data: dict[str, Any]) -> None:
     state = clients[room]
 
     if len(data["performer"]) > 50:
-        await sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
+        await sio.emit(
+            "err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid
+        )
         return
 
     if predict([data["performer"]]) == [1]:
-        await sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
+        await sio.emit(
+            "err", {"type": "PROFANITY", "name": data["performer"]}, room=sid
+        )
         return
 
     if state.client.config["waiting_room_policy"] and (
@@ -443,11 +462,15 @@ async def handle_append_anyway(sid: str, data: dict[str, Any]) -> None:
     state = clients[room]
 
     if len(data["performer"]) > 50:
-        await sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
+        await sio.emit(
+            "err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid
+        )
         return
 
     if predict([data["performer"]]) == [1]:
-        await sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
+        await sio.emit(
+            "err", {"type": "PROFANITY", "name": data["performer"]}, room=sid
+        )
         return
 
     if state.client.config["waiting_room_policy"].lower() == "forced":
@@ -559,7 +582,11 @@ async def handle_waiting_room_to_queue(sid: str, data: dict[str, Any]) -> None:
 
     if is_admin:
         entry = next(
-            (wr_entry for wr_entry in state.waiting_room if str(wr_entry.uuid) == data["uuid"]),
+            (
+                wr_entry
+                for wr_entry in state.waiting_room
+                if str(wr_entry.uuid) == data["uuid"]
+            ),
             None,
         )
         if entry is not None:
@@ -691,7 +718,9 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     """
 
     def gen_id(length: int = 4) -> str:
-        client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
+        client_id = "".join(
+            [random.choice(string.ascii_letters) for _ in range(length)]
+        )
         if client_id in clients:
             client_id = gen_id(length + 1)
         return client_id
@@ -703,7 +732,8 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
 
             if (
                 "key" not in data["config"]
-                or hashlib.sha256(data["config"]["key"].encode()).hexdigest() not in keys
+                or hashlib.sha256(data["config"]["key"].encode()).hexdigest()
+                not in keys
             ):
                 await sio.emit(
                     "client-registered",
@@ -713,7 +743,9 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
                 return
 
     room: str = (
-        data["config"]["room"] if "room" in data["config"] and data["config"]["room"] else gen_id()
+        data["config"]["room"]
+        if "room" in data["config"] and data["config"]["room"]
+        else gen_id()
     )
     async with sio.session(sid) as session:
         session["room"] = room
@@ -729,11 +761,15 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
                 config=DEFAULT_CONFIG | data["config"],
             )
             await sio.enter_room(sid, room)
-            await sio.emit("client-registered", {"success": True, "room": room}, room=sid)
+            await sio.emit(
+                "client-registered", {"success": True, "room": room}, room=sid
+            )
             await send_state(clients[room], sid)
         else:
             logger.warning("Got wrong secret for %s", room)
-            await sio.emit("client-registered", {"success": False, "room": room}, room=sid)
+            await sio.emit(
+                "client-registered", {"success": False, "room": room}, room=sid
+            )
     else:
         logger.info("Registerd new client %s", room)
         initial_entries = [Entry(**entry) for entry in data["queue"]]
@@ -824,7 +860,9 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
         return
 
     if data["source"] not in state.client.sources:
-        state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
+        state.client.sources[data["source"]] = available_sources[data["source"]](
+            data["config"]
+        )
     else:
         state.client.sources[data["source"]].add_to_config(data["config"])
 
@@ -853,7 +891,9 @@ async def handle_config(sid: str, data: dict[str, Any]) -> None:
     if sid != state.sid:
         return
 
-    state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
+    state.client.sources[data["source"]] = available_sources[data["source"]](
+        data["config"]
+    )
 
 
 @sio.on("register-web")
@@ -1038,10 +1078,17 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
 
     query = data["query"]
     results_list = await asyncio.gather(
-        *[state.client.sources[source].search(query) for source in state.client.sources_prio]
+        *[
+            state.client.sources[source].search(query)
+            for source in state.client.sources_prio
+        ]
     )
 
-    results = [search_result for source_result in results_list for search_result in source_result]
+    results = [
+        search_result
+        for source_result in results_list
+        for search_result in source_result
+    ]
     await sio.emit(
         "search-results",
         {"results": results},
@@ -1097,6 +1144,27 @@ async def background_tasks(
     await iapp["repeated_cleanup"]
 
 
+def run_server(args: Namespace) -> None:
+    app["public"] = True
+    if args.registration_keyfile:
+        app["public"] = False
+        app["registration-keyfile"] = args.registration_keyfile
+
+    app["root_folder"] = args.root_folder
+
+    app.add_routes(
+        [web.static("/assets/", os.path.join(app["root_folder"], "assets/"))]
+    )
+
+    app.router.add_route("*", "/", root_handler)
+    app.router.add_route("*", "/{room}", root_handler)
+    app.router.add_route("*", "/{room}/", root_handler)
+
+    app.cleanup_ctx.append(background_tasks)
+
+    web.run_app(app, host=args.host, port=args.port)
+
+
 def main() -> None:
     """
     Configure and start the server.
@@ -1107,6 +1175,11 @@ def main() -> None:
     :rtype: None
     """
 
+    print(
+        f"Starting the server with {argv[0]} is deprecated. Please use `syng server` to start the server",
+        file=stderr,
+    )
+
     root_path = os.path.join(os.path.dirname(__file__), "static")
     parser = ArgumentParser()
     parser.add_argument("--host", "-H", default="localhost")
@@ -1115,22 +1188,7 @@ def main() -> None:
     parser.add_argument("--registration-keyfile", "-k", default=None)
     args = parser.parse_args()
 
-    app["public"] = True
-    if args.registration_keyfile:
-        app["public"] = False
-        app["registration-keyfile"] = args.registration_keyfile
-
-    app["root_folder"] = args.root_folder
-
-    app.add_routes([web.static("/assets/", os.path.join(app["root_folder"], "assets/"))])
-
-    app.router.add_route("*", "/", root_handler)
-    app.router.add_route("*", "/{room}", root_handler)
-    app.router.add_route("*", "/{room}/", root_handler)
-
-    app.cleanup_ctx.append(background_tasks)
-
-    web.run_app(app, host=args.host, port=args.port)
+    run_server(args)
 
 
 if __name__ == "__main__":

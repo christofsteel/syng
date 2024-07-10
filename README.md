@@ -14,14 +14,18 @@ The playback client uses `mpv` for playback and can therefore play a variety of 
 
 # Installation
 
+For a clean installation we recommend installing syng inside a virtualenv.
+
 ## Server
 
     pip install "syng[server] @ git+https://github.com/christofsteel/syng.git"
 
-This installs the server part (`syng-server`), if you want to self-host a syng server. There is a publicly available syng instance at https://syng.rocks.
+This installs the server part (`syng server`), if you want to self-host a syng server. There is a publicly available syng instance at https://syng.rocks.
 
 ## Client
 
     pip install "syng[client] @ git+https://github.com/christofsteel/syng.git"
 
-This installs both the playback client (`syng-client`) and a configuration GUI (`syng-gui`).
+This installs both the playback client (`syng client`) and a configuration GUI (`syng gui`). 
+
+**Note:** You need to have `mpv` installed on the playback client.
