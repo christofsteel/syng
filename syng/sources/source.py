@@ -4,6 +4,7 @@ Abstract class for sources.
 Also defines the dictionary of available sources. Each source should add itself
 to this dictionary in its module.
 """
+
 from __future__ import annotations
 
 import asyncio

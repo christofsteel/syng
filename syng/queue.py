@@ -1,4 +1,5 @@
 """A async queue with synchronization."""
+
 import asyncio
 from collections import deque
 from collections.abc import Callable, Iterable

@@ -41,9 +41,7 @@ class YouTube:
                 self._infos = YouTube.__cache__[url]
             else:
                 try:
-                    self._infos = YoutubeDL({"quiet": True}).extract_info(
-                        url, download=False
-                    )
+                    self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
                 except DownloadError:
                     self.length = 300
                     self._title = None
@@ -104,7 +102,9 @@ class Search:
         else:
             if channel[0] == "/":
                 channel = channel[1:]
-            query_url = f"https://www.youtube.com/{channel}/search?{urlencode({'query': query, 'sp':sp})}"
+            query_url = (
+                f"https://www.youtube.com/{channel}/search?{urlencode({'query': query, 'sp':sp})}"
+            )
 
         results = YoutubeDL(
             {
@@ -118,9 +118,7 @@ class Search:
         )
         self.results = []
         if results is not None:
-            filtered_entries = filter(
-                lambda entry: "short" not in entry["url"], results["entries"]
-            )
+            filtered_entries = filter(lambda entry: "short" not in entry["url"], results["entries"])
 
             for r in filtered_entries:
                 try:
@@ -169,8 +167,7 @@ class YoutubeSource(Source):
             config["start_streaming"] if "start_streaming" in config else False
         )
         self.formatstring = (
-            f"bestvideo[height<={self.max_res}]+"
-            f"bestaudio/best[height<={self.max_res}]"
+            f"bestvideo[height<={self.max_res}]+" f"bestaudio/best[height<={self.max_res}]"
         )
         self._yt_dlp = YoutubeDL(
             params={
@@ -278,15 +275,10 @@ class YoutubeSource(Source):
 
         results: list[YouTube] = []
         results_lists: list[list[YouTube]] = await asyncio.gather(
-            *[
-                asyncio.to_thread(self._channel_search, query, channel)
-                for channel in self.channels
-            ],
+            *[asyncio.to_thread(self._channel_search, query, channel) for channel in self.channels],
             asyncio.to_thread(self._yt_search, query),
         )
-        results = [
-            search_result for yt_result in results_lists for search_result in yt_result
-        ]
+        results = [search_result for yt_result in results_lists for search_result in yt_result]
 
         results.sort(key=partial(_contains_index, query))
 

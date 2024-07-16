@@ -356,9 +356,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
     :rtype: None
     """
     if data["source"] in sources:
-        config: dict[str, Any] | list[dict[str, Any]] = await sources[
-            data["source"]
-        ].get_config()
+        config: dict[str, Any] | list[dict[str, Any]] = await sources[data["source"]].get_config()
         if isinstance(config, list):
             num_chunks: int = len(config)
             for current, chunk in enumerate(config):

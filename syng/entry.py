@@ -76,8 +76,7 @@ class Entry:
         def normalize(performers: str) -> set[str]:
             return set(
                 filter(
-                    lambda x: len(x) > 0
-                    and x not in ["der", "die", "das", "alle", "und"],
+                    lambda x: len(x) > 0 and x not in ["der", "die", "das", "alle", "und"],
                     re.sub(
                         r"[^a-zA-Z0-9\s]",
                         "",

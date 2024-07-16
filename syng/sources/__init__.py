@@ -2,6 +2,7 @@
 Imports all sources, so that they add themselves to the
 ``available_sources`` dictionary.
 """
+
 # pylint: disable=useless-import-alias
 
 from typing import Any

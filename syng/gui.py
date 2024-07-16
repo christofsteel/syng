@@ -68,9 +68,7 @@ class DateAndTimePickerWindow(customtkinter.CTkToplevel):  # type: ignore
 
         self.timepicker.pack(expand=True, fill="both")
 
-        button = customtkinter.CTkButton(
-            self, text="Ok", command=partial(self.insert, input_field)
-        )
+        button = customtkinter.CTkButton(self, text="Ok", command=partial(self.insert, input_field))
         button.pack(expand=True, fill="x")
 
     def insert(self, input_field: customtkinter.CTkTextbox) -> None:
@@ -121,12 +119,8 @@ class OptionFrame(customtkinter.CTkScrollableFrame):  # type:ignore
         if value is None:
             value = ""
 
-        self.string_options[name] = customtkinter.CTkTextbox(
-            self, wrap="none", height=1
-        )
-        self.string_options[name].grid(
-            column=1, row=self.number_of_options, sticky="EW"
-        )
+        self.string_options[name] = customtkinter.CTkTextbox(self, wrap="none", height=1)
+        self.string_options[name].grid(column=1, row=self.number_of_options, sticky="EW")
         self.string_options[name].insert("0.0", value)
         if callback is not None:
             self.string_options[name].bind("<KeyRelease>", callback)
@@ -196,22 +190,16 @@ class OptionFrame(customtkinter.CTkScrollableFrame):  # type:ignore
     ) -> None:
         self.add_option_label(description)
         self.choose_options[name] = customtkinter.CTkOptionMenu(self, values=values)
-        self.choose_options[name].grid(
-            column=1, row=self.number_of_options, sticky="EW"
-        )
+        self.choose_options[name].grid(column=1, row=self.number_of_options, sticky="EW")
         self.choose_options[name].set(value)
         self.number_of_options += 1
 
-    def open_date_and_time_picker(
-        self, name: str, input_field: customtkinter.CTkTextbox
-    ) -> None:
+    def open_date_and_time_picker(self, name: str, input_field: customtkinter.CTkTextbox) -> None:
         if (
             name not in self.date_and_time_pickers
             or not self.date_and_time_pickers[name].winfo_exists()
         ):
-            self.date_and_time_pickers[name] = DateAndTimePickerWindow(
-                self, input_field
-            )
+            self.date_and_time_pickers[name] = DateAndTimePickerWindow(self, input_field)
         else:
             self.date_and_time_pickers[name].focus()
 
@@ -307,9 +295,7 @@ class GeneralConfig(OptionFrame):
             str(config["waiting_room_policy"]).lower(),
         )
         self.add_date_time_option("last_song", "Time of last song", config["last_song"])
-        self.add_string_option(
-            "preview_duration", "Preview Duration", config["preview_duration"]
-        )
+        self.add_string_option("preview_duration", "Preview Duration", config["preview_duration"])
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
@@ -346,9 +332,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         self.syng_server: Optional[Process] = None
         self.syng_client: Optional[Process] = None
 
-        self.configfile = os.path.join(
-            platformdirs.user_config_dir("syng"), "config.yaml"
-        )
+        self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
         try:
             with open(self.configfile, encoding="utf8") as cfile:
@@ -380,13 +364,9 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         self.startsyng_serverbutton = customtkinter.CTkButton(
             button_line, text="Start Local Server", command=self.start_syng_server
         )
-        self.startsyng_serverbutton.pack(
-            side="left", expand=True, anchor="w", padx=10, pady=5
-        )
+        self.startsyng_serverbutton.pack(side="left", expand=True, anchor="w", padx=10, pady=5)
 
-        savebutton = customtkinter.CTkButton(
-            button_line, text="Save", command=self.save_config
-        )
+        savebutton = customtkinter.CTkButton(button_line, text="Save", command=self.save_config)
         savebutton.pack(side="left", padx=10, pady=5)
 
         # open_web_button = customtkinter.CTkButton(
@@ -430,9 +410,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
             except (KeyError, TypeError):
                 source_config = {}
 
-            self.tabs[source_name] = SourceTab(
-                tabview.tab(source_name), source_name, source_config
-            )
+            self.tabs[source_name] = SourceTab(tabview.tab(source_name), source_name, source_config)
             self.tabs[source_name].pack(ipadx=10, expand=True, fill="both")
 
         self.update_qr()

@@ -1,4 +1,5 @@
 """Wraps the ``json`` module, so that own classes get encoded."""
+
 import json
 from dataclasses import asdict
 from typing import Any
