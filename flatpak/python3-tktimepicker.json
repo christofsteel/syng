@@ -1,0 +1,14 @@
+{
+    "name": "python3-tktimepicker",
+    "buildsystem": "simple",
+    "build-commands": [
+        "pip3 install --verbose --exists-action=i --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} \"tktimepicker\" --no-build-isolation"
+    ],
+    "sources": [
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/6c/53/03403b6c745c87000d3f34d84892860d79bfab39bd288824bd9bb5c04c0d/tkTimePicker-2.0.2-py3-none-any.whl",
+            "sha256": "1c8232dcf1314815414a6c9cb69b1e277cc289d5989952ff98e61ba18a9c3150"
+        }
+    ]
+}
