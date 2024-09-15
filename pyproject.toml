@@ -41,7 +41,7 @@ alt-profanity-check = {version = "^1.4.1", optional = true}
 client = ["minio", "mutagen", "pillow", "customtkinter", "qrcode",
   "pymediainfo", "pyyaml", "tkcalendar", "tktimepicker", "platformdirs",
   "packaging"]
-dev = ["types-pillow", "types-pillow", "mypy"]
+dev = ["types-pillow", "types-pyyaml", "mypy"]
 server = ["alt-profanity-check"]
 
 [build-system]
