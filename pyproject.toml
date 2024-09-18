@@ -36,12 +36,13 @@ types-pyyaml = {version = "^6.0.12.12", optional = true}
 types-pillow = {version = "^10.1.0.2", optional = true}
 mypy = {version = "^1.10.0", optional = true}
 alt-profanity-check = {version = "^1.4.1", optional = true}
+pylint = {version = "^3.2.7", optional = true}
 
 [tool.poetry.extras]
 client = ["minio", "mutagen", "pillow", "customtkinter", "qrcode",
   "pymediainfo", "pyyaml", "tkcalendar", "tktimepicker", "platformdirs",
   "packaging"]
-dev = ["types-pillow", "types-pyyaml", "mypy"]
+dev = ["types-pillow", "types-pyyaml", "mypy", "pylint"]
 server = ["alt-profanity-check"]
 
 [build-system]
