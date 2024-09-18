@@ -1,3 +1,20 @@
+"""
+Main entry point for the application.
+
+This module contains the main entry point for the application. It parses the
+command line arguments and runs the appropriate function based on the arguments.
+
+This module also checks if the client and server modules are available and
+imports them if they are. If they are not available, the application will not
+run the client or server functions.
+
+Client usage: syng client [-h] [--room ROOM] [--secret SECRET] \
+                    [--config-file CONFIG_FILE] [--key KEY] [--server SERVER]
+Server usage: syng server [-h] [--host HOST] [--port PORT] [--root-folder ROOT_FOLDER] \
+                    [--registration-keyfile REGISTRATION_KEYFILE] [--private] [--restricted]
+GUI usage: syng gui
+"""
+
 from typing import TYPE_CHECKING
 from argparse import ArgumentParser
 import os
@@ -28,6 +45,14 @@ except ImportError:
 
 
 def main() -> None:
+    """
+    Main entry point for the application.
+
+    This function parses the command line arguments and runs the appropriate
+    function based on the arguments.
+
+    :return: None
+    """
     parser: ArgumentParser = ArgumentParser()
     sub_parsers = parser.add_subparsers(dest="action")
 
@@ -53,6 +78,8 @@ def main() -> None:
         server_parser.add_argument("--port", "-p", type=int, default=8080)
         server_parser.add_argument("--root-folder", "-r", default=root_path)
         server_parser.add_argument("--registration-keyfile", "-k", default=None)
+        server_parser.add_argument("--private", "-P", action="store_true", default=False)
+        server_parser.add_argument("--restricted", "-R", action="store_true", default=False)
 
     args = parser.parse_args()
 

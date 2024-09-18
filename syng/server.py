@@ -35,6 +35,8 @@ import socketio
 from aiohttp import web
 from profanity_check import predict
 
+from syng.result import Result
+
 from . import jsonencoder
 from .entry import Entry
 from .queue import Queue
@@ -200,6 +202,16 @@ async def handle_waiting_room_append(sid: str, data: dict[str, Any]) -> None:
     """
     Append a song to the waiting room.
 
+    This should be called from a web client. Appends the entry, that is encoded
+    within the data to the waiting room of the room the client is currently
+    connected to.
+
+    :param sid: The session id of the client sending this request
+    :type sid: str
+    :param data: A dictionary encoding the entry, that should be added to the
+        waiting room.
+    :type data: dict[str, Any]
+    :rtype: None
     """
     async with sio.session(sid) as session:
         room = session["room"]
@@ -318,6 +330,17 @@ async def handle_show_config(sid: str) -> None:
 
 @sio.on("update_config")
 async def handle_update_config(sid: str, data: dict[str, Any]) -> None:
+    """
+    Forwards an updated config from an authorized webclient to the playback client.
+
+    This is currently untrested and should be used with caution.
+
+    :param sid: The session id of the client sending this request
+    :type sid: str
+    :param data: A dictionary encoding the new configuration
+    :type data: dict[str, Any]
+    :rtype: None
+    """
     async with sio.session(sid) as session:
         room = session["room"]
         is_admin = session["admin"]
@@ -595,6 +618,14 @@ async def add_songs_from_waiting_room(room: str) -> None:
 async def discard_first(room: str) -> Entry:
     """
     Gets the first element of the queue, handling resulting triggers.
+
+    This function is used to get the first element of the queue, and handle
+    the resulting triggers. This includes adding songs from the waiting room,
+    and updating the state of the room.
+
+    :param room: The room to get the first element from.
+    :type room: str
+    :rtype: Entry
     """
     state = clients[room]
 
@@ -644,14 +675,33 @@ async def handle_pop_then_get_next(sid: str) -> None:
     await sio.emit("play", current, room=sid)
 
 
+def check_registration(key: str) -> bool:
+    """
+    Check if a given key is in the registration keyfile.
+
+    This is used to authenticate a client, if the server is in private or
+    restricted mode.
+
+    :param key: The key to check
+    :type key: str
+    :return: True if the key is in the registration keyfile, False otherwise
+    :rtype: bool
+    """
+    with open(app["registration-keyfile"], encoding="utf8") as f:
+        raw_keys = f.readlines()
+        keys = [key[:64] for key in raw_keys]
+        print(keys)
+        print(key)
+
+        return key in keys
+
+
 @sio.on("register-client")
 async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
     """
     Handle the "register-client" message.
 
     The data dictionary should have the following keys:
-        - `registration_key` (Optional), a key corresponding to those stored
-                    in `app["registration-keyfile"]`
         - `room` (Optional), the requested room
         - `config`, an dictionary of initial configurations
         - `queue`, a list of initial entries for the queue. The entries are
@@ -659,6 +709,7 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         - `recent`, a list of initial entries for the recent list. The entries
                     are encoded as a dictionary.
         - `secret`, the secret of the room
+        - `key`, a registration key given out by the server administrator
 
     This will register a new playback client to a specific room. If there
     already exists a playback client registered for this room, this
@@ -697,21 +748,19 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
             client_id = gen_id(length + 1)
         return client_id
 
-    if not app["public"]:
-        with open(app["registration-keyfile"], encoding="utf8") as f:
-            raw_keys = f.readlines()
-            keys = [key[:64] for key in raw_keys]
+    if "key" in data["config"]:
+        print(data["config"]["key"])
+        data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
 
-            if (
-                "key" not in data["config"]
-                or hashlib.sha256(data["config"]["key"].encode()).hexdigest() not in keys
-            ):
-                await sio.emit(
-                    "client-registered",
-                    {"success": False, "room": None},
-                    room=sid,
-                )
-                return
+    if app["type"] == "private" and (
+        "key" not in data["config"] or not check_registration(data["config"]["key"])
+    ):
+        await sio.emit(
+            "client-registered",
+            {"success": False, "room": None},
+            room=sid,
+        )
+        return
 
     room: str = (
         data["config"]["room"] if "room" in data["config"] and data["config"]["room"] else gen_id()
@@ -1038,11 +1087,65 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
     state = clients[room]
 
     query = data["query"]
-    results_list = await asyncio.gather(
-        *[state.client.sources[source].search(query) for source in state.client.sources_prio]
-    )
+    if (
+        app["type"] != "restricted"
+        or "key" in state.client.config
+        and check_registration(state.client.config["key"])
+    ):
+        results_list = await asyncio.gather(
+            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
+        )
 
-    results = [search_result for source_result in results_list for search_result in source_result]
+        results = [
+            search_result for source_result in results_list for search_result in source_result
+        ]
+        await send_search_results(sid, results)
+    else:
+        print("Denied")
+        await sio.emit("search", {"query": query, "sid": sid}, room=state.sid)
+
+
+@sio.on("search-results")
+async def handle_search_results(sid: str, data: dict[str, Any]) -> None:
+    """
+    Handle the "search-results" message.
+
+    This message is send by the playback client, once it has received search
+    results. The results are send to the web client.
+
+    The data dictionary should have the following keys:
+        - `sid`, the session id of the web client (str)
+        - `results`, a list of search results (list[dict[str, Any]])
+
+    :param sid: The session id of the playback client
+    :type sid: str
+    :param data: A dictionary with the keys described above
+    :type data: dict[str, Any]
+    :rtype: None
+    """
+    async with sio.session(sid) as session:
+        room = session["room"]
+    state = clients[room]
+
+    if sid != state.sid:
+        return
+
+    web_sid = data["sid"]
+    results = [Result.from_dict(result) for result in data["results"]]
+
+    await send_search_results(web_sid, results)
+
+
+async def send_search_results(sid: str, results: list[Result]) -> None:
+    """
+    Send search results to a client.
+
+    :param sid: The session id of the client to send the results to.
+    :type sid: str
+    :param results: The search results to send.
+    :type results: list[Result]
+    :rtype: None
+    """
     await sio.emit(
         "search-results",
         {"results": results},
@@ -1051,9 +1154,12 @@ async def handle_search(sid: str, data: dict[str, Any]) -> None:
 
 
 async def cleanup() -> None:
-    """Clean up the unused playback clients
+    """
+    Clean up the unused playback clients
 
-    This runs every hour, and removes every client, that did not requested a song for four hours
+    This runs every hour, and removes every client, that did not requested a song for four hours.
+
+    :rtype: None
     """
 
     logger.info("Start Cleanup")
@@ -1085,9 +1191,14 @@ async def cleanup() -> None:
 async def background_tasks(
     iapp: web.Application,
 ) -> AsyncGenerator[None, None]:
-    """Create all the background tasks
+    """
+    Create all the background tasks.
 
-    For now, this is only the cleanup task
+    For now, this is only the cleanup task.
+
+    :param iapp: The web application
+    :type iapp: web.Application
+    :rtype: AsyncGenerator[None, None]
     """
 
     iapp["repeated_cleanup"] = asyncio.create_task(cleanup())
@@ -1099,9 +1210,23 @@ async def background_tasks(
 
 
 def run_server(args: Namespace) -> None:
-    app["public"] = True
+    """
+    Run the server.
+
+    `args` consists of the following attributes:
+        - `host`, the host to bind to
+        - `port`, the port to bind to
+        - `root_folder`, the root folder of the web client
+        - `registration_keyfile`, the file containing the registration keys
+        - `private`, if the server is private
+        - `restricted`, if the server is restricted
+
+    :param args: The command line arguments
+    :type args: Namespace
+    :rtype: None
+    """
+    app["type"] = "private" if args.private else "restricted" if args.restricted else "public"
     if args.registration_keyfile:
-        app["public"] = False
         app["registration-keyfile"] = args.registration_keyfile
 
     app["root_folder"] = args.root_folder
@@ -1128,7 +1253,8 @@ def main() -> None:
     """
 
     print(
-        f"Starting the server with {argv[0]} is deprecated. Please use `syng server` to start the server",
+        f"Starting the server with {argv[0]} is deprecated. "
+        "Please use `syng server` to start the server",
         file=stderr,
     )
 
@@ -1138,6 +1264,8 @@ def main() -> None:
     parser.add_argument("--port", "-p", type=int, default=8080)
     parser.add_argument("--root-folder", "-r", default=root_path)
     parser.add_argument("--registration-keyfile", "-k", default=None)
+    parser.add_argument("--private", "-P", action="store_true", default=False)
+    parser.add_argument("--restricted", "-R", action="store_true", default=False)
     args = parser.parse_args()
 
     run_server(args)

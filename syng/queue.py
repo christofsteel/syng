@@ -107,6 +107,14 @@ class Queue:
                 updater(item)
 
     def find_by_name(self, name: str) -> Optional[Entry]:
+        """
+        Find an entry by its performer and return it.
+
+        :param name: The name of the performer to search for.
+        :type name: str
+        :returns: The entry with the performer or `None` if no such entry exists
+        :rtype: Optional[Entry]
+        """
         for item in self._queue:
             if item.shares_performer(name):
                 return item

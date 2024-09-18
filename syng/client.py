@@ -29,6 +29,7 @@ The config file should be a yaml file in the following style::
         secret: ...
         last_song: ...
         waiting_room_policy: ..
+        key: ..
 
 """
 
@@ -69,6 +70,12 @@ currentLock: asyncio.Semaphore = asyncio.Semaphore(0)
 
 
 def default_config() -> dict[str, Optional[int | str]]:
+    """
+    Return a default configuration for the client.
+
+    :returns: A dictionary with the default configuration.
+    :rtype: dict[str, Optional[int | str]]
+    """
     return {
         "server": "http://localhost:8080",
         "room": "ABCD",
@@ -76,6 +83,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "secret": None,
         "last_song": None,
         "waiting_room_policy": None,
+        "key": None,
     }
 
 
@@ -102,7 +110,8 @@ class State:
         * `secret` (`str`): The passcode of the room. If a playback client reconnects to
             a room, this must be identical. Also, if a webclient wants to have
             admin privileges, this must be included.
-        * `key` (`Optional[str]`) An optional key, if registration on the server is limited.
+        * `key` (`Optional[str]`) An optional key, if registration or functionality on the server
+            is limited.
         * `preview_duration` (`Optional[int]`): The duration in seconds the
             playback client shows a preview for the next song. This is accounted for
             in the calculation of the ETA for songs later in the queue.
@@ -131,6 +140,15 @@ state: State = State()
 
 @sio.on("update_config")
 async def handle_update_config(data: dict[str, Any]) -> None:
+    """
+    Handle the "update_config" message.
+
+    Currently, this function is untested and should be considered dangerous.
+
+    :param data: A dictionary with the new configuration.
+    :type data: dict[str, Any]
+    :rtype: None
+    """
     state.config = default_config() | data
 
 
@@ -300,6 +318,32 @@ async def handle_play(data: dict[str, Any]) -> None:
         await sio.emit("pop-then-get-next")
 
 
+@sio.on("search")
+async def handle_search(data: dict[str, Any]) -> None:
+    """
+    Handle the "search" message.
+
+    This handles client side search requests. It sends a search request to all
+    configured :py:class:`syng.sources.source.Source` and collects the results.
+
+    The results are then send back to the server in a "search-results" message,
+    including the `sid` of the corresponding webclient.
+
+    :param data: A dictionary with the `query` and `sid` entry.
+    :type data: dict[str, Any]
+    :rtype: None
+    """
+    query = data["query"]
+    sid = data["sid"]
+    results_list = await asyncio.gather(*[source.search(query) for source in sources.values()])
+
+    results = [
+        search_result.to_dict() for source_result in results_list for search_result in source_result
+    ]
+
+    await sio.emit("search-results", {"results": results, "sid": sid})
+
+
 @sio.on("client-registered")
 async def handle_client_registered(data: dict[str, Any]) -> None:
     """
@@ -374,6 +418,14 @@ async def handle_request_config(data: dict[str, Any]) -> None:
 
 
 def signal_handler() -> None:
+    """
+    Signal handler for the client.
+
+    This function is called when the client receives a signal to terminate. It
+    will disconnect from the server and kill the current player.
+
+    :rtype: None
+    """
     engineio.async_client.async_signal_handler()
     if state.current_source is not None:
         if state.current_source.player is not None:
@@ -424,10 +476,31 @@ async def start_client(config: dict[str, Any]) -> None:
 
 
 def create_async_and_start_client(config: dict[str, Any]) -> None:
+    """
+    Create an asyncio event loop and start the client.
+
+    :param config: Config options for the client
+    :type config: dict[str, Any]
+    :rtype: None
+    """
     asyncio.run(start_client(config))
 
 
 def run_client(args: Namespace) -> None:
+    """
+    Run the client with the given arguments.
+
+    Namespace contains the following attributes:
+        - room: The room code to connect to
+        - secret: The secret to connect to the room
+        - config_file: The path to the configuration file
+        - key: The key to connect to the server
+        - server: The url of the server to connect to
+
+    :param args: The arguments from the command line
+    :type args: Namespace
+    :rtype: None
+    """
     try:
         with open(args.config_file, encoding="utf8") as file:
             config = load(file, Loader=Loader)
@@ -452,7 +525,8 @@ def main() -> None:
     """Entry point for the syng-client script."""
 
     print(
-        f"Starting the client with {argv[0]} is deprecated. Please use `syng client` to start the client",
+        f"Starting the client with {argv[0]} is deprecated. "
+        "Please use `syng client` to start the client",
         file=stderr,
     )
     parser: ArgumentParser = ArgumentParser()

@@ -17,10 +17,11 @@ from .source import Source
 
 
 class FileBasedSource(Source):
-    """A source for indexing and playing songs from a local folder.
+    """
+    A abstract source for indexing and playing songs based on files.
 
     Config options are:
-        -``dir``, dirctory to index and server from.
+        -``extensions``, list of filename extensions
     """
 
     config_schema = Source.config_schema | {
@@ -39,18 +40,31 @@ class FileBasedSource(Source):
         self.extra_mpv_arguments = ["--scale=oversample"]
 
     def has_correct_extension(self, path: Optional[str]) -> bool:
-        """Check if a `path` has a correct extension.
+        """
+        Check if a `path` has a correct extension.
 
         For A+B type extensions (like mp3+cdg) only the latter halve is checked
 
+        :param path: The path to check.
+        :type path: Optional[str]
         :return: True iff path has correct extension.
         :rtype: bool
         """
         return path is not None and os.path.splitext(path)[1][1:] in [
-            ext.split("+")[-1] for ext in self.extensions
+            ext.rsplit("+", maxsplit=1)[-1] for ext in self.extensions
         ]
 
     def get_video_audio_split(self, path: str) -> tuple[str, Optional[str]]:
+        """
+        Returns path for audio and video file, if filetype is marked as split.
+
+        If the file is not marked as split, the second element of the tuple will be None.
+
+        :params: path: The path to the file
+        :type path: str
+        :return: Tuple with path to video and audio file
+        :rtype: tuple[str, Optional[str]]
+        """
         extension_of_path = os.path.splitext(path)[1][1:]
         splitted_extensions = [ext.split("+") for ext in self.extensions if "+" in ext]
         splitted_extensions_dict = {video: audio for [audio, video] in splitted_extensions}
@@ -63,6 +77,14 @@ class FileBasedSource(Source):
         return (path, None)
 
     async def get_duration(self, path: str) -> int:
+        """
+        Return the duration for the file.
+
+        :param path: The path to the file
+        :type path: str
+        :return: The duration in seconds
+        :rtype: int
+        """
         if not PYMEDIAINFO_AVAILABLE:
             return 180
 

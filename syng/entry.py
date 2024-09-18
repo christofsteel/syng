@@ -73,6 +73,15 @@ class Entry:
         self.__dict__.update(kwargs)
 
     def shares_performer(self, other_performer: str) -> bool:
+        """
+        Check if this entry shares a performer with another entry.
+
+        :param other_performer: The performer to check against.
+        :type other_performer: str
+        :return: True if the performers intersect, False otherwise.
+        :rtype: bool
+        """
+
         def normalize(performers: str) -> set[str]:
             return set(
                 filter(

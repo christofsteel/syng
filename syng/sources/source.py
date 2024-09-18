@@ -178,18 +178,16 @@ class Source(ABC):
         if ident not in self._index:
             return None
 
-        res: Optional[Result] = Result.from_filename(ident, self.source_name)
-        if res is not None:
-            return Entry(
-                ident=ident,
-                source=self.source_name,
-                duration=180,
-                album=res.album,
-                title=res.title,
-                artist=res.artist,
-                performer=performer,
-            )
-        return None
+        res: Result = Result.from_filename(ident, self.source_name)
+        return Entry(
+            ident=ident,
+            source=self.source_name,
+            duration=180,
+            album=res.album,
+            title=res.title,
+            artist=res.artist,
+            performer=performer,
+        )
 
     async def search(self, query: str) -> list[Result]:
         """
@@ -205,10 +203,7 @@ class Source(ABC):
         filtered: list[str] = self.filter_data_by_query(query, self._index)
         results: list[Result] = []
         for filename in filtered:
-            result: Optional[Result] = Result.from_filename(filename, self.source_name)
-            if result is None:
-                continue
-            results.append(result)
+            results.append(Result.from_filename(filename, self.source_name))
         return results
 
     @abstractmethod

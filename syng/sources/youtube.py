@@ -1,8 +1,7 @@
 """
 Construct the YouTube source.
 
-If available, downloading will be performed via yt-dlp, if not, pytube will be
-used.
+This source uses yt-dlp to search and download videos from YouTube.
 
 Adds it to the ``available_sources`` with the name ``youtube``.
 """
@@ -28,11 +27,20 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    __cache__: dict[str, Any] = (
-        {}
-    )  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
+    __cache__: dict[
+        str, Any
+    ] = {}  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
 
     def __init__(self, url: Optional[str] = None):
+        """
+        Construct a YouTube object from a url.
+
+        If the url is already in the cache, the object is constructed from the
+        cache. Otherwise yt-dlp is used to extract the information.
+
+        :param url: The url of the video.
+        :type url: Optional[str]
+        """
         self._title: Optional[str]
         self._author: Optional[str]
 
@@ -63,22 +71,37 @@ class YouTube:
 
     @property
     def title(self) -> str:
+        """
+        The title of the video.
+
+        :return: The title of the video.
+        :rtype: str
+        """
         if self._title is None:
             return ""
-        else:
-            return self._title
+        return self._title
 
     @property
     def author(self) -> str:
+        """
+        The author of the video.
+
+        :return: The author of the video.
+        :rtype: str
+        """
         if self._author is None:
             return ""
-        else:
-            return self._author
+        return self._author
 
     @classmethod
     def from_result(cls, search_result: dict[str, Any]) -> YouTube:
         """
-        Construct a YouTube object from yt-dlp results.
+        Construct a YouTube object from yt-dlp search results.
+
+        Updates the cache with the url and the metadata.
+
+        :param search_result: The search result from yt-dlp.
+        :type search_result: dict[str, Any]
         """
         url = search_result["url"]
         cls.__cache__[url] = {
@@ -95,8 +118,21 @@ class Search:
     A minimal compatibility layer for the Search object of pytube, implemented via yt-dlp
     """
 
+    # pylint: disable=too-few-public-methods
     def __init__(self, query: str, channel: Optional[str] = None):
-        sp = "EgIQAfABAQ=="
+        """
+        Construct a Search object from a query and an optional channel.
+
+        Uses yt-dlp to search for the query.
+
+        If no channel is given, the search is done on the whole of YouTube.
+
+        :param query: The query to search for.
+        :type query: str
+        :param channel: The channel to search in.
+        :type channel: Optional[str]
+        """
+        sp = "EgIQAfABAQ=="  # This is a magic string, that tells youtube to search for videos
         if channel is None:
             query_url = f"https://youtube.com/results?{urlencode({'search_query': query, 'sp':sp})}"
         else:
@@ -157,7 +193,12 @@ class YoutubeSource(Source):
 
     # pylint: disable=too-many-instance-attributes
     def __init__(self, config: dict[str, Any]):
-        """Create the source."""
+        """
+        Create the YouTube source.
+
+        :param config: The configuration for the source.
+        :type config: dict[str, Any]
+        """
         super().__init__(config)
 
         self.channels: list[str] = config["channels"] if "channels" in config else []
@@ -227,6 +268,16 @@ class YoutubeSource(Source):
         """
 
         def _get_entry(performer: str, url: str) -> Optional[Entry]:
+            """
+            Create the entry in a thread.
+
+            :param performer: The person singing.
+            :type performer: str
+            :param url: A url to a YouTube video.
+            :type url: str
+            :return: An entry with the data.
+            :rtype: Optional[Entry]
+            """
             yt_song = YouTube(url)
             try:
                 length = yt_song.length
@@ -264,6 +315,17 @@ class YoutubeSource(Source):
         """
 
         def _contains_index(query: str, result: YouTube) -> float:
+            """
+            Calculate a score for the result.
+
+            The score is the ratio of how many words of the query are in the
+            title and author of the result.
+
+            :param query: The query to search for.
+            :type query: str
+            :param result: The result to score.
+            :type result: YouTube
+            """
             compare_string: str = result.title.lower() + " " + result.author.lower()
             hits: int = 0
             queries: list[str] = shlex.split(query.lower())
