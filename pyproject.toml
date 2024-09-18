@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "syng"
 version = "2.0.0"
-description = ""
+description = "A all-in-one webbased karaoke system with youtube support"
 authors = ["Christoph Stahl <christoph.stahl@tu-dortmund.de>"]
 license = "GPL3"
 readme = "README.md"
@@ -12,7 +12,6 @@ syng-client = "syng.client:main"
 syng-server = "syng.server:main"
 syng-gui = "syng.gui:main"
 syng = "syng.main:main"
-# syng-shell = "syng.webclientmockup:main"
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -21,28 +20,28 @@ aiohttp = "^3.9.1"
 yt-dlp = { version = "*"}
 minio = { version = "^7.2.0", optional = true }
 mutagen = { version = "^1.47.0", optional = true }
-# aiocmd = "^0.1.5"
 pillow = { version = "^10.1.0", optional = true}
 customtkinter = { version = "^5.2.1", optional = true}
 qrcode = { version = "^7.4.2", optional = true }
 pymediainfo = { version = "^6.1.0", optional = true }
 pyyaml = { version = "^6.0.1", optional = true }
-# async-tkinter-loop = "^0.9.2"
 tkcalendar = { version = "^1.6.1", optional = true }
 tktimepicker = { version = "^2.0.2", optional = true }
 platformdirs = { version = "^4.0.0", optional = true }
 packaging = {version = "^23.2", optional = true}
-types-pyyaml = {version = "^6.0.12.12", optional = true}
-types-pillow = {version = "^10.1.0.2", optional = true}
-mypy = {version = "^1.10.0", optional = true}
 alt-profanity-check = {version = "^1.4.1", optional = true}
-pylint = {version = "^3.2.7", optional = true}
+
+[tool.poetry.group.dev.dependencies]
+types-pyyaml = "^6.0.12.12"
+types-pillow = "^10.1.0.2"
+mypy = "^1.10.0"
+pylint = "^3.2.7"
+
 
 [tool.poetry.extras]
 client = ["minio", "mutagen", "pillow", "customtkinter", "qrcode",
   "pymediainfo", "pyyaml", "tkcalendar", "tktimepicker", "platformdirs",
   "packaging"]
-dev = ["types-pillow", "types-pyyaml", "mypy", "pylint"]
 server = ["alt-profanity-check"]
 
 [build-system]

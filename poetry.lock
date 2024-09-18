@@ -751,13 +751,13 @@ files = [
 
 [[package]]
 name = "idna"
-version = "3.9"
+version = "3.10"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "idna-3.9-py3-none-any.whl", hash = "sha256:69297d5da0cc9281c77efffb4e730254dd45943f45bbfb461de5991713989b1e"},
-    {file = "idna-3.9.tar.gz", hash = "sha256:e5c5dafde284f26e9e0f28f6ea2d6400abd5ca099864a67f576f3981c6476124"},
+    {file = "idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"},
+    {file = "idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9"},
 ]
 
 [package.extras]
@@ -936,7 +936,7 @@ files = [
 name = "mypy"
 version = "1.11.2"
 description = "Optional static typing for Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "mypy-1.11.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d42a6dd818ffce7be66cce644f1dff482f1d97c53ca70908dff0b9ddc120b77a"},
@@ -983,7 +983,7 @@ reports = ["lxml"]
 name = "mypy-extensions"
 version = "1.0.0"
 description = "Type system extensions for programs checked with the mypy type checker."
-optional = true
+optional = false
 python-versions = ">=3.5"
 files = [
     {file = "mypy_extensions-1.0.0-py3-none-any.whl", hash = "sha256:4392f6c0eb8a5668a69e23d168ffa70f0be9ccfd32b5cc2d26a34ae5b844552d"},
@@ -1154,13 +1154,13 @@ xmp = ["defusedxml"]
 
 [[package]]
 name = "platformdirs"
-version = "4.3.3"
+version = "4.3.6"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "platformdirs-4.3.3-py3-none-any.whl", hash = "sha256:50a5450e2e84f44539718293cbb1da0a0885c9d14adf21b77bae4e66fc99d9b5"},
-    {file = "platformdirs-4.3.3.tar.gz", hash = "sha256:d4e0b7d8ec176b341fb03cb11ca12d0276faa8c485f9cd218f613840463fc2c0"},
+    {file = "platformdirs-4.3.6-py3-none-any.whl", hash = "sha256:73e575e1408ab8103900836b97580d5307456908a03e92031bab39e4554cc3fb"},
+    {file = "platformdirs-4.3.6.tar.gz", hash = "sha256:357fb2acbc885b0419afd3ce3ed34564c13c9b95c89360cd9563f73aa5e2b907"},
 ]
 
 [package.extras]
@@ -1626,7 +1626,7 @@ files = [
 name = "types-pillow"
 version = "10.2.0.20240822"
 description = "Typing stubs for Pillow"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "types-Pillow-10.2.0.20240822.tar.gz", hash = "sha256:559fb52a2ef991c326e4a0d20accb3bb63a7ba8d40eb493e0ecb0310ba52f0d3"},
@@ -1635,13 +1635,13 @@ files = [
 
 [[package]]
 name = "types-pyyaml"
-version = "6.0.12.20240808"
+version = "6.0.12.20240917"
 description = "Typing stubs for PyYAML"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "types-PyYAML-6.0.12.20240808.tar.gz", hash = "sha256:b8f76ddbd7f65440a8bda5526a9607e4c7a322dc2f8e1a8c405644f9a6f4b9af"},
-    {file = "types_PyYAML-6.0.12.20240808-py3-none-any.whl", hash = "sha256:deda34c5c655265fc517b546c902aa6eed2ef8d3e921e4765fe606fe2afe8d35"},
+    {file = "types-PyYAML-6.0.12.20240917.tar.gz", hash = "sha256:d1405a86f9576682234ef83bcb4e6fff7c9305c8b1fbad5e0bcd4f7dbdc9c587"},
+    {file = "types_PyYAML-6.0.12.20240917-py3-none-any.whl", hash = "sha256:392b267f1c0fe6022952462bf5d6523f31e37f6cea49b14cee7ad634b6301570"},
 ]
 
 [[package]]
@@ -1919,10 +1919,9 @@ test = ["pytest (>=8.1,<9.0)"]
 
 [extras]
 client = ["customtkinter", "minio", "mutagen", "packaging", "pillow", "platformdirs", "pymediainfo", "pyyaml", "qrcode", "tkcalendar", "tktimepicker"]
-dev = ["mypy", "types-pillow", "types-pyyaml"]
 server = ["alt-profanity-check"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d22eb6f38f71410d8a6102970785e9e3f910543b1c74c2a49993b0ebc1039f1c"
+content-hash = "3310779a7a61511f14b32d0008db391c5eb0200c67187e61fd4d46cd1ba17677"
