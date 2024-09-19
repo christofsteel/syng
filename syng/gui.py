@@ -5,7 +5,6 @@ from datetime import datetime, date, time
 import os
 import builtins
 from functools import partial
-from sys import argv, stderr
 from typing import TYPE_CHECKING, Any, Optional
 import webbrowser
 import multiprocessing
@@ -296,6 +295,7 @@ class GeneralConfig(OptionFrame):
         )
         self.add_date_time_option("last_song", "Time of last song", config["last_song"])
         self.add_string_option("preview_duration", "Preview Duration", config["preview_duration"])
+        self.add_string_option("key", "Key for server", config["key"])
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
@@ -319,6 +319,53 @@ class SyngGui(customtkinter.CTk):  # type:ignore
 
         self.withdraw()
         self.destroy()
+
+    def add_buttons(self) -> None:
+        button_line = customtkinter.CTkFrame(self)
+        button_line.pack(side="bottom", fill="x")
+
+        self.startsyng_serverbutton = customtkinter.CTkButton(
+            button_line, text="Start Local Server", command=self.start_syng_server
+        )
+        self.startsyng_serverbutton.pack(side="left", expand=True, anchor="w", padx=10, pady=5)
+
+        savebutton = customtkinter.CTkButton(button_line, text="Save", command=self.save_config)
+        savebutton.pack(side="left", padx=10, pady=5)
+
+        self.startbutton = customtkinter.CTkButton(
+            button_line, text="Save and Start", command=self.start_syng_client
+        )
+        self.startbutton.pack(side="left", padx=10, pady=10)
+
+    def init_frame(self):
+        self.frm = customtkinter.CTkFrame(self)
+        self.frm.pack(ipadx=10, padx=10, fill="both", expand=True)
+
+    def init_tabs(self):
+        self.tabview = customtkinter.CTkTabview(self.frm, width=600, height=500)
+        self.tabview.pack(side="right", padx=10, pady=10, fill="both", expand=True)
+
+        self.tabview.add("General")
+        for source in available_sources:
+            self.tabview.add(source)
+        self.tabview.set("General")
+
+    def add_qr(self) -> None:
+        self.qrlabel = customtkinter.CTkLabel(self.frm, text="")
+        self.qrlabel.pack(side="top", anchor="n", padx=10, pady=10)
+        self.linklabel = customtkinter.CTkLabel(self.frm, text="")
+        self.linklabel.bind("<Button-1>", lambda _: self.open_web())
+        self.linklabel.pack()
+
+    def add_general_config(self, config: dict[str, Any]) -> None:
+        self.general_config = GeneralConfig(self.tabview.tab("General"), config, self.update_qr)
+        self.general_config.pack(ipadx=10, fill="both", expand=True)
+
+    def add_source_config(self, source_name: str, source_config: dict[str, Any]) -> None:
+        self.tabs[source_name] = SourceTab(
+            self.tabview.tab(source_name), source_name, source_config
+        )
+        self.tabs[source_name].pack(ipadx=10, expand=True, fill="both")
 
     def __init__(self) -> None:
         super().__init__(className="Syng")
@@ -347,9 +394,6 @@ class SyngGui(customtkinter.CTk):  # type:ignore
         except (KeyError, TypeError):
             print("Could not load config")
 
-        # if "config" in loaded_config:
-        #     config["config"] |= loaded_config["config"]
-
         if not config["config"]["secret"]:
             config["config"]["secret"] = "".join(
                 secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
@@ -357,51 +401,11 @@ class SyngGui(customtkinter.CTk):  # type:ignore
 
         self.wm_title("Syng")
 
-        # Buttons
-        button_line = customtkinter.CTkFrame(self)
-        button_line.pack(side="bottom", fill="x")
-
-        self.startsyng_serverbutton = customtkinter.CTkButton(
-            button_line, text="Start Local Server", command=self.start_syng_server
-        )
-        self.startsyng_serverbutton.pack(side="left", expand=True, anchor="w", padx=10, pady=5)
-
-        savebutton = customtkinter.CTkButton(button_line, text="Save", command=self.save_config)
-        savebutton.pack(side="left", padx=10, pady=5)
-
-        # open_web_button = customtkinter.CTkButton(
-        #     button_line, text="Open Web", command=self.open_web
-        # )
-        # open_web_button.pack(side="left", pady=5)
-
-        self.startbutton = customtkinter.CTkButton(
-            button_line, text="Save and Start", command=self.start_syng_client
-        )
-        self.startbutton.pack(side="left", padx=10, pady=10)
-
-        # Tabs and QR Code
-        frm = customtkinter.CTkFrame(self)
-        frm.pack(ipadx=10, padx=10, fill="both", expand=True)
-
-        tabview = customtkinter.CTkTabview(frm, width=600, height=500)
-        tabview.pack(side="right", padx=10, pady=10, fill="both", expand=True)
-
-        tabview.add("General")
-        for source in available_sources:
-            tabview.add(source)
-        tabview.set("General")
-
-        self.qrlabel = customtkinter.CTkLabel(frm, text="")
-        self.qrlabel.pack(side="top", anchor="n", padx=10, pady=10)
-        self.linklabel = customtkinter.CTkLabel(frm, text="")
-        self.linklabel.bind("<Button-1>", lambda _: self.open_web())
-        self.linklabel.pack()
-
-        self.general_config = GeneralConfig(
-            tabview.tab("General"), config["config"], self.update_qr
-        )
-        self.general_config.pack(ipadx=10, fill="both", expand=True)
-
+        self.add_buttons()
+        self.init_frame()
+        self.init_tabs()
+        self.add_qr()
+        self.add_general_config(config["config"])
         self.tabs = {}
 
         for source_name in available_sources:
@@ -410,8 +414,7 @@ class SyngGui(customtkinter.CTk):  # type:ignore
             except (KeyError, TypeError):
                 source_config = {}
 
-            self.tabs[source_name] = SourceTab(tabview.tab(source_name), source_name, source_config)
-            self.tabs[source_name].pack(ipadx=10, expand=True, fill="both")
+            self.add_source_config(source_name, source_config)
 
         self.update_qr()
 
@@ -493,15 +496,3 @@ class SyngGui(customtkinter.CTk):  # type:ignore
 
 def run_gui() -> None:
     SyngGui().mainloop()
-
-
-def main() -> None:
-    print(
-        f"Starting the gui with {argv[0]} is deprecated. Please use `syng gui` to start the gui",
-        file=stderr,
-    )
-    run_gui()
-
-
-if __name__ == "__main__":
-    main()
