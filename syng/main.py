@@ -9,10 +9,27 @@ imports them if they are. If they are not available, the application will not
 run the client or server functions.
 
 Client usage: syng client [-h] [--room ROOM] [--secret SECRET] \
-                    [--config-file CONFIG_FILE] [--key KEY] [--server SERVER]
+                    [--config-file CONFIG_FILE] [--server SERVER]
 Server usage: syng server [-h] [--host HOST] [--port PORT] [--root-folder ROOT_FOLDER] \
                     [--registration-keyfile REGISTRATION_KEYFILE] [--private] [--restricted]
 GUI usage: syng gui
+
+The config file for the client should be a yaml file in the following style::
+
+      sources:
+        SOURCE1:  
+          configuration for SOURCE
+        SOURCE2: 
+          configuration for SOURCE
+        ...
+      config:
+        server: ...
+        room: ...
+        preview_duration: ...
+        secret: ...
+        last_song: ...
+        waiting_room_policy: ..
+        key: ..
 """
 
 from typing import TYPE_CHECKING
@@ -66,7 +83,7 @@ def main() -> None:
             "-C",
             default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
         )
-        client_parser.add_argument("--key", "-k", default=None)
+        # client_parser.add_argument("--key", "-k", default=None)
         client_parser.add_argument("--server", "-S")
 
         sub_parsers.add_parser("gui")

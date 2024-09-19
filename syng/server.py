@@ -1,16 +1,14 @@
 """
 Module for the Server.
 
-Starts a async socketio server, and serves the web client::
+The server listens for incoming connections from playback clients and web
+clients via the socket.io protocol.
 
-    usage: server.py [-h] [--host HOST] [--port PORT] [--root-folder PATH]
-
-    options:
-      -h, --help            show this help message and exit
-      --host HOST, -H HOST
-      --port PORT, -p PORT
-      --root-folder PATH, -r PATH
-
+It manages multiple independent rooms, each with its own queue and configuration.
+If configured, the server can be in private mode, where only playback clients with
+a valid registration key can connect. It can also be in restricted mode, where only
+search is forwarded to the playback client, unless the client has a valid registration
+key.
 """
 
 from __future__ import annotations
@@ -23,10 +21,9 @@ import os
 import random
 import string
 from json.decoder import JSONDecodeError
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
-from sys import argv, stderr
 from typing import Any
 from typing import AsyncGenerator
 from typing import Optional
@@ -1240,36 +1237,3 @@ def run_server(args: Namespace) -> None:
     app.cleanup_ctx.append(background_tasks)
 
     web.run_app(app, host=args.host, port=args.port)
-
-
-def main() -> None:
-    """
-    Configure and start the server.
-
-    Parse the command line arguments, register static routes to serve the web
-    client and start the server.
-
-    :rtype: None
-    """
-
-    print(
-        f"Starting the server with {argv[0]} is deprecated. "
-        "Please use `syng server` to start the server",
-        file=stderr,
-    )
-
-    root_path = os.path.join(os.path.dirname(__file__), "static")
-    parser = ArgumentParser()
-    parser.add_argument("--host", "-H", default="localhost")
-    parser.add_argument("--port", "-p", type=int, default=8080)
-    parser.add_argument("--root-folder", "-r", default=root_path)
-    parser.add_argument("--registration-keyfile", "-k", default=None)
-    parser.add_argument("--private", "-P", action="store_true", default=False)
-    parser.add_argument("--restricted", "-R", action="store_true", default=False)
-    args = parser.parse_args()
-
-    run_server(args)
-
-
-if __name__ == "__main__":
-    main()

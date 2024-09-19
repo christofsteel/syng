@@ -8,9 +8,6 @@ readme = "README.md"
 include = ["syng/static"]
 
 [tool.poetry.scripts]
-syng-client = "syng.client:main"
-syng-server = "syng.server:main"
-syng-gui = "syng.gui:main"
 syng = "syng.main:main"
 
 [tool.poetry.dependencies]

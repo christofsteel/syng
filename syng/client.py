@@ -1,53 +1,29 @@
 """
 Module for the playback client.
 
-Excerp from the help::
+The client connects to the server via the socket.io protocol, and plays the
+songs, that are sent by the server.
 
-    usage: client.py [-h] [--room ROOM] [--secret SECRET] \
-            [--config-file CONFIG_FILE] [--server server]
-
-    options:
-      -h, --help            show this help message and exit
-      --room ROOM, -r ROOM 
-      --secret SECRET, -s SECRET
-      --config-file CONFIG_FILE, -C CONFIG_FILE
-      --key KEY, -k KEY
-      --server
-
-The config file should be a yaml file in the following style::
-
-      sources:
-        SOURCE1:  
-          configuration for SOURCE
-        SOURCE2: 
-          configuration for SOURCE
-        ...
-      config:
-        server: ...
-        room: ...
-        preview_duration: ...
-        secret: ...
-        last_song: ...
-        waiting_room_policy: ..
-        key: ..
-
+Playback is done by the :py:class:`syng.sources.source.Source` objects, that
+are configured in the `sources` section of the configuration file and can currently
+be one of:
+  - `youtube`
+  - `s3`
+  - `files`
 """
 
 import asyncio
 import datetime
 import logging
-import os
 import secrets
 import string
-from sys import argv, stderr
 import tempfile
 import signal
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
 from traceback import print_exc
 from typing import Any, Optional
-import platformdirs
 
 from qrcode.main import QRCode
 
@@ -510,7 +486,6 @@ def run_client(args: Namespace) -> None:
     if "config" not in config:
         config["config"] = {}
 
-    config["config"] |= {"key": args.key}
     if args.room:
         config["config"] |= {"room": args.room}
     if args.secret:
@@ -519,32 +494,3 @@ def run_client(args: Namespace) -> None:
         config["config"] |= {"server": args.server}
 
     create_async_and_start_client(config)
-
-
-def main() -> None:
-    """Entry point for the syng-client script."""
-
-    print(
-        f"Starting the client with {argv[0]} is deprecated. "
-        "Please use `syng client` to start the client",
-        file=stderr,
-    )
-    parser: ArgumentParser = ArgumentParser()
-
-    parser.add_argument("--room", "-r")
-    parser.add_argument("--secret", "-s")
-    parser.add_argument(
-        "--config-file",
-        "-C",
-        default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
-    )
-    parser.add_argument("--key", "-k", default=None)
-    parser.add_argument("--server", "-S")
-
-    args = parser.parse_args()
-
-    run_client(args)
-
-
-if __name__ == "__main__":
-    main()
