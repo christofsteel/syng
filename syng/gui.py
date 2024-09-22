@@ -10,7 +10,6 @@ import builtins
 from functools import partial
 import random
 from typing import TYPE_CHECKING, Any, Optional
-import webbrowser
 import multiprocessing
 import secrets
 import string
@@ -502,13 +501,6 @@ class SyngGui(QMainWindow):
             self.syng_server.join()
             self.syng_server = None
             self.startsyng_serverbutton.setText("Start Local Server")
-
-    def open_web(self) -> None:
-        config = self.general_config.get_config()
-        syng_server = config["server"]
-        syng_server += "" if syng_server.endswith("/") else "/"
-        room = config["room"]
-        webbrowser.open(syng_server + room)
 
     def change_qr(self, data: str) -> None:
         qr = QRCode(box_size=10, border=2)
