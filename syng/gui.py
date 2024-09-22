@@ -38,7 +38,7 @@ from yaml import dump, load, Loader, Dumper
 from qrcode.main import QRCode
 import platformdirs
 
-from .client import create_async_and_start_client, default_config
+from .client import default_config
 
 from .sources import available_sources
 
@@ -367,7 +367,7 @@ class SyngGui(QMainWindow):
         self.setWindowIcon(self.qt_icon)
 
         self.syng_server: Optional[Process] = None
-        self.syng_client: Optional[subprocess.Popen] = None
+        self.syng_client: Optional[subprocess.Popen[bytes]] = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
