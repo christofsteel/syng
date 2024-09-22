@@ -6,12 +6,16 @@ from datetime import datetime
 import os
 import builtins
 from functools import partial
+import random
 from typing import TYPE_CHECKING, Any, Optional
 import webbrowser
 import multiprocessing
 import secrets
 import string
+import subprocess
+import signal
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -83,67 +87,44 @@ class OptionFrame(QWidget):
         name: str,
         element: QLineEdit,
         line: QWidget,
-        frame: QWidget,
+        layout: QVBoxLayout,
     ) -> None:
         self.list_options[name].remove(element)
-        layout = frame.layout()
-        if layout is None:
-            raise ValueError("No layout found")
+
         layout.removeWidget(line)
         line.deleteLater()
 
     def add_list_element(
         self,
         name: str,
-        frame: QWidget,
+        layout: QVBoxLayout,
         init: str,
         callback: Optional[Callable[..., None]],
     ) -> None:
-        input_and_minus = QWidget(frame)
+        input_and_minus = QWidget()
         input_and_minus_layout = QHBoxLayout(input_and_minus)
         input_and_minus.setLayout(input_and_minus_layout)
 
-        input_field = QLineEdit(frame)
+        input_and_minus_layout.setContentsMargins(0, 0, 0, 0)
+
+        input_field = QLineEdit(input_and_minus)
         input_field.setText(init)
         input_field.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         input_and_minus_layout.addWidget(input_field)
         if callback is not None:
             input_field.textChanged.connect(callback)
 
-        minus_button = QPushButton("-", frame)
+        minus_button = QPushButton("-", input_and_minus)
         minus_button.clicked.connect(
-            partial(self.del_list_element, name, input_field, input_and_minus, frame)
+            partial(self.del_list_element, name, input_field, input_and_minus, layout)
         )
         minus_button.setFixedWidth(40)
         minus_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         input_and_minus_layout.addWidget(minus_button)
 
-        layout = frame.layout()
-
-        if not isinstance(layout, QVBoxLayout):
-            raise ValueError("No layout found")
-        # insert second from last
         layout.insertWidget(layout.count() - 1, input_and_minus)
 
         self.list_options[name].append(input_field)
-
-        # input_and_minus = customtkinter.CTkFrame(frame)
-        # input_and_minus.pack(side="top", fill="x", expand=True)
-        # input_field = customtkinter.CTkTextbox(input_and_minus, wrap="none", height=1)
-        # input_field.pack(side="left", fill="x", expand=True)
-        # input_field.insert("0.0", init)
-        # if callback is not None:
-        #     input_field.bind("<KeyRelease>", callback)
-        #     input_field.bind("<ButtonRelease>", callback)
-        #
-        # minus_button = customtkinter.CTkButton(
-        #     input_and_minus,
-        #     text="-",
-        #     width=40,
-        #     command=partial(self.del_list_element, name, input_field, input_and_minus),
-        # )
-        # minus_button.pack(side="right")
-        # self.list_options[name].append(input_field)
 
     def add_list_option(
         self,
@@ -154,29 +135,20 @@ class OptionFrame(QWidget):
     ) -> None:
         label = QLabel(description, self)
 
-        container = QWidget(self)
-        container_layout = QVBoxLayout(container)
-        container.setLayout(container_layout)
+        container_layout = QVBoxLayout()
 
-        self.form_layout.addRow(label, container)
-
-        # frame = customtkinter.CTkFrame(self)
-        # frame.grid(column=1, row=self.number_of_options, sticky="EW")
+        self.form_layout.addRow(label, container_layout)
 
         self.list_options[name] = []
         for v in value:
-            self.add_list_element(name, container, v, callback)
+            self.add_list_element(name, container_layout, v, callback)
         plus_button = QPushButton("+", self)
-        plus_button.clicked.connect(partial(self.add_list_element, name, container, "", callback))
+        plus_button.clicked.connect(
+            partial(self.add_list_element, name, container_layout, "", callback)
+        )
         plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        # customtkinter.CTkButton(
-        #     frame,
-        #     text="+",
-        #     command=partial(self.add_list_element, name, frame, "", callback),
-        # )
         container_layout.addWidget(plus_button)
-        # plus_button.pack(side="bottom", fill="x", expand=True)
 
         self.number_of_options += 1
 
@@ -193,13 +165,27 @@ class OptionFrame(QWidget):
 
     def add_date_time_option(self, name: str, description: str, value: str) -> None:
         label = QLabel(description, self)
-        self.date_time_options[name] = QDateTimeEdit(self)
-        try:
-            self.date_time_options[name].setDateTime(datetime.fromisoformat(value))
-        except (TypeError, ValueError):
-            self.date_time_options[name].setDateTime(datetime.now())  # TODO
+        date_time_layout = QHBoxLayout()
+        date_time_widget = QDateTimeEdit(self)
+        date_time_enabled = QCheckBox("Enabled", self)
+        date_time_enabled.stateChanged.connect(
+            lambda: date_time_widget.setEnabled(date_time_enabled.isChecked())
+        )
 
-        self.form_layout.addRow(label, self.date_time_options[name])
+        self.date_time_options[name] = (date_time_widget, date_time_enabled)
+        date_time_widget.setCalendarPopup(True)
+        try:
+            date_time_widget.setDateTime(datetime.fromisoformat(value))
+            date_time_enabled.setChecked(True)
+        except (TypeError, ValueError):
+            date_time_widget.setDateTime(datetime.now())
+            date_time_widget.setEnabled(False)
+            date_time_enabled.setChecked(False)
+
+        date_time_layout.addWidget(date_time_widget)
+        date_time_layout.addWidget(date_time_enabled)
+
+        self.form_layout.addRow(label, date_time_layout)
 
         self.number_of_options += 1
 
@@ -212,7 +198,7 @@ class OptionFrame(QWidget):
         self.choose_options: dict[str, QComboBox] = {}
         self.bool_options: dict[str, QCheckBox] = {}
         self.list_options: dict[str, list[QLineEdit]] = {}
-        self.date_time_options: dict[str, QDateTimeEdit] = {}
+        self.date_time_options: dict[str, tuple[QDateTimeEdit, QCheckBox]] = {}
 
     def get_config(self) -> dict[str, Any]:
         config: dict[str, Any] = {}
@@ -230,7 +216,10 @@ class OptionFrame(QWidget):
             for textbox in textboxes:
                 config[name].append(textbox.text().strip())
 
-        for name, picker in self.date_time_options.items():
+        for name, (picker, checkbox) in self.date_time_options.items():
+            if not checkbox.isChecked():
+                config[name] = None
+                continue
             try:
                 config[name] = picker.dateTime().toPyDateTime().isoformat()
             except ValueError:
@@ -266,18 +255,18 @@ class GeneralConfig(OptionFrame):
 
         self.add_string_option("server", "Server", config["server"], callback)
         self.add_string_option("room", "Room", config["room"], callback)
-        self.add_string_option("secret", "Secret", config["secret"])
+        self.add_string_option("secret", "Admin Password", config["secret"])
         self.add_choose_option(
             "waiting_room_policy",
             "Waiting room policy",
             ["forced", "optional", "none"],
             str(config["waiting_room_policy"]).lower(),
         )
-        self.add_date_time_option("last_song", "Time of last song", config["last_song"])
+        self.add_date_time_option("last_song", "Last song ends at", config["last_song"])
         self.add_string_option(
             "preview_duration", "Preview duration in seconds", str(config["preview_duration"])
         )
-        self.add_string_option("key", "Key for server", config["key"])
+        self.add_string_option("key", "Key for server (if necessary)", config["key"])
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
@@ -297,9 +286,9 @@ class SyngGui(QMainWindow):
 
         if self.syng_client is not None:
             self.syng_client.terminate()
-            self.syng_client.join()
+            self.syng_client.wait(1.0)
+            self.syng_client.kill()
 
-        # self.withdraw()
         self.destroy()
 
     def add_buttons(self) -> None:
@@ -311,13 +300,18 @@ class SyngGui(QMainWindow):
         self.buttons_layout.addWidget(self.startsyng_serverbutton)
 
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.notification_label = QLabel("", self)
+        spacer_item2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttons_layout.addItem(spacer_item)
+        self.buttons_layout.addWidget(self.notification_label)
+        self.buttons_layout.addItem(spacer_item2)
 
         self.savebutton = QPushButton("Save")
         self.savebutton.clicked.connect(self.save_config)
         self.buttons_layout.addWidget(self.savebutton)
 
         self.startbutton = QPushButton("Save and Start")
+
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
 
@@ -369,11 +363,11 @@ class SyngGui(QMainWindow):
 
         rel_path = os.path.dirname(__file__)
         qt_img = QPixmap(os.path.join(rel_path, "static/syng.png"))
-        qt_icon = QIcon(qt_img)
-        self.setWindowIcon(qt_icon)
+        self.qt_icon = QIcon(qt_img)
+        self.setWindowIcon(self.qt_icon)
 
         self.syng_server: Optional[Process] = None
-        self.syng_client: Optional[Process] = None
+        self.syng_client: Optional[subprocess.Popen] = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
@@ -394,6 +388,12 @@ class SyngGui(QMainWindow):
             config["config"]["secret"] = "".join(
                 secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
             )
+
+        if config["config"]["room"] == "":
+            config["config"]["room"] = "".join(
+                [random.choice(string.ascii_letters) for _ in range(6)]
+            ).upper()
+
         self.central_widget = QWidget(parent=self)
         self.central_layout = QVBoxLayout(self.central_widget)
 
@@ -416,6 +416,10 @@ class SyngGui(QMainWindow):
 
         self.setCentralWidget(self.central_widget)
 
+        # check every 100 ms if client is running
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.check_if_client_is_running)
+
     def save_config(self) -> None:
         os.makedirs(os.path.dirname(self.configfile), exist_ok=True)
 
@@ -431,21 +435,43 @@ class SyngGui(QMainWindow):
 
         return {"sources": sources, "config": general_config}
 
-    def start_syng_client(self) -> None:
+    def check_if_client_is_running(self) -> None:
         if self.syng_client is None:
+            self.timer.stop()
+            return
+
+        ret = self.syng_client.poll()
+        if ret is not None:
+            _, stderr = self.syng_client.communicate()
+            stderr_lines = stderr.decode("utf-8").strip().split("\n")
+            if stderr_lines and stderr_lines[-1].startswith("Warning"):
+                self.notification_label.setText(stderr_lines[-1])
+            else:
+                self.notification_label.setText("")
+            self.syng_client.wait()
+            self.syng_client = None
+            self.set_client_button_start()
+        else:
+            self.set_client_button_stop()
+
+    def set_client_button_stop(self) -> None:
+        self.startbutton.setText("Stop")
+
+    def set_client_button_start(self) -> None:
+        self.startbutton.setText("Save and Start")
+
+    def start_syng_client(self) -> None:
+        if self.syng_client is None or self.syng_client.poll() is not None:
             self.save_config()
-            config = self.gather_config()
-            self.syng_client = multiprocessing.Process(
-                target=create_async_and_start_client, args=(config,)
-            )
-            self.syng_client.start()
-            self.startbutton.setText("Stop")
+            self.syng_client = subprocess.Popen(["syng", "client"], stderr=subprocess.PIPE)
+            self.notification_label.setText("")
+            self.timer.start()
+            self.set_client_button_stop()
         else:
             self.syng_client.terminate()
-            self.syng_client.join()
-            self.syng_client = None
-            # self.startbutton.configure(text="Save and Start")
-            self.startbutton.setText("Save and Start")
+            self.syng_client.wait(1.0)
+            self.syng_client.kill()
+            self.set_client_button_start()
 
     def start_syng_server(self) -> None:
         if self.syng_server is None:
@@ -494,11 +520,16 @@ class SyngGui(QMainWindow):
         syng_server = config["server"]
         syng_server += "" if syng_server.endswith("/") else "/"
         room = config["room"]
-        self.linklabel.setText(f'<a href="{syng_server + room}">{syng_server + room}</a>')
+        self.linklabel.setText(
+            f'<center><a href="{syng_server + room}">{syng_server + room}</a><center>'
+        )
+        self.linklabel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.change_qr(syng_server + room)
 
 
 def run_gui() -> None:
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     app = QApplication([])
     app.setApplicationName("Syng")
     app.setDesktopFileName("rocks.syng.Syng")
