@@ -12,6 +12,7 @@ be one of:
   - `files`
 """
 
+from __future__ import annotations
 import asyncio
 import datetime
 import logging
