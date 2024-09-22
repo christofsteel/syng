@@ -38,7 +38,14 @@ import os
 
 import platformdirs
 
-from syng.gui import run_gui
+try:
+    from syng.gui import run_gui
+
+    GUI_AVAILABLE = True
+except ImportError:
+    if TYPE_CHECKING:
+        from syng.gui import run_gui
+    GUI_AVAILABLE = False
 
 try:
     from .client import run_client
@@ -104,7 +111,10 @@ def main() -> None:
         run_client(args)
     elif args.action == "server":
         run_server(args)
-    else:
+    elif args.action == "gui":
+        if not GUI_AVAILABLE:
+            print("GUI is not available")
+            return
         run_gui()
 
 

@@ -1914,10 +1914,10 @@ static-analysis = ["autopep8 (>=2.0,<3.0)", "ruff (>=0.5.0,<0.6.0)"]
 test = ["pytest (>=8.1,<9.0)"]
 
 [extras]
-client = ["minio", "mutagen", "packaging", "pillow", "platformdirs", "pymediainfo", "pyqt6", "pyyaml", "qrcode"]
+client = ["minio", "mutagen", "packaging", "pillow", "pymediainfo", "pyqt6", "pyyaml", "qrcode"]
 server = ["alt-profanity-check"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "2c3d2e35ed8bf2563a078971cede2cc5ba60f9802631ee6f1f5761777dc7e3a5"
+content-hash = "fd74c25adac30ef24256c4588fc1fc9235da1f86bb23db8c63ee55ee87423c33"
