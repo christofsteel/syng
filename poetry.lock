@@ -1002,17 +1002,6 @@ files = [
 ]
 
 [[package]]
-name = "packaging"
-version = "23.2"
-description = "Core utilities for Python packages"
-optional = true
-python-versions = ">=3.7"
-files = [
-    {file = "packaging-23.2-py3-none-any.whl", hash = "sha256:8c491190033a9af7e1d931d0b5dacc2ef47509b34dd0de67ed209b5203fc88c7"},
-    {file = "packaging-23.2.tar.gz", hash = "sha256:048fb0e9405036518eaaf48a55953c750c11e1a1b68e0dd1a9d62ed0c092cfc5"},
-]
-
-[[package]]
 name = "pillow"
 version = "10.4.0"
 description = "Python Imaging Library (Fork)"
@@ -1914,10 +1903,10 @@ static-analysis = ["autopep8 (>=2.0,<3.0)", "ruff (>=0.5.0,<0.6.0)"]
 test = ["pytest (>=8.1,<9.0)"]
 
 [extras]
-client = ["minio", "mutagen", "packaging", "pillow", "pymediainfo", "pyqt6", "pyyaml", "qrcode"]
+client = ["minio", "pillow", "pymediainfo", "pyqt6", "pyyaml", "qrcode"]
 server = ["alt-profanity-check"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "fd74c25adac30ef24256c4588fc1fc9235da1f86bb23db8c63ee55ee87423c33"
+content-hash = "25bc708d3c090477d145389305d215b5fc728f87e85fd26839d47a575fdf7d83"
