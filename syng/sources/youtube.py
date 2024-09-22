@@ -352,7 +352,7 @@ class YoutubeSource(Source):
                 title=result.title,
                 artist=result.author,
                 album="YouTube",
-                duration=result.length,
+                duration=str(result.length),
             )
             for result in results
         ]

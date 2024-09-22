@@ -15,6 +15,8 @@ be one of:
 import asyncio
 import datetime
 import logging
+from logging.handlers import QueueHandler
+from multiprocessing import Queue
 import secrets
 import string
 import tempfile
@@ -192,7 +194,7 @@ async def handle_connect() -> None:
 
     :rtype: None
     """
-    logging.info("Connected to server")
+    logger.info("Connected to server")
     data = {
         "queue": state.queue,
         "waiting_room": state.waiting_room,
@@ -309,6 +311,7 @@ async def handle_search(data: dict[str, Any]) -> None:
     :type data: dict[str, Any]
     :rtype: None
     """
+    logger.info(f"Searching for: {data['query']}")
     query = data["query"]
     sid = data["sid"]
     results_list = await asyncio.gather(*[source.search(query) for source in sources.values()])
@@ -343,7 +346,7 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
     :rtype: None
     """
     if data["success"]:
-        logging.info("Registered")
+        logger.info("Registered")
         print(f"Join here: {state.config['server']}/{data['room']}")
         qr = QRCode(box_size=20, border=2)
         qr.add_data(f"{state.config['server']}/{data['room']}")
@@ -354,7 +357,7 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
         if state.current_source is None:  # A possible race condition can occur here
             await sio.emit("get-first")
     else:
-        logging.warning("Registration failed")
+        logger.warning("Registration failed")
         await sio.disconnect()
 
 
@@ -451,14 +454,24 @@ async def start_client(config: dict[str, Any]) -> None:
                 state.current_source.player.kill()
 
 
-def create_async_and_start_client(config: dict[str, Any]) -> None:
+def create_async_and_start_client(
+    config: dict[str, Any], queue: Optional[Queue[logging.LogRecord]] = None
+) -> None:
     """
     Create an asyncio event loop and start the client.
 
+    If a multiprocessing queue is given, the client will log to the queue.
+
     :param config: Config options for the client
     :type config: dict[str, Any]
+    :param queue: A multiprocessing queue to log to
+    :type queue: Optional[Queue[LogRecord]]
     :rtype: None
     """
+
+    if queue is not None:
+        logger.addHandler(QueueHandler(queue))
+
     asyncio.run(start_client(config))
 
 

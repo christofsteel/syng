@@ -1,6 +1,8 @@
 from argparse import Namespace
 from io import BytesIO
-from multiprocessing import Process
+import logging
+from logging.handlers import QueueListener
+from multiprocessing import Process, Queue
 from collections.abc import Callable
 from datetime import datetime
 import os
@@ -12,7 +14,6 @@ import webbrowser
 import multiprocessing
 import secrets
 import string
-import subprocess
 import signal
 
 from PyQt6.QtCore import QTimer
@@ -38,7 +39,7 @@ from yaml import dump, load, Loader, Dumper
 from qrcode.main import QRCode
 import platformdirs
 
-from .client import default_config
+from .client import create_async_and_start_client, default_config
 
 from .sources import available_sources
 
@@ -286,7 +287,7 @@ class SyngGui(QMainWindow):
 
         if self.syng_client is not None:
             self.syng_client.terminate()
-            self.syng_client.wait(1.0)
+            self.syng_client.join(1.0)
             self.syng_client.kill()
 
         self.destroy()
@@ -367,7 +368,9 @@ class SyngGui(QMainWindow):
         self.setWindowIcon(self.qt_icon)
 
         self.syng_server: Optional[Process] = None
-        self.syng_client: Optional[subprocess.Popen[bytes]] = None
+        # self.syng_client: Optional[subprocess.Popen[bytes]] = None
+        self.syng_client: Optional[Process] = None
+        self.syng_client_logging_listener: Optional[QueueListener] = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
@@ -416,7 +419,7 @@ class SyngGui(QMainWindow):
 
         self.setCentralWidget(self.central_widget)
 
-        # check every 100 ms if client is running
+        # check every 500 ms if client is running
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_if_client_is_running)
 
@@ -440,15 +443,7 @@ class SyngGui(QMainWindow):
             self.timer.stop()
             return
 
-        ret = self.syng_client.poll()
-        if ret is not None:
-            _, stderr = self.syng_client.communicate()
-            stderr_lines = stderr.decode("utf-8").strip().split("\n")
-            if stderr_lines and stderr_lines[-1].startswith("Warning"):
-                self.notification_label.setText(stderr_lines[-1])
-            else:
-                self.notification_label.setText("")
-            self.syng_client.wait()
+        if not self.syng_client.is_alive():
             self.syng_client = None
             self.set_client_button_start()
         else:
@@ -461,15 +456,26 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Save and Start")
 
     def start_syng_client(self) -> None:
-        if self.syng_client is None or self.syng_client.poll() is not None:
+        if self.syng_client is None or not self.syng_client.is_alive():
             self.save_config()
-            self.syng_client = subprocess.Popen(["syng", "client"], stderr=subprocess.PIPE)
+            config = self.gather_config()
+            queue: Queue[logging.LogRecord] = multiprocessing.Queue()
+
+            self.syng_client_logging_listener = QueueListener(
+                queue, LoggingLabelHandler(self.notification_label)
+            )
+            self.syng_client_logging_listener.start()
+
+            self.syng_client = multiprocessing.Process(
+                target=create_async_and_start_client, args=[config, queue]
+            )
+            self.syng_client.start()
             self.notification_label.setText("")
-            self.timer.start()
+            self.timer.start(500)
             self.set_client_button_stop()
         else:
             self.syng_client.terminate()
-            self.syng_client.wait(1.0)
+            self.syng_client.join(1.0)
             self.syng_client.kill()
             self.set_client_button_start()
 
@@ -525,6 +531,15 @@ class SyngGui(QMainWindow):
         )
         self.linklabel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.change_qr(syng_server + room)
+
+
+class LoggingLabelHandler(logging.Handler):
+    def __init__(self, label: QLabel):
+        super().__init__()
+        self.label = label
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.label.setText(self.format(record))
 
 
 def run_gui() -> None:
