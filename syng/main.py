@@ -93,6 +93,7 @@ def main() -> None:
         # client_parser.add_argument("--key", "-k", default=None)
         client_parser.add_argument("--server", "-S")
 
+    if GUI_AVAILABLE:
         sub_parsers.add_parser("gui")
 
     if SERVER_AVAILABLE:
@@ -112,9 +113,8 @@ def main() -> None:
     elif args.action == "server":
         run_server(args)
     elif args.action == "gui":
-        if not GUI_AVAILABLE:
-            print("GUI is not available")
-            return
+        run_gui()
+    else:
         run_gui()
 
 
