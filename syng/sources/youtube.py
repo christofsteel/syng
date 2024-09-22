@@ -27,9 +27,9 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    __cache__: dict[
-        str, Any
-    ] = {}  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
+    __cache__: dict[str, Any] = (
+        {}
+    )  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
 
     def __init__(self, url: Optional[str] = None):
         """
@@ -181,6 +181,7 @@ class YoutubeSource(Source):
 
     source_name = "youtube"
     config_schema = Source.config_schema | {
+        "enabled": (bool, "Enable this source", True),
         "channels": (list, "A list channels\nto search in", []),
         "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
         "max_res": (int, "Maximum resolution\nto download", 720),
