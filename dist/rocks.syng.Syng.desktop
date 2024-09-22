@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=Syng
+
+Comment=An all-in-one karaoke player
+
+Exec=syng
+Icon=rocks.syng.Syng
