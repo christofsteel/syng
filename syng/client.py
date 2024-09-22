@@ -53,8 +53,8 @@ def default_config() -> dict[str, Optional[int | str]]:
     :rtype: dict[str, Optional[int | str]]
     """
     return {
-        "server": "http://localhost:8080",
-        "room": "ABCD",
+        "server": "https://syng.rocks",
+        "room": "",
         "preview_duration": 3,
         "secret": None,
         "last_song": None,
