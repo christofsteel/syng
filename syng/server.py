@@ -32,7 +32,8 @@ import socketio
 from aiohttp import web
 from profanity_check import predict
 
-from syng.result import Result
+from .result import Result
+from .sources.youtube import YouTube
 
 from . import jsonencoder
 from .entry import Entry
@@ -1124,6 +1125,12 @@ async def handle_search_results(sid: str, data: dict[str, Any]) -> None:
 
     web_sid = data["sid"]
     results = [Result.from_dict(result) for result in data["results"]]
+
+    # TODO this handles YouTubes anti-bot measures
+
+    __unused_yt_list = [
+        YouTube.from_result(result) for result in data["results"] if "youtube" in "ident"
+    ]
 
     await send_search_results(web_sid, results)
 
