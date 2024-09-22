@@ -9,6 +9,8 @@ import os
 from json import dump, load
 from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
 
+from platformdirs import user_cache_dir
+
 try:
     from minio import Minio
 
@@ -44,7 +46,7 @@ class S3Source(FileBasedSource):
         "secure": (bool, "Use SSL", True),
         "bucket": (str, "Bucket of the s3", ""),
         "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
-        "index_file": (str, "Index file", "s3-index"),
+        "index_file": (str, "Index file", os.path.join(user_cache_dir("syng"), "s3-index")),
     }
 
     def __init__(self, config: dict[str, Any]):

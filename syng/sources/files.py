@@ -4,6 +4,7 @@ import asyncio
 import os
 from typing import Any, Optional
 from typing import Tuple
+from platformdirs import user_cache_dir
 
 from ..entry import Entry
 from .source import available_sources
@@ -20,7 +21,7 @@ class FilesSource(FileBasedSource):
     source_name = "files"
     config_schema = FileBasedSource.config_schema | {
         "dir": (str, "Directory to index", "."),
-        "index_file": (str, "Index file", "files-index"),
+        "index_file": (str, "Index file", os.path.join(user_cache_dir("syng"), "files-index")),
     }
 
     def __init__(self, config: dict[str, Any]):
