@@ -493,8 +493,6 @@ async def handle_append_anyway(sid: str, data: dict[str, Any]) -> None:
 
     entry.uid = data["uid"] if "uid" in data else None
 
-    print(entry)
-
     await append_to_queue(room, entry, sid)
 
 
@@ -687,8 +685,6 @@ def check_registration(key: str) -> bool:
     with open(app["registration-keyfile"], encoding="utf8") as f:
         raw_keys = f.readlines()
         keys = [key[:64] for key in raw_keys]
-        print(keys)
-        print(key)
 
         return key in keys
 
@@ -746,7 +742,6 @@ async def handle_register_client(sid: str, data: dict[str, Any]) -> None:
         return client_id
 
     if "key" in data["config"]:
-        print(data["config"]["key"])
         data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
 
     if app["type"] == "private" and (
