@@ -18,15 +18,13 @@ yt-dlp = { version = "*"}
 minio = { version = "^7.2.0", optional = true }
 mutagen = { version = "^1.47.0", optional = true }
 pillow = { version = "^10.1.0", optional = true}
-customtkinter = { version = "^5.2.1", optional = true}
 qrcode = { version = "^7.4.2", optional = true }
 pymediainfo = { version = "^6.1.0", optional = true }
 pyyaml = { version = "^6.0.1", optional = true }
-tkcalendar = { version = "^1.6.1", optional = true }
-tktimepicker = { version = "^2.0.2", optional = true }
 platformdirs = { version = "^4.0.0", optional = true }
 packaging = {version = "^23.2", optional = true}
 alt-profanity-check = {version = "^1.4.1", optional = true}
+pyqt6 = {version = "^6.7.1", optional = true}
 
 [tool.poetry.group.dev.dependencies]
 types-pyyaml = "^6.0.12.12"
@@ -36,9 +34,9 @@ pylint = "^3.2.7"
 
 
 [tool.poetry.extras]
-client = ["minio", "mutagen", "pillow", "customtkinter", "qrcode",
-  "pymediainfo", "pyyaml", "tkcalendar", "tktimepicker", "platformdirs",
-  "packaging"]
+client = ["minio", "mutagen", "pillow", "qrcode",
+  "pymediainfo", "pyyaml", "platformdirs",
+  "packaging", "pyqt6"]
 server = ["alt-profanity-check"]
 
 [build-system]
