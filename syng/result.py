@@ -3,6 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import os.path
+from typing import Optional
 
 
 @dataclass
@@ -27,6 +28,7 @@ class Result:
     title: str
     artist: str
     album: str
+    duration: Optional[str] = None
 
     @classmethod
     def from_filename(cls, filename: str, source: str) -> Result:
@@ -71,6 +73,7 @@ class Result:
           - title (str)
           - artist (str)
           - album (str)
+          - duration (int, optional)
 
         :param values: The dictionary with the values
         :type values: dict[str, str]
@@ -83,6 +86,7 @@ class Result:
             title=values["title"],
             artist=values["artist"],
             album=values["album"],
+            duration=values.get("duration", None),
         )
 
     def to_dict(self) -> dict[str, str]:
@@ -95,14 +99,18 @@ class Result:
           - title (str)
           - artist (str)
           - album (str)
+          - duration (str, if available)
 
         :return: The dictionary with the values
         :rtype: dict[str, str]
         """
-        return {
+        output = {
             "ident": self.ident,
             "source": self.source,
             "title": self.title,
             "artist": self.artist,
             "album": self.album,
         }
+        if self.duration is not None:
+            output["duration"] = self.duration
+        return output

@@ -1126,10 +1126,19 @@ async def handle_search_results(sid: str, data: dict[str, Any]) -> None:
     web_sid = data["sid"]
     results = [Result.from_dict(result) for result in data["results"]]
 
-    # TODO this handles YouTubes anti-bot measures
-
+    # TODO: we convert the results to YouTube objects. This
+    # adds them to the cache to prevent YouTube from blocking us.
     __unused_yt_list = [
-        YouTube.from_result(result) for result in data["results"] if "youtube" in "ident"
+        YouTube.from_result(
+            {
+                "duration": result.duration,
+                "title": result.title,
+                "channel": result.artist,
+                "url": result.ident,
+            }
+        )
+        for result in results
+        if "youtube" == result.source
     ]
 
     await send_search_results(web_sid, results)

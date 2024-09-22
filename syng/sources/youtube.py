@@ -105,7 +105,7 @@ class YouTube:
         """
         url = search_result["url"]
         cls.__cache__[url] = {
-            "duration": search_result["duration"],
+            "duration": int(search_result["duration"]),
             "title": search_result["title"],
             "channel": search_result["channel"],
             "url": url,
@@ -352,6 +352,7 @@ class YoutubeSource(Source):
                 title=result.title,
                 artist=result.author,
                 album="YouTube",
+                duration=result.length,
             )
             for result in results
         ]
