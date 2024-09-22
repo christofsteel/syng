@@ -1,3 +1,0 @@
-class aiocmd:
-    class PromptToolkitCmd:
-        async def run(self) -> None: ...
