@@ -2,3 +2,5 @@ docs/build
 __pycache__
 .venv
 .idea
+.flatpak-builder
+repo

@@ -16,7 +16,7 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3.9",
   "Topic :: Multimedia :: Sound/Audio :: Players",
-  "Topic :: Multimedia :: Sound/Audio :: Players :: Karaoke",
+  "Topic :: Multimedia :: Video :: Display",
   "Typing :: Typed"
 ]
 
@@ -43,6 +43,7 @@ types-pyyaml = "^6.0.12.12"
 types-pillow = "^10.1.0.2"
 mypy = "^1.10.0"
 pylint = "^3.2.7"
+requirements-parser = "^0.11.0"
 
 
 [tool.poetry.extras]
