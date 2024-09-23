@@ -1,4 +1,3 @@
-from argparse import Namespace
 from io import BytesIO
 import logging
 from logging.handlers import QueueListener
@@ -9,14 +8,14 @@ import os
 import builtins
 from functools import partial
 import random
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 import multiprocessing
 import secrets
 import string
 import signal
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QAction, QCloseEvent, QIcon, QPixmap
+from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -42,15 +41,15 @@ from .client import create_async_and_start_client, default_config
 
 from .sources import available_sources
 
-try:
-    from .server import run_server
-
-    SERVER_AVAILABLE = True
-except ImportError:
-    if TYPE_CHECKING:
-        from .server import run_server
-
-    SERVER_AVAILABLE = False
+# try:
+#     from .server import run_server
+#
+#     SERVER_AVAILABLE = True
+# except ImportError:
+#     if TYPE_CHECKING:
+#         from .server import run_server
+#
+#     SERVER_AVAILABLE = False
 
 
 # TODO: ScrollableFrame
@@ -497,29 +496,29 @@ class SyngGui(QMainWindow):
             self.syng_client.kill()
             self.set_client_button_start()
 
-    def start_syng_server(self) -> None:
-        if self.syng_server is None:
-            root_path = os.path.join(os.path.dirname(__file__), "static")
-            self.syng_server = multiprocessing.Process(
-                target=run_server,
-                args=[
-                    Namespace(
-                        host="0.0.0.0",
-                        port=8080,
-                        registration_keyfile=None,
-                        root_folder=root_path,
-                        private=False,
-                        restricted=False,
-                    )
-                ],
-            )
-            self.syng_server.start()
-            self.startsyng_serverbutton.setText("Stop Local Server")
-        else:
-            self.syng_server.terminate()
-            self.syng_server.join()
-            self.syng_server = None
-            self.startsyng_serverbutton.setText("Start Local Server")
+    # def start_syng_server(self) -> None:
+    #     if self.syng_server is None:
+    #         root_path = os.path.join(os.path.dirname(__file__), "static")
+    #         self.syng_server = multiprocessing.Process(
+    #             target=run_server,
+    #             args=[
+    #                 Namespace(
+    #                     host="0.0.0.0",
+    #                     port=8080,
+    #                     registration_keyfile=None,
+    #                     root_folder=root_path,
+    #                     private=False,
+    #                     restricted=False,
+    #                 )
+    #             ],
+    #         )
+    #         self.syng_server.start()
+    #         self.startsyng_serverbutton.setText("Stop Local Server")
+    #     else:
+    #         self.syng_server.terminate()
+    #         self.syng_server.join()
+    #         self.syng_server = None
+    #         self.startsyng_serverbutton.setText("Start Local Server")
 
     def change_qr(self, data: str) -> None:
         qr = QRCode(box_size=10, border=2)
