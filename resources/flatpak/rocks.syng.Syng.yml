@@ -24,6 +24,7 @@ finish-args:
   - --share=network
 command: syng
 modules:
+  - mpv.yaml
   - python3-pyyaml.yaml
   - python3-expandvars.yaml
   - python3-aiohttp.yaml
@@ -34,6 +35,7 @@ modules:
     build-commands:
       - pip install --prefix=/app --no-deps . --no-build-isolation
       - install -Dm644 resources/${FLATPAK_ID}.desktop -t /app/share/applications
+      - install -Dm644 resources/flatpak/${FLATPAK_ID}.metainfo -t /app/share/metainfo
       - install -Dm644 resources/icons/hicolor/32x32/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/32x32/apps/${FLATPAK_ID}.png 
       - install -Dm644 resources/icons/hicolor/48x48/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/48x48/apps/${FLATPAK_ID}.png 
       - install -Dm644 resources/icons/hicolor/64x64/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/64x64/apps/${FLATPAK_ID}.png 
@@ -42,10 +44,7 @@ modules:
       - install -Dm644 resources/icons/hicolor/512x512/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/512x512/apps/${FLATPAK_ID}.png 
       - install -Dm644 resources/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg 
     sources:
-      # - type: git
-      #   url: https://github.com/christofsteel/syng.git
-      #   commit: ff17a6dc7f9214db3026080f7654f814d8332c65
-      - type: dir
-        path: ../../
-  - mpv.yaml
+      - type: git
+        url: https://github.com/christofsteel/syng.git
+        commit: ea234e6d11a497fda323ef1583a0d3dbf613255b
 
