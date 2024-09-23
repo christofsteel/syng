@@ -16,8 +16,6 @@
   <url type="homepage">https://syng.rocks</url>
   <url type="bugtracker">https://github.com/christofsteel/syng/issues</url>
   <url type="vcs-browser">https://github.com/christofsteel/syng</url>
-  <icon type="remote">https://raw.githubusercontent.com/christofsteel/syng/main/resources/icons/hicolor/256x256/apps/rocks.syng.Syng.png</icon>
-
 
   <screenshots>
     <screenshot type="default">
