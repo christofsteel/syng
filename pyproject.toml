@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "syng"
-version = "2.0.0a1"
+version = "2.0.0a2"
 description = "A all-in-one webbased karaoke system with YouTube support"
 authors = ["Christoph Stahl <christoph.stahl@tu-dortmund.de>"]
 license = "AGPL-3.0-or-later"
@@ -19,6 +19,10 @@ classifiers = [
   "Topic :: Multimedia :: Video :: Display",
   "Typing :: Typed"
 ]
+homepage = "https://syng.rocks"
+repository = "https://github.com/christofsteel/syng"
+keywords = ["karaoke", "youtube", "web", "audio", "video", "player", "qt"]
+
 
 
 [tool.poetry.scripts]
