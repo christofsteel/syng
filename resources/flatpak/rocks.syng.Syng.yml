@@ -25,7 +25,7 @@ finish-args:
 command: syng
 modules:
   - python3-pyyaml.yaml
-  - python3-expandvars.json
+  - python3-expandvars.yaml
   - python3-aiohttp.yaml
   - python3-requirements-client.yaml
   - python3-poetry-core.yaml
