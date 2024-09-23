@@ -5,6 +5,10 @@
   <name>Syng</name>
   <summary>An all-in-one karaoke software</summary>
 
+  <developer id="rocks.syng">
+    <name>Christoph Stahl</name>
+  </developer>
+
   <metadata_license>CC-BY-SA-4.0</metadata_license>
   <project_license>AGPL-3.0-or-later</project_license>
   <content_rating type="oars-1.1" />
@@ -42,7 +46,7 @@
       Syng is an all-in-one karaoke software, consisting of a <em>backend server</em>, a <em>web frontend</em> and a <em>playback client</em>. Karaoke performers can search a library using the web frontend, and add songs to the queue. The playback client retrieves songs from the backend server and plays them in order.
     </p>
     <p>
-      To host a karaoke event, you only need to use this playback client. You can use the publicly available instance at https://syng.rocks as your server.
+      To host a karaoke event, you only need to use this playback client, as you can use a publicly available instance (See project page).
     </p>
     <p>
       Currently, songs can be accessed using the following sources:
