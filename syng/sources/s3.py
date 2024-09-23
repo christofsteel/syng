@@ -41,8 +41,8 @@ class S3Source(FileBasedSource):
     source_name = "s3"
     config_schema = FileBasedSource.config_schema | {
         "endpoint": (str, "Endpoint of the s3", ""),
-        "access_key": (str, "Access Key of the s3", ""),
-        "secret_key": (str, "Secret Key of the s3", ""),
+        "access_key": ("password", "Access Key of the s3", ""),
+        "secret_key": ("password", "Secret Key of the s3", ""),
         "secure": (bool, "Use SSL", True),
         "bucket": (str, "Bucket of the s3", ""),
         "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),

@@ -16,7 +16,7 @@ import string
 import signal
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
+from PyQt6.QtGui import QAction, QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -69,6 +69,7 @@ class OptionFrame(QWidget):
         description: str,
         value: Optional[str] = "",
         callback: Optional[Callable[..., None]] = None,
+        is_password: bool = False,
     ) -> None:
         if value is None:
             value = ""
@@ -76,6 +77,20 @@ class OptionFrame(QWidget):
         label = QLabel(description, self)
 
         self.string_options[name] = QLineEdit(self)
+        if is_password:
+            self.string_options[name].setEchoMode(QLineEdit.EchoMode.Password)
+            action = self.string_options[name].addAction(
+                QIcon.fromTheme("dialog-password"), QLineEdit.ActionPosition.TrailingPosition
+            )
+            if action is not None:
+                action.triggered.connect(
+                    lambda: self.string_options[name].setEchoMode(
+                        QLineEdit.EchoMode.Normal
+                        if self.string_options[name].echoMode() == QLineEdit.EchoMode.Password
+                        else QLineEdit.EchoMode.Password
+                    )
+                )
+
         self.string_options[name].insert(value)
         self.form_layout.addRow(label, self.string_options[name])
         if callback is not None:
@@ -114,7 +129,7 @@ class OptionFrame(QWidget):
         if callback is not None:
             input_field.textChanged.connect(callback)
 
-        minus_button = QPushButton("-", input_and_minus)
+        minus_button = QPushButton(QIcon.fromTheme("list-remove"), "", input_and_minus)
         minus_button.clicked.connect(
             partial(self.del_list_element, name, input_field, input_and_minus, layout)
         )
@@ -142,7 +157,7 @@ class OptionFrame(QWidget):
         self.list_options[name] = []
         for v in value:
             self.add_list_element(name, container_layout, v, callback)
-        plus_button = QPushButton("+", self)
+        plus_button = QPushButton(QIcon.fromTheme("list-add"), "", self)
         plus_button.clicked.connect(
             partial(self.add_list_element, name, container_layout, "", callback)
         )
@@ -242,6 +257,8 @@ class SourceTab(OptionFrame):
                     self.add_list_option(name, desc, value=value)
                 case builtins.str:
                     self.add_string_option(name, desc, value=value)
+                case "password":
+                    self.add_string_option(name, desc, value=value, is_password=True)
 
 
 class GeneralConfig(OptionFrame):
@@ -255,7 +272,7 @@ class GeneralConfig(OptionFrame):
 
         self.add_string_option("server", "Server", config["server"], callback)
         self.add_string_option("room", "Room", config["room"], callback)
-        self.add_string_option("secret", "Admin Password", config["secret"])
+        self.add_string_option("secret", "Admin Password", config["secret"], is_password=True)
         self.add_choose_option(
             "waiting_room_policy",
             "Waiting room policy",
@@ -266,7 +283,9 @@ class GeneralConfig(OptionFrame):
         self.add_string_option(
             "preview_duration", "Preview duration in seconds", str(config["preview_duration"])
         )
-        self.add_string_option("key", "Key for server (if necessary)", config["key"])
+        self.add_string_option(
+            "key", "Key for server (if necessary)", config["key"], is_password=True
+        )
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()

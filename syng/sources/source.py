@@ -106,7 +106,7 @@ class Source(ABC):
     """
 
     source_name: str = ""
-    config_schema: dict[str, tuple[type | list[type], str, Any]] = {
+    config_schema: dict[str, tuple[type | list[type] | str, str, Any]] = {
         "enabled": (bool, "Enable this source", False)
     }
 
