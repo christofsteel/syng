@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>rocks.syng.Syng</id>
+  
+  <name>Syng</name>
+  <summary>An all-in-one karaoke software</summary>
+  
+  <metadata_license>CC-BY-SA-4.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  
+  <description>
+    <p>
+      # Syng
+    </p>
+    <p>
+      Syng is an all-in-one karaoke software, consisting of a <em>backend server</em>, a <em>web frontend</em> and a <em>playback client</em>. Karaoke performers can search a library using the web frontend, and add songs to the queue. The playback client retrieves songs from the backend server and plays them in order.
+    </p>
+    <p>
+      Currently, songs can be accessed using the following sources:
+    </p>
+    <p>
+      - <em>
+    </em>YouTube.<em>
+  </em> The backend server queries YouTube for the song and forwards the URL to the playback client. The playback client then downloads the video from YouTube for playback.   - <em>
+</em>S3.<em>
+</em> The backend server holds a list of all file paths accessible through the s3 storage, and forwards the chosen path to the playback client. The playback client then downloads the needed files from the s3 for playback.   - <em>
+</em>Files.<em>
+</em> Same as S3, but all files reside locally on the playback client.
+</p>
+<p>
+  The playback client uses <code>mpv</code> for playback and can therefore play a variety of file formats, such as <code>mp3+cdg</code>, <code>webm</code>, <code>mp4</code>, ...
+</p>
+<p>
+  # Client
+</p>
+<p>
+  To host a karaoke event, you only need to use the playback client. You can use the publicly available instance at https://syng.rocks as your server.
+</p>
+<p>
+  ## Configuration
+</p>
+<p>
+  You can either configure Syng using the GUI or via a text editor by editing <code>~/.config/syng/config.yaml</code>. There are the following settings:
+</p>
+<p>
+  <em> <code>server</code>: URL of the server to connect to.   </em> <code>room</code>: The room code for your karaoke event. Can be chose arbitrarily. _Note:_ Everyone, that has access to the room code can join the karaoke event.   <em> <code>secret</code>: The admin password for your karaoke event. If you want to reconnect with a playback client to a room, these must match. Additionally, this unlocks admin capabilities to a web client, when given under &quot;Advanced&quot; in the web client.   </em> <code>waiting_room_policy</code>: One of <code>none</code>, <code>optional</code>, <code>forced</code>. When a performer wants to be added to the playback queue, but has already a song queued, they can be added to the _waiting room_. <code>none</code> disables this behavior and performers can have multiple songs in the queue, <code>optional</code> gives the performer a notification, and they can decide for themselves, and <code>forced</code> puts them in the waiting room every time. Once the current song of a performer leaves the queue, the song from the waiting room will be added to the queue.   <em> <code>last_song</code>: <code>none</code> or a time in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601). When a song is added to the queue, and its ending time exceeds this value, it is rejected.   </em> <code>preview_duration</code>: Before every song, there is a short slide for the next performer. This sets how long it is shown in seconds.   * <code>key</code>: If the server, you want to connect to is in _private_ or _restricted_ mode, this will authenticate the client. Private server reject unauthenticated playback clients, restricted servers limit the searching to be _client only_.
+  </p>
+  <p>
+    In addition to the general config, has its own configuration under the <code>sources</code> key of the configuration.
+  </p>
+  <p>
+    ### YouTube
+  </p>
+  <p>
+    Configuration is done under <code>sources</code> -&gt; <code>youtube</code> with the following settings:
+  </p>
+  <p>
+    <em> <code>enabled</code>: <code>true</code> or <code>false</code>.   </em> <code>channels</code>: list of youtube channels. If this is a nonempty list, Syng will only search these channels, otherwise YouTube will be searched as a whole.   <em> <code>tmp_dir</code>: YouTube videos will be downloaded before playback. This sets the direcory, where YouTube videos are stored.   </em> <code>start_streaming</code>: <code>true</code> or <code>false</code>. If <code>true</code>, videos will be streamed directly using <code>mpv</code>, if the video is not cached beforehand. Otherwise Syng waits for the video to be downloaded.
+    </p>
+    <p>
+      ### S3
+    </p>
+    <p>
+      Configuration is done under <code>sources</code> -&gt; <code>s3</code> with the following settings:
+    </p>
+    <p>
+      <em> <code>enabled</code>: <code>true</code> or <code>false</code>.   </em> <code>extensions</code>: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g cdg files), you can use <code>mp3+cdg</code> to signify, that the audio part is a <code>mp3</code> file and the video is a <code>cdg</code> file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use <code>mp4</code>.   <em> <code>endpoint</code>: Endpoint of the s3.   </em> <code>access_key</code> Access key for the s3.   <em> <code>secret_key</code>: Secret key for the s3.   </em> <code>secure</code>: If <code>true</code> uses <code>ssl</code>, otherwise not.   <em> <code>bucket</code>: Bucket for the karaoke files.   </em> <code>index_file</code>: Cache file, that contains the filenames of the karaoke files in the s3.   * <code>tmp_dir</code>: Temporary download directory of the karaoke files.
+      </p>
+      <p>
+        ### Files
+      </p>
+      <p>
+        Configuration is done under <code>sources</code> -&gt; <code>files</code> with the following settings:
+      </p>
+      <p>
+        <em> <code>enabled</code>: <code>true</code> or <code>false</code>.   </em> <code>extensions</code>: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g cdg files), you can use <code>mp3+cdg</code> to signify, that the audio part is a <code>mp3</code> file and the video is a <code>cdg</code> file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use <code>mp4</code>.   <em> <code>dir</code>: Directory, where the karaoke files are stored.    </em> <code>index_file</code>: Cache file, that contains the filenames of the karaoke files in the s3.
+        </p>
+      </description>
+      
+      <launchable type="desktop-id">rocks.syng.Syng.desktop</launchable>
+    </component>
