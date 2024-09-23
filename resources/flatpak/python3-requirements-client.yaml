@@ -2,30 +2,76 @@
 build-commands: []
 buildsystem: simple
 modules:
+  - name: python3-expandvars
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "expandvars" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/df/b3/072c28eace372ba7630ea187b7efd7f09cc8bcebf847a96b5e03e9cc0828/expandvars-0.12.0-py3-none-any.whl
+        sha256: 7432c1c2ae50c671a8146583177d60020dd210ada7d940e52af91f1f84f753b2
+  - name: python3-aiohttp
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "aiohttp==3.10.5" --no-build-isolation
+    sources:
+      - &id001
+        type: file
+        url: https://files.pythonhosted.org/packages/18/b6/58ea188899950d759a837f9a58b2aee1d1a380ea4d6211ce9b1823748851/aiohappyeyeballs-2.4.0-py3-none-any.whl
+        sha256: 7ce92076e249169a13c2f49320d1967425eaf1f407522d707d59cac7628d62bd
+      - type: file
+        url: https://files.pythonhosted.org/packages/ca/28/ca549838018140b92a19001a8628578b0f2a3b38c16826212cc6f706e6d4/aiohttp-3.10.5.tar.gz
+        sha256: f071854b47d39591ce9a17981c46790acb30518e2f83dfca8db2dfa091178691
+      - &id002
+        type: file
+        url: https://files.pythonhosted.org/packages/76/ac/a7305707cb852b7e16ff80eaf5692309bde30e2b1100a1fcacdc8f731d97/aiosignal-1.3.1-py3-none-any.whl
+        sha256: f8376fb07dd1e86a584e4fcdec80b36b7f81aac666ebc724e2c090300dd83b17
+      - &id007
+        type: file
+        url: https://files.pythonhosted.org/packages/6a/21/5b6702a7f963e95456c0de2d495f67bf5fd62840ac655dc451586d23d39a/attrs-24.2.0-py3-none-any.whl
+        sha256: 81921eb96de3191c8258c199618104dd27ac608d9366f5e35d011eae1867ede2
+      - &id003
+        type: file
+        url: https://files.pythonhosted.org/packages/cf/3d/2102257e7acad73efc4a0c306ad3953f68c504c16982bbdfee3ad75d8085/frozenlist-1.4.1.tar.gz
+        sha256: c037a86e8513059a2613aaba4d817bb90b9d9b6b69aace3ce9c877e8c8ed402b
+      - &id008
+        type: file
+        url: https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl
+        sha256: 946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
+      - &id011
+        type: file
+        url: https://files.pythonhosted.org/packages/d6/be/504b89a5e9ca731cd47487e91c469064f8ae5af93b7259758dcfc2b9c848/multidict-6.1.0.tar.gz
+        sha256: 22ae2ebf9b0c69d206c003e2f6a914ea33f0a932d4aa16f236afc049d9958f4a
+      - &id022
+        type: file
+        url: https://files.pythonhosted.org/packages/e4/3d/4924f9ed49698bac5f112bc9b40aa007bbdcd702462c1df3d2e1383fb158/yarl-1.11.1.tar.gz
+        sha256: 1bb2d9e212fb7449b8fb73bc461b51eaa17cc8430b4a87d87be7b25052d92f53
+  - name: python3-pyyaml
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "pyyaml==6.0.2" --no-build-isolation
+    sources: 
+      - type: file
+        url: https://files.pythonhosted.org/packages/54/ed/79a089b6be93607fa5cdaedf301d7dfb23af5f25c398d5ead2525b063e17/pyyaml-6.0.2.tar.gz
+        sha256: d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
   - name: python3-aiohappyeyeballs
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
         --prefix=${FLATPAK_DEST} "aiohappyeyeballs==2.4.0" --no-build-isolation
     sources:
-      - &id001
-        type: file
-        url: https://files.pythonhosted.org/packages/18/b6/58ea188899950d759a837f9a58b2aee1d1a380ea4d6211ce9b1823748851/aiohappyeyeballs-2.4.0-py3-none-any.whl
-        sha256: 7ce92076e249169a13c2f49320d1967425eaf1f407522d707d59cac7628d62bd
+      - *id001
   - name: python3-aiosignal
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
         --prefix=${FLATPAK_DEST} "aiosignal==1.3.1" --no-build-isolation
     sources:
-      - &id002
-        type: file
-        url: https://files.pythonhosted.org/packages/76/ac/a7305707cb852b7e16ff80eaf5692309bde30e2b1100a1fcacdc8f731d97/aiosignal-1.3.1-py3-none-any.whl
-        sha256: f8376fb07dd1e86a584e4fcdec80b36b7f81aac666ebc724e2c090300dd83b17
-      - &id003
-        type: file
-        url: https://files.pythonhosted.org/packages/cf/3d/2102257e7acad73efc4a0c306ad3953f68c504c16982bbdfee3ad75d8085/frozenlist-1.4.1.tar.gz
-        sha256: c037a86e8513059a2613aaba4d817bb90b9d9b6b69aace3ce9c877e8c8ed402b
+      - *id002
+      - *id003
   - name: python3-argon2-cffi-bindings
     buildsystem: simple
     build-commands:
@@ -63,10 +109,7 @@ modules:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
         --prefix=${FLATPAK_DEST} "attrs==24.2.0" --no-build-isolation
     sources:
-      - &id007
-        type: file
-        url: https://files.pythonhosted.org/packages/6a/21/5b6702a7f963e95456c0de2d495f67bf5fd62840ac655dc451586d23d39a/attrs-24.2.0-py3-none-any.whl
-        sha256: 81921eb96de3191c8258c199618104dd27ac608d9366f5e35d011eae1867ede2
+      - *id007
   - name: python3-bidict
     buildsystem: simple
     build-commands:
@@ -155,12 +198,8 @@ modules:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
         --prefix=${FLATPAK_DEST} "idna==3.10" --no-build-isolation
     sources:
-      - &id008
-        type: file
-        url: https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl
-        sha256: 946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
-        url: https://files.pythonhosted.org/packages/e4/3d/4924f9ed49698bac5f112bc9b40aa007bbdcd702462c1df3d2e1383fb158/yarl-1.11.1.tar.gz
-        sha256: 1bb2d9e212fb7449b8fb73bc461b51eaa17cc8430b4a87d87be7b25052d92f53
+      - *id008
+      - *id022
   - name: python3-minio
     buildsystem: simple
     build-commands:
@@ -193,10 +232,7 @@ modules:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
         --prefix=${FLATPAK_DEST} "multidict==6.1.0" --no-build-isolation
     sources:
-      - &id011
-        type: file
-        url: https://files.pythonhosted.org/packages/d6/be/504b89a5e9ca731cd47487e91c469064f8ae5af93b7259758dcfc2b9c848/multidict-6.1.0.tar.gz
-        sha256: 22ae2ebf9b0c69d206c003e2f6a914ea33f0a932d4aa16f236afc049d9958f4a
+      - *id011
   - name: python3-mutagen
     buildsystem: simple
     build-commands:
@@ -384,9 +420,7 @@ modules:
     sources:
       - *id008
       - *id011
-      - type: file
-        url: https://files.pythonhosted.org/packages/e4/3d/4924f9ed49698bac5f112bc9b40aa007bbdcd702462c1df3d2e1383fb158/yarl-1.11.1.tar.gz
-        sha256: 1bb2d9e212fb7449b8fb73bc461b51eaa17cc8430b4a87d87be7b25052d92f53
+      - *id022
   - name: python3-yt-dlp
     buildsystem: simple
     build-commands:
