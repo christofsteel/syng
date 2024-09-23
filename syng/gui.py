@@ -314,9 +314,9 @@ class SyngGui(QMainWindow):
         self.buttons_layout = QHBoxLayout()
         self.central_layout.addLayout(self.buttons_layout)
 
-        self.startsyng_serverbutton = QPushButton("Start Local Server")
-        self.startsyng_serverbutton.clicked.connect(self.start_syng_server)
-        self.buttons_layout.addWidget(self.startsyng_serverbutton)
+        # self.startsyng_serverbutton = QPushButton("Start Local Server")
+        # self.startsyng_serverbutton.clicked.connect(self.start_syng_server)
+        # self.buttons_layout.addWidget(self.startsyng_serverbutton)
 
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.notification_label = QLabel("", self)
@@ -325,11 +325,11 @@ class SyngGui(QMainWindow):
         self.buttons_layout.addWidget(self.notification_label)
         self.buttons_layout.addItem(spacer_item2)
 
-        self.savebutton = QPushButton("Save")
+        self.savebutton = QPushButton("Apply")
         self.savebutton.clicked.connect(self.save_config)
         self.buttons_layout.addWidget(self.savebutton)
 
-        self.startbutton = QPushButton("Save and Start")
+        self.startbutton = QPushButton("Apply and Start")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
