@@ -3,7 +3,7 @@ image: python:3-alpine
 mypy:
     stage: test
     script:
-        - pip install .[dev,client] --quiet
+        - pip install . --quiet
         - mypy syng --strict
 
 ruff:
