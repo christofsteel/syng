@@ -1,4 +1,14 @@
-# Syng
+<p align="center">
+    <img src="https://raw.githubusercontent.com/christofsteel/syng/refs/heads/main/resources/icons/hicolor/512x512/apps/rocks.syng.Syng.png"
+        height="130">
+</p>
+<p align="center">
+[![Matrix](https://img.shields.io/matrix/syng%3Amatrix.org?logo=matrix&label=%23syng%3Amatrix.org)](https://matrix.to/#/#syng:matrix.org)
+[![PyPI - Version](https://img.shields.io/pypi/v/syng?logo=pypi)](https://pypi.org/project/syng/)
+![Flathub Version](https://img.shields.io/flathub/v/syng?logo=flathub)
+![PyPI - License](https://img.shields.io/pypi/l/syng)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
+</p>
 
 Syng is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.
@@ -10,7 +20,7 @@ Currently, songs can be accessed using the following sources:
   - **S3.** The backend server holds a list of all file paths accessible through the s3 storage, and forwards the chosen path to the playback client. The playback client then downloads the needed files from the s3 for playback.
   - **Files.** Same as S3, but all files reside locally on the playback client.
 
-The playback client uses `mpv` for playback and can therefore play a variety of file formats, such as `mp3+cdg`, `webm`, `mp4`, ...
+The playback client uses [mpv](https://mpv.io/) for playback and can therefore play a variety of file formats, such as `mp3+cdg`, `webm`, `mp4`, ...
 
 # Client
 
@@ -24,7 +34,7 @@ Syng can be installed via the _Python Package Index_ (PyPI). When installing the
 
 This installs both the playback client (`syng client`) and a configuration GUI (`syng gui`). 
 
-**Note:** You need to have `mpv` installed on the playback client, and the `mpv` binary must be in your `PATH`.
+**Note:** You need to have [mpv](https://mpv.io/) installed on the playback client, and the `mpv` binary must be in your `PATH`.
 
 ## Running
 
@@ -60,7 +70,7 @@ Configuration is done under `sources` → `youtube` with the following settings:
 Configuration is done under `sources` → `s3` with the following settings:
 
   * `enabled`: `true` or `false`.
-  * `extensions`: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g cdg files), you can use `mp3+cdg` to signify, that the audio part is a `mp3` file and the video is a `cdg` file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use `mp4`.
+  * `extensions`: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g. CDG files), you can use `mp3+cdg` to signify, that the audio part is a `mp3` file and the video is a `cdg` file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use `mp4`.
   * `endpoint`: Endpoint of the s3.
   * `access_key` Access key for the s3.
   * `secret_key`: Secret key for the s3.
@@ -74,7 +84,7 @@ Configuration is done under `sources` → `s3` with the following settings:
 Configuration is done under `sources` → `files` with the following settings:
 
   * `enabled`: `true` or `false`.
-  * `extensions`: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g. cdg files), you can use `mp3+cdg` to signify, that the audio part is a `mp3` file and the video is a `cdg` file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use `mp4`.
+  * `extensions`: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g. CDG files), you can use `mp3+cdg` to signify, that the audio part is a `mp3` file and the video is a `cdg` file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use `mp4`.
   * `dir`: Directory, where the karaoke files are stored. 
   * `index_file`: Cache file, that contains the filenames of the karaoke files in the s3.
 
