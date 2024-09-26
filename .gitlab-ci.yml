@@ -3,11 +3,12 @@ image: python:3-alpine
 mypy:
     stage: test
     script:
-        - pip install . --quiet
+        - pip install poetry
+        - poetry install
         - mypy syng --strict
 
 ruff:
     stage: test
     script:
-        - pip install ruff --quiet        
+        - pip install ruff --quiet
         - ruff check syng
