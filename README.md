@@ -1,16 +1,14 @@
 <p align="center">
     <img src="https://raw.githubusercontent.com/christofsteel/syng/refs/heads/main/resources/icons/hicolor/512x512/apps/rocks.syng.Syng.png"
         height="130">
-</p>
 <p align="center">
 [![Matrix](https://img.shields.io/matrix/syng%3Amatrix.org?logo=matrix&label=%23syng%3Amatrix.org)](https://matrix.to/#/#syng:matrix.org)
 [![PyPI - Version](https://img.shields.io/pypi/v/syng?logo=pypi)](https://pypi.org/project/syng/)
 ![Flathub Version](https://img.shields.io/flathub/v/syng?logo=flathub)
 ![PyPI - License](https://img.shields.io/pypi/l/syng)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
-</p>
 
-Syng is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
+**Syng** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.
 The playback client retrieves songs from the backend server and plays them in order.
 
