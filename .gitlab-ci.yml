@@ -4,7 +4,7 @@ mypy:
     stage: test
     script:
         - pip install poetry
-        - poetry install
+        - poetry install --all-extras
         - poetry run mypy syng --strict
 
 ruff:
