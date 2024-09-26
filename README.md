@@ -8,6 +8,7 @@
 [![Flathub Version](https://img.shields.io/flathub/v/syng?logo=flathub)](https://flathub.org)
 [![PyPI - License](https://img.shields.io/pypi/l/syng)](https://www.gnu.org/licenses/agpl-3.0.en.html)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
+[![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/christofsteel%2Fsyng2?gitlab_url=https%3A%2F%2Fgit.k-fortytwo.de%2F&branch=main&logo=python&label=mypy%2Bruff)](https://git.k-fortytwo.de/christofsteel/syng2)
 
 **Syng** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.
