@@ -15,6 +15,7 @@ be one of:
 from __future__ import annotations
 import asyncio
 import datetime
+from logging import LogRecord
 from logging.handlers import QueueHandler
 from multiprocessing import Queue
 import secrets
@@ -456,7 +457,7 @@ async def start_client(config: dict[str, Any]) -> None:
 
 
 def create_async_and_start_client(
-    config: dict[str, Any], queue: Optional[Queue[logging.LogRecord]] = None
+    config: dict[str, Any], queue: Optional[Queue[LogRecord]] = None
 ) -> None:
     """
     Create an asyncio event loop and start the client.
