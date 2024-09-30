@@ -34,16 +34,16 @@
       <description>
         <p>
           <em>Fixes</em>:
-          <ul>
-            <li>Fixes s3 storage not working</li>
-          </ul>
         </p>
+        <ul>
+          <li>Fixes s3 storage not working</li>
+        </ul>
         <p>
           <em>Changes</em>:
-          <ul>
-            <li>Notifications are forwarded to the user interface</li>
-          </ul>
         </p>
+        <ul>
+          <li>Notifications are forwarded to the user interface</li>
+        </ul>
       </description>
     </release>
     <release version="2.0.0" date="2024-09-22">
