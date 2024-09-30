@@ -5,7 +5,7 @@
 
 [![Matrix](https://img.shields.io/matrix/syng%3Amatrix.org?logo=matrix&label=%23syng%3Amatrix.org)](https://matrix.to/#/#syng:matrix.org)
 [![PyPI - Version](https://img.shields.io/pypi/v/syng?logo=pypi)](https://pypi.org/project/syng/)
-[![Flathub Version](https://img.shields.io/flathub/v/syng?logo=flathub)](https://flathub.org)
+[![Flathub Version](https://img.shields.io/flathub/v/rocks.syng.Syng?logo=flathub)](https://flathub.org/apps/rocks.syng.Syng)
 [![PyPI - License](https://img.shields.io/pypi/l/syng)](https://www.gnu.org/licenses/agpl-3.0.en.html)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
 [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/christofsteel%2Fsyng2?gitlab_url=https%3A%2F%2Fgit.k-fortytwo.de%2F&branch=main&logo=python&label=mypy%2Bruff)](https://git.k-fortytwo.de/christofsteel/syng2)
@@ -28,13 +28,15 @@ To host a karaoke event, you only need to use the playback client. You can use t
 
 ## Installation
 
-Syng can be installed via the _Python Package Index_ (PyPI). When installing the client it is mandatory to include the `client` flag:
+The preferred way to install the client is via [Flathub](https://flathub.org/apps/rocks.syng.Syng).
+
+Alternatively Syng can be installed via the _Python Package Index_ (PyPI). When installing the client it is mandatory to include the `client` flag:
 
     pip install 'syng[client]'
 
 This installs both the playback client (`syng client`) and a configuration GUI (`syng gui`). 
 
-**Note:** You need to have [mpv](https://mpv.io/) installed on the playback client, and the `mpv` binary must be in your `PATH`.
+**Note:** When installing via PyPI, you need to have [mpv](https://mpv.io/) installed on the playback client, and the `mpv` binary must be in your `PATH`.
 
 ## Running
 
