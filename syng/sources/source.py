@@ -8,7 +8,6 @@ to this dictionary in its module.
 from __future__ import annotations
 
 import asyncio
-import logging
 import os.path
 import shlex
 from collections import defaultdict
@@ -22,10 +21,11 @@ from typing import Tuple
 from typing import Type
 from abc import ABC, abstractmethod
 
+from ..log import logger
 from ..entry import Entry
 from ..result import Result
 
-logger: logging.Logger = logging.getLogger(__name__)
+# logger: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -146,7 +146,7 @@ class Source(ABC):
         """
         args = ["--fullscreen", *options, video] + ([f"--audio-file={audio}"] if audio else [])
 
-        print(f"File is {video=} and {audio=}")
+        # print(f"File is {video=} and {audio=}")
 
         mpv_process = asyncio.create_subprocess_exec(
             "mpv",
@@ -400,9 +400,9 @@ class Source(ABC):
         """
         if not self._index:
             self._index = []
-            print(f"{self.source_name}: generating index")
+            logger.warn(f"{self.source_name}: generating index")
             self._index = await self.get_file_list()
-            print(f"{self.source_name}: done")
+            logger.warn(f"{self.source_name}: done")
         chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
         return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
 

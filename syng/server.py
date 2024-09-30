@@ -16,7 +16,6 @@ from __future__ import annotations
 import asyncio
 import datetime
 import hashlib
-import logging
 import os
 import random
 import string
@@ -36,6 +35,7 @@ from .result import Result
 from .sources.youtube import YouTube
 
 from . import jsonencoder
+from .log import logger
 from .entry import Entry
 from .queue import Queue
 from .sources import available_sources
@@ -71,8 +71,7 @@ async def root_handler(request: Any) -> Any:
     return web.FileResponse(os.path.join(app["root_folder"], "index.html"))
 
 
-logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 @dataclass

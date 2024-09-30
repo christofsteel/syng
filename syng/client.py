@@ -15,7 +15,6 @@ be one of:
 from __future__ import annotations
 import asyncio
 import datetime
-import logging
 from logging.handlers import QueueHandler
 from multiprocessing import Queue
 import secrets
@@ -38,10 +37,11 @@ from yaml import load, Loader
 from . import jsonencoder
 from .entry import Entry
 from .sources import configure_sources, Source
+from .log import logger
 
 
 sio: socketio.AsyncClient = socketio.AsyncClient(json=jsonencoder)
-logger: logging.Logger = logging.getLogger(__name__)
+# logger: logging.Logger = logging"Syng"er(__name__)
 sources: dict[str, Source] = {}
 
 
