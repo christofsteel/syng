@@ -3,7 +3,7 @@
   <id>rocks.syng.Syng</id>
 
   <name>Syng</name>
-  <summary>An all-in-one karaoke software</summary>
+  <summary>All-in-one karaoke software</summary>
 
   <developer id="rocks.syng">
     <name>Christoph Stahl</name>
@@ -30,6 +30,22 @@
 
 
   <releases>
+    <release version="2.0.1" date="2024-09-30">
+      <description>
+        <p>
+          <em>Fixes</em>:
+          <ul>
+            <li>Fixes s3 storage not working</li>
+          </ul>
+        </p>
+        <p>
+          <em>Changes</em>:
+          <ul>
+            <li>Notifications are forwarded to the user interface</li>
+          </ul>
+        </p>
+      </description>
+    </release>
     <release version="2.0.0" date="2024-09-22">
       <description>
         <p>
