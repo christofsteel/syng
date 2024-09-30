@@ -1,29 +1,27 @@
-# Generated with flatpak-pip-generator --yaml --requirements-file ../../requirements-client.txt
+# Generated with flatpak-pip-generator --requirements-file ../../requirements-client.txt --ignore-pkg pyqt6-qt6==6.7.3 pyqt6-sip==13.8.0 pyqt6==6.7.1 cffi==1.17.1 --yaml
 build-commands: []
 buildsystem: simple
 modules:
-  - name: python3-expandvars
+  - name: python3-aiohappyeyeballs
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "expandvars" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "aiohappyeyeballs==2.4.2" --no-build-isolation
     sources:
-      - type: file
-        url: https://files.pythonhosted.org/packages/df/b3/072c28eace372ba7630ea187b7efd7f09cc8bcebf847a96b5e03e9cc0828/expandvars-0.12.0-py3-none-any.whl
-        sha256: 7432c1c2ae50c671a8146583177d60020dd210ada7d940e52af91f1f84f753b2
+      - &id001
+        type: file
+        url: https://files.pythonhosted.org/packages/13/64/40165ff77ade5203284e3015cf88e11acb07d451f6bf83fff71192912a0d/aiohappyeyeballs-2.4.2-py3-none-any.whl
+        sha256: 8522691d9a154ba1145b157d6d5c15e5c692527ce6a53c5e5f9876977f6dab2f
   - name: python3-aiohttp
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "aiohttp==3.10.5" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "aiohttp==3.10.8" --no-build-isolation
     sources:
-      - &id001
-        type: file
-        url: https://files.pythonhosted.org/packages/18/b6/58ea188899950d759a837f9a58b2aee1d1a380ea4d6211ce9b1823748851/aiohappyeyeballs-2.4.0-py3-none-any.whl
-        sha256: 7ce92076e249169a13c2f49320d1967425eaf1f407522d707d59cac7628d62bd
+      - *id001
       - type: file
-        url: https://files.pythonhosted.org/packages/ca/28/ca549838018140b92a19001a8628578b0f2a3b38c16826212cc6f706e6d4/aiohttp-3.10.5.tar.gz
-        sha256: f071854b47d39591ce9a17981c46790acb30518e2f83dfca8db2dfa091178691
+        url: https://files.pythonhosted.org/packages/4e/05/da5ff89c85444a6ade9079e73580fb3f78c6ba0e170a2472f15400d03e02/aiohttp-3.10.8.tar.gz
+        sha256: 21f8225f7dc187018e8433c9326be01477fb2810721e048b33ac49091b19fb4a
       - &id002
         type: file
         url: https://files.pythonhosted.org/packages/76/ac/a7305707cb852b7e16ff80eaf5692309bde30e2b1100a1fcacdc8f731d97/aiosignal-1.3.1-py3-none-any.whl
@@ -46,24 +44,8 @@ modules:
         sha256: 22ae2ebf9b0c69d206c003e2f6a914ea33f0a932d4aa16f236afc049d9958f4a
       - &id022
         type: file
-        url: https://files.pythonhosted.org/packages/e4/3d/4924f9ed49698bac5f112bc9b40aa007bbdcd702462c1df3d2e1383fb158/yarl-1.11.1.tar.gz
-        sha256: 1bb2d9e212fb7449b8fb73bc461b51eaa17cc8430b4a87d87be7b25052d92f53
-  - name: python3-pyyaml
-    buildsystem: simple
-    build-commands:
-      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "pyyaml==6.0.2" --no-build-isolation
-    sources: 
-      - type: file
-        url: https://files.pythonhosted.org/packages/54/ed/79a089b6be93607fa5cdaedf301d7dfb23af5f25c398d5ead2525b063e17/pyyaml-6.0.2.tar.gz
-        sha256: d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
-  - name: python3-aiohappyeyeballs
-    buildsystem: simple
-    build-commands:
-      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "aiohappyeyeballs==2.4.0" --no-build-isolation
-    sources:
-      - *id001
+        url: https://files.pythonhosted.org/packages/e0/11/2b8334f4192646677a2e7da435670d043f536088af943ec242f31453e5ba/yarl-1.13.1.tar.gz
+        sha256: ec8cfe2295f3e5e44c51f57272afbd69414ae629ec7c6b27f5a410efc78b70a0
   - name: python3-aiosignal
     buildsystem: simple
     build-commands:
@@ -103,6 +85,15 @@ modules:
       - *id004
       - *id005
       - *id006
+  - name: python3-async-timeout
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "async-timeout==4.0.3" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/a7/fa/e01228c2938de91d47b307831c62ab9e4001e747789d0b05baf779a6488c/async_timeout-4.0.3-py3-none-any.whl
+        sha256: 7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028
   - name: python3-attrs
     buildsystem: simple
     build-commands:
@@ -130,6 +121,17 @@ modules:
         type: file
         url: https://files.pythonhosted.org/packages/2f/c2/f9e977608bdf958650638c3f1e28f85a1b075f075ebbe77db8555463787b/Brotli-1.1.0.tar.gz
         sha256: 81de08ac11bcb85841e440c13611c00b67d3bf82698314928d0b676362546724
+  - name: python3-brotlicffi
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "brotlicffi==1.1.0.0" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/95/9d/70caa61192f570fcf0352766331b735afa931b4c6bc9a348a0925cc13288/brotlicffi-1.1.0.0.tar.gz
+        sha256: b77827a689905143f87915310b93b273ab17888fd43ef350d4832c4a71083c13
+      - *id005
+      - *id006
   - name: python3-certifi
     buildsystem: simple
     build-commands:
@@ -140,25 +142,6 @@ modules:
         type: file
         url: https://files.pythonhosted.org/packages/12/90/3c9ff0512038035f59d279fddeb79f5f1eccd8859f06d6163c58798b9487/certifi-2024.8.30-py3-none-any.whl
         sha256: 922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8
-  - name: python3-cffi
-    buildsystem: simple
-    build-commands:
-      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "cffi==1.17.1" --no-build-isolation
-    sources:
-      - *id005
-      - *id006
-  - name: python3-brotlicffi
-    buildsystem: simple
-    build-commands:
-      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "brotlicffi==1.1.0.0" --no-build-isolation
-    sources:
-      - type: file
-        url: https://files.pythonhosted.org/packages/95/9d/70caa61192f570fcf0352766331b735afa931b4c6bc9a348a0925cc13288/brotlicffi-1.1.0.0.tar.gz
-        sha256: b77827a689905143f87915310b93b273ab17888fd43ef350d4832c4a71083c13
-      - *id005 
-      - *id006
   - name: python3-charset-normalizer
     buildsystem: simple
     build-commands:
@@ -169,12 +152,15 @@ modules:
         type: file
         url: https://files.pythonhosted.org/packages/63/09/c1bc53dab74b1816a00d8d030de5bf98f724c52c1635e07681d312f20be8/charset-normalizer-3.3.2.tar.gz
         sha256: f30c3cb33b24454a82faecaf01b19c18562b1e89558fb6c56de4d9118a032fd5
-  # - name: python3-colorama
-  #   buildsystem: simple
-  #   build-commands:
-  #     - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-  #       --prefix=${FLATPAK_DEST} "colorama==0.4.6" --no-build-isolation
-  #   sources: []
+  - name: python3-colorama
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "colorama==0.4.6" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl
+        sha256: 4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
   - name: python3-frozenlist
     buildsystem: simple
     build-commands:
@@ -199,20 +185,19 @@ modules:
         --prefix=${FLATPAK_DEST} "idna==3.10" --no-build-isolation
     sources:
       - *id008
-      - *id022
   - name: python3-minio
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "minio==7.2.8" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "minio==7.2.9" --no-build-isolation
     sources:
       - *id009
       - *id004
       - *id010
       - *id005
       - type: file
-        url: https://files.pythonhosted.org/packages/34/89/f4d5cfb0a5494e7dae1c11d6d1ab82811d93f6af8ca54e1393c046ff0e75/minio-7.2.8-py3-none-any.whl
-        sha256: aa3b485788b63b12406a5798465d12a57e4be2ac2a58a8380959b6b748e64ddd
+        url: https://files.pythonhosted.org/packages/fd/ec/57236b6f359ba2e8176a92805febe47f3f1c102588eb5d52dd978d347561/minio-7.2.9-py3-none-any.whl
+        sha256: fe5523d9c4a4d6cfc07e96905852841bccdb22b22770e1efca4bf5ae8b65774b
       - *id006
       - &id012
         type: file
@@ -243,15 +228,6 @@ modules:
         type: file
         url: https://files.pythonhosted.org/packages/b0/7a/620f945b96be1f6ee357d211d5bf74ab1b7fe72a9f1525aafbfe3aee6875/mutagen-1.47.0-py3-none-any.whl
         sha256: edd96f50c5907a9539d8e5bba7245f62c9f520aef333d13392a79a4f70aca719
-  - name: python3-packaging
-    buildsystem: simple
-    build-commands:
-      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "packaging==23.2" --no-build-isolation
-    sources:
-      - type: file
-        url: https://files.pythonhosted.org/packages/ec/1a/610693ac4ee14fcdf2d9bf3c493370e4f2ef7ae2e19217d7a237ff42367d/packaging-23.2-py3-none-any.whl
-        sha256: 8c491190033a9af7e1d931d0b5dacc2ef47509b34dd0de67ed209b5203fc88c7
   - name: python3-pillow
     buildsystem: simple
     build-commands:
@@ -346,6 +322,15 @@ modules:
         sha256: 42efaa3e3e0b166fc72a527488a13caaac2cefc76174252486503bd496284945
       - *id016
       - *id017
+  - name: python3-pyyaml
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "pyyaml==6.0.2" --no-build-isolation
+    sources: 
+      - type: file
+        url: https://files.pythonhosted.org/packages/54/ed/79a089b6be93607fa5cdaedf301d7dfb23af5f25c398d5ead2525b063e17/pyyaml-6.0.2.tar.gz
+        sha256: d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
   - name: python3-qrcode
     buildsystem: simple
     build-commands:
@@ -416,7 +401,7 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "yarl==1.11.1" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "yarl==1.13.1" --no-build-isolation
     sources:
       - *id008
       - *id011
@@ -425,7 +410,7 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "yt-dlp==2024.8.6" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "yt-dlp==2024.9.27" --no-build-isolation
     sources:
       - *id023
       - *id010
@@ -437,6 +422,6 @@ modules:
       - *id021
       - *id027
       - type: file
-        url: https://files.pythonhosted.org/packages/a5/9b/f58db6c36f899c4f9c88f63aa9bc6ab676ff3d0ccbbe3201a5d3a670cfe4/yt_dlp-2024.8.6-py3-none-any.whl
-        sha256: ab507ff600bd9269ad4d654e309646976778f0e243eaa2f6c3c3214278bb2922
+        url: https://files.pythonhosted.org/packages/c6/26/5dc3a802bd85c19d3d2fa746e6b36979801e2f32a433799c57f646335a7d/yt_dlp-2024.9.27-py3-none-any.whl
+        sha256: 2717468dd697fcfcf9a89f493ba30a3830cdfb276c09750e5b561b08b9ef5f69
 name: python3-requirements-client

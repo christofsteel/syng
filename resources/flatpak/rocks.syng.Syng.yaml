@@ -2,15 +2,15 @@ id: rocks.syng.Syng
 runtime: org.kde.Platform
 runtime-version: '6.7'
 sdk: org.kde.Sdk
-base: "com.riverbankcomputing.PyQt.BaseApp"
-base-version: "6.7"
+base: com.riverbankcomputing.PyQt.BaseApp
+base-version: '6.7'
 cleanup-commands:
   - /app/cleanup-BaseApp.sh
 build-options:
   env:
     - BASEAPP_REMOVE_WEBENGINE=1
 finish-args:
-  - --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess - /app/cleanup-BaseApp.sh
+  - --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess
   # X11 + XShm access
   - --socket=fallback-x11
   - --share=ipc
@@ -19,12 +19,372 @@ finish-args:
   - --device=dri
   # Sound
   - --socket=pulseaudio
-  # Ability to edit/save files anywhere
-  - --filesystem=host
+  # Playback files from anywhere on the system
+  - --filesystem=host:ro
   - --share=network
+cleanup:
+  - '*.la'
+  - '*.a'
 command: syng
 modules:
-  - mpv.yaml
+  # MPV and MPV deps
+  # This is basically copied from the mpv flatpak
+  - name: libXmu
+    buildsystem: autotools
+    sources:
+      - type: git
+        url: https://gitlab.freedesktop.org/xorg/lib/libxmu.git
+        tag: libXmu-1.2.1
+        commit: 792f80402ee06ce69bca3a8f2a84295999c3a170
+        x-checker-data:
+          type: git
+          tag-pattern: ^libXmu-([\d.]+)$
+
+  - name: xclip
+    buildsystem: autotools
+    sources:
+      - type: git
+        url: https://github.com/astrand/xclip.git
+        tag: '0.13'
+        commit: 9aa7090c3b8b437c6489edca32ae43d82e0c1281
+        x-checker-data:
+          type: git
+          tag-pattern: ^(\d+\.\d+)$
+
+  - name: libXpresent
+    buildsystem: autotools
+    sources:
+      - type: git
+        url: https://gitlab.freedesktop.org/xorg/lib/libxpresent.git
+        tag: libXpresent-1.0.1
+        commit: 37507b5f44332accfb1064ee69a4f6a833994747
+        x-checker-data:
+          type: git
+          tag-pattern: ^libXpresent-([\d.]+)$
+
+  - name: luajit
+    no-autogen: true
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+      - /share/man
+    sources:
+      - type: git
+        url: https://github.com/LuaJIT/LuaJIT.git
+        disable-shallow-clone: true
+        commit: f5fd22203eadf57ccbaa4a298010d23974b22fc0
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/LuaJIT/LuaJIT/commits
+          commit-query: first( .[].sha )
+          version-query: first( .[].sha )
+          timestamp-query: first( .[].commit.committer.date )
+      - type: shell
+        commands:
+          - sed -i 's|/usr/local|/app|' ./Makefile
+
+  - name: yt-dlp
+    no-autogen: true
+    no-make-install: true
+    make-args:
+      - yt-dlp
+      - PYTHON=/usr/bin/python3
+    post-install:
+      - install yt-dlp /app/bin
+    sources:
+      - type: archive
+        url: https://github.com/yt-dlp/yt-dlp/releases/download/2024.09.27/yt-dlp.tar.gz
+        sha256: ffce6ebd742373eff6dac89b23f706ec7513a0367160eb8b5a550cd706cd883f
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest
+          version-query: .tag_name
+          url-query: .assets[] | select(.name=="yt-dlp.tar.gz") | .browser_download_url
+
+  - name: uchardet
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_STATIC=0
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+      - /share/man
+    sources:
+      - type: archive
+        url: https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
+        sha256: e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0
+        x-checker-data:
+          type: html
+          url: https://www.freedesktop.org/software/uchardet/releases/
+          version-pattern: uchardet-(\d\.\d+\.?\d*).tar.xz
+          url-template: https://www.freedesktop.org/software/uchardet/releases/uchardet-$version.tar.xz
+
+  - name: libass
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+    config-opts:
+      - --disable-static
+    sources:
+      - type: git
+        url: https://github.com/libass/libass.git
+        tag: 0.17.3
+        commit: e46aedea0a0d17da4c4ef49d84b94a7994664ab5
+        x-checker-data:
+          type: git
+          tag-pattern: ^(\d\.\d{1,3}\.\d{1,2})$
+
+  - name: libaacs
+    config-opts:
+      - --disable-static
+      - --disable-bdjava-jar
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+    sources:
+      - sha256: a88aa0ebe4c98a77f7aeffd92ab3ef64ac548c6b822e8248a8b926725bea0a39
+        type: archive
+        url: https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
+        mirror-urls:
+          - https://videolan.mirror.ba/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
+          - https://videolan.c3sl.ufpr.br/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
+        x-checker-data:
+          type: html
+          url: https://www.videolan.org/developers/libaacs.html
+          version-pattern: Latest release is <b>libaacs (\d\.\d+\.?\d*)</b>
+          url-template: https://download.videolan.org/pub/videolan/libaacs/$version/libaacs-$version.tar.bz2
+
+  - name: zimg
+    config-opts:
+      - --disable-static
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/doc
+    sources:
+      - type: archive
+        archive-type: tar
+        url: https://api.github.com/repos/sekrit-twc/zimg/tarball/release-3.0.5
+        sha256: 1b8998f03f4a49e4d730033143722b32bc28a5306ef809ccfb3b4bbb29e4b784
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/sekrit-twc/zimg/releases/latest
+          url-query: .tarball_url
+          version-query: .tag_name | sub("^release-"; "")
+          timestamp-query: .published_at
+
+  - name: mujs
+    buildsystem: autotools
+    no-autogen: true
+    make-args:
+      - release
+    make-install-args:
+      - prefix=/app
+      - install-shared
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+    sources:
+      - type: git
+        url: https://github.com/ccxvii/mujs.git
+        tag: 1.3.5
+        commit: 0df0707f2f10187127e36acfbc3ba9b9ca5b5cf0
+        x-checker-data:
+          type: git
+          url: https://api.github.com/repos/ccxvii/mujs/tags
+          tag-pattern: ^([\d.]+)$
+
+  - name: nv-codec-headers
+    cleanup:
+      - '*'
+    no-autogen: true
+    make-install-args:
+      - PREFIX=/app
+    sources:
+      - type: git
+        url: https://github.com/FFmpeg/nv-codec-headers.git
+        tag: n12.2.72.0
+        commit: c69278340ab1d5559c7d7bf0edf615dc33ddbba7
+        x-checker-data:
+          type: git
+          tag-pattern: ^n([\d.]+)$
+
+  - name: x264
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/man
+    config-opts:
+      - --disable-cli
+      - --enable-shared
+    sources:
+      - type: git
+        url: https://github.com/jpsdr/x264
+        commit: c24e06c2e184345ceb33eb20a15d1024d9fd3497
+        # Every commit to the master branch is considered a release
+        # https://code.videolan.org/videolan/x264/-/issues/35
+        x-checker-data:
+          type: json
+          url: https://code.videolan.org/api/v4/projects/536/repository/commits
+          commit-query: first( .[].id )
+          version-query: first( .[].id )
+          timestamp-query: first( .[].committed_date )
+
+  - name: x265
+    buildsystem: cmake
+    subdir: source
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_STATIC=0
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/man
+    sources:
+      - type: git
+        url: https://bitbucket.org/multicoreware/x265_git.git
+        tag: '4.0'
+        commit: 6318f223684118a2c71f67f3f4633a9e35046b00
+        x-checker-data:
+          type: git
+          tag-pattern: ^([\d.]+)$
+
+  - name: vulkan-headers
+    buildsystem: cmake-ninja
+    sources:
+      - type: archive
+        url: https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.3.286.tar.gz
+        sha256: a82a6982efe5e603e23505ca19b469e8f3d876fc677c46b7bfb6177f517bf8fe
+
+  - name: ffmpeg
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/ffmpeg/examples
+    config-opts:
+      - --disable-debug
+      - --disable-doc
+      - --disable-static
+      - --enable-encoder=png
+      - --enable-gnutls
+      - --enable-gpl
+      - --enable-shared
+      - --enable-version3
+      - --enable-libaom
+      - --enable-libass
+      - --enable-libdav1d
+      - --enable-libfreetype
+      - --enable-libmp3lame
+      - --enable-libopus
+      - --enable-libtheora
+      - --enable-libvorbis
+      - --enable-libvpx
+      - --enable-libx264
+      - --enable-libx265
+      - --enable-libwebp
+      - --enable-libxml2
+      - --enable-vulkan
+
+    sources:
+      - type: git
+        url: https://github.com/FFmpeg/FFmpeg.git
+        commit: b08d7969c550a804a59511c7b83f2dd8cc0499b8
+        tag: n7.1
+        x-checker-data:
+          type: git
+          tag-pattern: ^n([\d.]{3,7})$
+
+  - name: libplacebo
+    buildsystem: meson
+    config-opts:
+      - -Dvulkan=enabled
+      - -Dshaderc=enabled
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+    sources:
+      - type: git
+        url: https://github.com/haasn/libplacebo.git
+        tag: v7.349.0
+        commit: 1fd3c7bde7b943fe8985c893310b5269a09b46c5
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
+    modules:
+      - name: shaderc
+        buildsystem: cmake-ninja
+        builddir: true
+        config-opts:
+          - -DSHADERC_SKIP_COPYRIGHT_CHECK=ON
+          - -DSHADERC_SKIP_EXAMPLES=ON
+          - -DSHADERC_SKIP_TESTS=ON
+          - -DSPIRV_SKIP_EXECUTABLES=ON
+          - -DENABLE_GLSLANG_BINARIES=OFF
+        cleanup:
+          - /bin
+          - /include
+          - /lib/cmake
+          - /lib/pkgconfig
+        sources:
+          - type: git
+            url: https://github.com/google/shaderc.git
+            #tag: v2023.7
+            commit: 40bced4e1e205ecf44630d2dfa357655b6dabd04
+            #x-checker-data:
+            #  type: git
+            #  tag-pattern: ^v(\d{4}\.\d{1,2})$
+          - type: git
+            url: https://github.com/KhronosGroup/SPIRV-Tools.git
+            tag: v2024.1
+            commit: 04896c462d9f3f504c99a4698605b6524af813c1
+            dest: third_party/spirv-tools
+            #x-checker-data:
+            #  type: git
+            #  tag-pattern: ^v(\d{4}\.\d{1})$
+          - type: git
+            url: https://github.com/KhronosGroup/SPIRV-Headers.git
+            #tag: sdk-1.3.250.1
+            commit: 4f7b471f1a66b6d06462cd4ba57628cc0cd087d7
+            dest: third_party/spirv-headers
+            #x-checker-data:
+            #  type: git
+            #  tag-pattern: ^sdk-([\d.]+)$
+          - type: git
+            url: https://github.com/KhronosGroup/glslang.git
+            tag: 15.0.0
+            commit: 46ef757e048e760b46601e6e77ae0cb72c97bd2f
+            dest: third_party/glslang
+            x-checker-data:
+              type: git
+              tag-pattern: ^(\d{1,2}\.\d{1,2}\.\d{1,4})$
+
+  - name: mpv
+    buildsystem: meson
+    config-opts:
+      - -Dbuild-date=false
+      - -Dlibmpv=false
+      - -Dmanpage-build=disabled
+      - -Dlibarchive=enabled
+      - -Dsdl2=enabled
+      - -Dshaderc=disabled
+      - -Dvulkan=enabled
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+    sources:
+      - type: git
+        url: https://github.com/mpv-player/mpv.git
+        tag: v0.39.0
+        commit: a0fba7be57f3822d967b04f0f6b6d6341e7516e7
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
+  - python3-expandvars.yaml
+  - python3-cffi.yaml
   - python3-requirements-client.yaml
   - python3-poetry-core.yaml
   - name: syng
@@ -33,15 +393,15 @@ modules:
       - pip install --prefix=/app --no-deps . --no-build-isolation
       - install -Dm644 resources/${FLATPAK_ID}.desktop -t /app/share/applications
       - install -Dm644 resources/flatpak/${FLATPAK_ID}.metainfo.xml -t /app/share/metainfo
-      - install -Dm644 resources/icons/hicolor/32x32/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/32x32/apps/${FLATPAK_ID}.png 
-      - install -Dm644 resources/icons/hicolor/48x48/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/48x48/apps/${FLATPAK_ID}.png 
-      - install -Dm644 resources/icons/hicolor/64x64/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/64x64/apps/${FLATPAK_ID}.png 
-      - install -Dm644 resources/icons/hicolor/128x128/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/128x128/apps/${FLATPAK_ID}.png 
-      - install -Dm644 resources/icons/hicolor/256x256/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/256x256/apps/${FLATPAK_ID}.png 
-      - install -Dm644 resources/icons/hicolor/512x512/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/512x512/apps/${FLATPAK_ID}.png 
-      - install -Dm644 resources/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg 
+      - install -Dm644 resources/icons/hicolor/32x32/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/32x32/apps/${FLATPAK_ID}.png
+      - install -Dm644 resources/icons/hicolor/48x48/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/48x48/apps/${FLATPAK_ID}.png
+      - install -Dm644 resources/icons/hicolor/64x64/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/64x64/apps/${FLATPAK_ID}.png
+      - install -Dm644 resources/icons/hicolor/128x128/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/128x128/apps/${FLATPAK_ID}.png
+      - install -Dm644 resources/icons/hicolor/256x256/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/256x256/apps/${FLATPAK_ID}.png
+      - install -Dm644 resources/icons/hicolor/512x512/apps/${FLATPAK_ID}.png /app/share/icons/hicolor/512x512/apps/${FLATPAK_ID}.png
+      # - install -Dm644 resources/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg 
     sources:
       - type: git
         url: https://github.com/christofsteel/syng.git
-        commit: 58b3837d1bae05abd9b521dac8bed0de3ae2824c
+        commit: dd84ff361bbd10efd14147d8dd0453438f4e32ff
 
