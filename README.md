@@ -10,7 +10,6 @@
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
 [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/christofsteel%2Fsyng2?gitlab_url=https%3A%2F%2Fgit.k-fortytwo.de%2F&branch=main&logo=python&label=mypy%2Bruff)](https://git.k-fortytwo.de/christofsteel/syng2)
 
-[![Get in on Flathub](https://flathub.org/api/badge?locale=en)](https://flathub.org/apps/rocks.syng.Syng)
 
 **Syng** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.
@@ -25,6 +24,8 @@ Currently, songs can be accessed using the following sources:
 The playback client uses [mpv](https://mpv.io/) for playback and can therefore play a variety of file formats, such as `mp3+cdg`, `webm`, `mp4`, ...
 
 # Client
+
+[![Get in on Flathub](https://flathub.org/api/badge?locale=en)](https://flathub.org/apps/rocks.syng.Syng)
 
 To host a karaoke event, you only need to use the playback client. You can use the publicly available instance at https://syng.rocks as your server.
 
