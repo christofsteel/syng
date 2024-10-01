@@ -35,6 +35,7 @@ The config file for the client should be a yaml file in the following style::
 from typing import TYPE_CHECKING
 from argparse import ArgumentParser
 import os
+import multiprocessing
 
 import platformdirs
 
@@ -119,4 +120,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if os.name == "nt":
+        multiprocessing.freeze_support()
     main()
