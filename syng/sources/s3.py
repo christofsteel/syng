@@ -45,7 +45,7 @@ class S3Source(FileBasedSource):
         "secret_key": ("password", "Secret Key of the s3", ""),
         "secure": (bool, "Use SSL", True),
         "bucket": (str, "Bucket of the s3", ""),
-        "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
+        "tmp_dir": (str, "Folder for\ntemporary download", user_cache_dir("syng")),
         "index_file": (str, "Index file", os.path.join(user_cache_dir("syng"), "s3-index")),
     }
 

@@ -31,6 +31,8 @@ To host a karaoke event, you only need to use the playback client. You can use t
 
 ## Installation
 
+### Linux
+
 The preferred way to install the client is via [Flathub](https://flathub.org/apps/rocks.syng.Syng).
 
 Alternatively Syng can be installed via the _Python Package Index_ (PyPI). When installing the client it is mandatory to include the `client` flag:
@@ -40,6 +42,11 @@ Alternatively Syng can be installed via the _Python Package Index_ (PyPI). When 
 This installs both the playback client (`syng client`) and a configuration GUI (`syng gui`). 
 
 **Note:** When installing via PyPI, you need to have [mpv](https://mpv.io/) installed on the playback client, and the `mpv` binary must be in your `PATH`.
+
+### Windows
+
+Windows support is experimental, but you can download the current version from [Releases](https://github.com/christofsteel/syng/releases). No installation necessary, you can just run the `exe`.
+
 
 ## Running
 

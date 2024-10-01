@@ -16,6 +16,7 @@ from typing import Any, Optional, Tuple
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
+from platformdirs import user_cache_dir
 
 from ..entry import Entry
 from ..result import Result
@@ -183,7 +184,7 @@ class YoutubeSource(Source):
     config_schema = Source.config_schema | {
         "enabled": (bool, "Enable this source", True),
         "channels": (list, "A list channels\nto search in", []),
-        "tmp_dir": (str, "Folder for\ntemporary download", "/tmp/syng"),
+        "tmp_dir": (str, "Folder for\ntemporary download", user_cache_dir("syng")),
         "max_res": (int, "Maximum resolution\nto download", 720),
         "start_streaming": (
             bool,
