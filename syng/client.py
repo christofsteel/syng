@@ -13,6 +13,7 @@ be one of:
 """
 
 from __future__ import annotations
+import os
 import asyncio
 import datetime
 from logging import LogRecord
@@ -443,8 +444,10 @@ async def start_client(config: dict[str, Any]) -> None:
 
     await sio.connect(state.config["server"])
 
-    asyncio.get_event_loop().add_signal_handler(signal.SIGINT, signal_handler)
-    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, signal_handler)
+    # this is not supported under windows
+    if os.name != "nt":
+        asyncio.get_event_loop().add_signal_handler(signal.SIGINT, signal_handler)
+        asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, signal_handler)
 
     try:
         await sio.wait()
