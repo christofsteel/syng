@@ -21,11 +21,12 @@ rm -rf requirements
 
 cp ../../requirements-client.txt src/requirements.txt
 cp -r ../../syng/ src/
+cp ../icons/syng.ico src/
 
 # docker run --volume "$(pwd)/src:/src/" batonogov/pyinstaller-linux:latest "pyinstaller --onefile syng/main.py"
 # rm -rf src/build
 # rm -rf src/dist
-docker run --volume "$(pwd)/src:/src/" batonogov/pyinstaller-windows:latest "pyinstaller --onefile --add-binary '.\mpv.exe;.' --add-binary '.\vulkan-1.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py"
+docker run --volume "$(pwd)/src:/src/" batonogov/pyinstaller-windows:latest "pyinstaller --onefile -w -i'.\syng.ico' --add-binary '.\mpv.exe;.' --add-binary '.\vulkan-1.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py"
 
 # cd syng-2.0.1
 # wine python -m poetry install -E client
