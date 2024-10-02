@@ -1,4 +1,5 @@
 from io import BytesIO
+import sys
 import logging
 from logging.handlers import QueueListener
 from multiprocessing import Process, Queue
@@ -8,11 +9,21 @@ import os
 import builtins
 from functools import partial
 import random
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 import multiprocessing
 import secrets
 import string
 import signal
+
+try:
+    if not TYPE_CHECKING:
+        from ctypes import windll
+
+        appid = "rocks.syng.Syng.2.0.1"
+        windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
+except ImportError:
+    pass
+
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
@@ -379,13 +390,12 @@ class SyngGui(QMainWindow):
         super().__init__()
         self.setWindowTitle("Syng")
 
-        rel_path = os.path.dirname(__file__)
-        qt_img = QPixmap(os.path.join(rel_path, "static/syng.png"))
-        self.qt_icon = QIcon(qt_img)
-        self.setWindowIcon(self.qt_icon)
+        if os.name != "nt":
+            rel_path = os.path.dirname(__file__)
+            qt_img = QPixmap(os.path.join(rel_path, "static", "syng.png"))
+            self.setWindowIcon(QIcon(qt_img))
 
         self.syng_server: Optional[Process] = None
-        # self.syng_client: Optional[subprocess.Popen[bytes]] = None
         self.syng_client: Optional[Process] = None
         self.syng_client_logging_listener: Optional[QueueListener] = None
 
@@ -553,9 +563,14 @@ class LoggingLabelHandler(logging.Handler):
 
 
 def run_gui() -> None:
+    base_dir = os.path.dirname(__file__)
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        base_dir = sys._MEIPASS
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication([])
+    app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
     app.setApplicationName("Syng")
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
