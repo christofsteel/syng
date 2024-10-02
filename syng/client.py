@@ -350,11 +350,14 @@ async def handle_client_registered(data: dict[str, Any]) -> None:
     """
     if data["success"]:
         logger.info("Registered")
-        print(f"Join here: {state.config['server']}/{data['room']}")
-        qr = QRCode(box_size=20, border=2)
-        qr.add_data(f"{state.config['server']}/{data['room']}")
-        qr.make()
-        qr.print_ascii()
+
+        # this is borked on windows
+        if os.name != "nt":
+            print(f"Join here: {state.config['server']}/{data['room']}")
+            qr = QRCode(box_size=20, border=2)
+            qr.add_data(f"{state.config['server']}/{data['room']}")
+            qr.make()
+            qr.print_ascii()
         state.config["room"] = data["room"]
         await sio.emit("sources", {"sources": list(sources.keys())})
         if state.current_source is None:  # A possible race condition can occur here
