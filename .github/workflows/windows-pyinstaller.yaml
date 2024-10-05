@@ -1,25 +1,77 @@
-name: Build exe for windows
+name: Build for windows
+
+# Controls when the workflow will run
 on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  # This workflow contains a single job called "build"
   build:
+    # The type of runner that the job will run on
     runs-on: windows-latest
 
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@v2
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          repository: christofsteel/syng
 
-    - name: Download latest MPV
-      uses: valitydev/action-download-file@v1.0.6
-      with:
-        url: https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-windows-msvc.zip
-            
+      - name: Download and extract latest MPV nightly
+        run: |
+          Invoke-WebRequest -Uri https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-windows-msvc.zip -OutFile mpv-x86_64-windows-msvc.zip
+          Expand-Archive -Path mpv-x86_64-windows-msvc.zip -DestinationPath .
 
-    # - name: Package Syng
-    #   uses: sayyid5416/pyinstaller@v1
-    #   with:
-    #     path: src
+      - name: Install 7-Zip
+        run: choco install -y 7zip
+
+      - name: Download and extract FFMPEG 7.1
+        run: |
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-7.1-full_build.7z -OutFile ffmpeg-release-full.7z
+          7z x ffmpeg-release-full.7z
+
+      - name: Populate workdir
+        run: |
+          mkdir work
+          Copy-Item -Recurse -Verbose syng work/syng
+          Copy-Item -Verbose requirements-client.txt work/requirements.txt
+          Copy-Item -Verbose resources/icons/syng.ico work/
+          Copy-Item -Verbose mpv.exe work/
+          Copy-Item -Verbose vulkan-1.dll work/
+          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/
+
+      - uses: actions/setup-python@v5
+        name: Install Python
+        with:
+          python-version: 3.12
+
+      - name: Install poetry
+        run: pip install poetry
+
+      - name: Extract version from Poetry
+        id: get_version
+        run: echo "VERSION=$(poetry version -s)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Bundle Syng
+        run: |
+          pip install -r requirements.txt
+          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-binary '.\mpv.exe;.' --add-binary '.\vulkan-1.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        working-directory: ./work
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Syng Version ${{ env.VERSION }}
+          path: work/dist/syng-${{ env.VERSION }}.exe
