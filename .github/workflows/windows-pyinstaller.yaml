@@ -1,0 +1,25 @@
+name: Build exe for windows
+on:
+  push:
+    # tags: [ 'v*.*.*' ]
+    branches: [ github_action ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Download latest MPV
+      uses: valitydev/action-download-file@v1.0.6
+      with:
+        url: https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-windows-msvc.zip
+            
+
+    # - name: Package Syng
+    #   uses: sayyid5416/pyinstaller@v1
+    #   with:
+    #     path: src
