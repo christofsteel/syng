@@ -22,7 +22,7 @@ from platformdirs import user_cache_dir
 from ..entry import Entry
 from ..result import Result
 from .source import Source, available_sources
-from ..config import BoolOption, ChoiceOption, FolderOption, ListStrOption, Option, ConfigOption
+from ..config import BoolOption, ChoiceOption, FolderOption, ListStrOption, ConfigOption
 
 
 class YouTube:

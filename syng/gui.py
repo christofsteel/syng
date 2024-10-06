@@ -1,12 +1,10 @@
 from io import BytesIO
-import sys
 import logging
 from logging.handlers import QueueListener
 from multiprocessing import Process, Queue
 from collections.abc import Callable
 from datetime import datetime
 import os
-import builtins
 from functools import partial
 import random
 from typing import TYPE_CHECKING, Any, Optional
@@ -45,6 +43,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QSpacerItem,
     QSpinBox,
+    QTabBar,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -336,8 +335,8 @@ class OptionFrame(QWidget):
         for name, textbox in self.string_options.items():
             config[name] = textbox.text().strip()
 
-        for name, textbox in self.int_options.items():
-            config[name] = textbox.value()
+        for name, spinner in self.int_options.items():
+            config[name] = spinner.value()
 
         for name, optionmenu in self.choose_options.items():
             config[name] = optionmenu.currentText().strip()
@@ -365,11 +364,11 @@ class OptionFrame(QWidget):
         for name, textbox in self.string_options.items():
             textbox.setText(config[name])
 
-        for name, textbox in self.int_options.items():
+        for name, spinner in self.int_options.items():
             try:
-                textbox.setValue(config[name])
+                spinner.setValue(config[name])
             except ValueError:
-                textbox.setValue(0)
+                spinner.setValue(0)
 
         for name, optionmenu in self.choose_options.items():
             optionmenu.setCurrentText(str(config[name]))
@@ -547,7 +546,7 @@ class SyngGui(QMainWindow):
                     if widget:
                         widget.setVisible(state)
 
-        tabbar = self.tabview.tabBar()
+        tabbar: Optional[QTabBar] = self.tabview.tabBar()
         if not state:
             if tabbar is not None:
                 tabbar.hide()
@@ -561,7 +560,7 @@ class SyngGui(QMainWindow):
         self.central_layout.addLayout(self.frm)
 
     def init_tabs(self, show_advanced: bool) -> None:
-        self.tabview = QTabWidget(parent=self.central_widget)
+        self.tabview: QTabWidget = QTabWidget(parent=self.central_widget)
         self.tabview.setAcceptDrops(False)
         self.tabview.setTabPosition(QTabWidget.TabPosition.West)
         self.tabview.setTabShape(QTabWidget.TabShape.Rounded)
@@ -833,10 +832,6 @@ class LoggingLabelHandler(logging.Handler):
 
 
 def run_gui() -> None:
-    base_dir = os.path.dirname(__file__)
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        base_dir = sys._MEIPASS
-
     # initialize cache dir
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
 

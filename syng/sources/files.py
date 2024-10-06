@@ -4,7 +4,6 @@ import asyncio
 import os
 from typing import Any, Optional
 from typing import Tuple
-from platformdirs import user_cache_dir
 
 
 from ..entry import Entry
