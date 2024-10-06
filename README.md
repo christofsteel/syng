@@ -1,7 +1,8 @@
 <p align="center">
     <img src="https://raw.githubusercontent.com/christofsteel/syng/refs/heads/main/resources/icons/hicolor/512x512/apps/rocks.syng.Syng.png"
         height="130">
-    _Easily host karaoke events_
+
+_Easily host karaoke events_
 <p align="center">
 
 [![Matrix](https://img.shields.io/matrix/syng%3Amatrix.org?logo=matrix&label=%23syng%3Amatrix.org)](https://matrix.to/#/#syng:matrix.org)
