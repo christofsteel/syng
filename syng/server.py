@@ -868,7 +868,7 @@ async def handle_config_chunk(sid: str, data: dict[str, Any]) -> None:
     if data["source"] not in state.client.sources:
         state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
     else:
-        state.client.sources[data["source"]].add_to_config(data["config"])
+        state.client.sources[data["source"]].add_to_config(data["config"], data["number"])
 
 
 @sio.on("config")
