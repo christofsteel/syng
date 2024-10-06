@@ -229,7 +229,7 @@ class YoutubeSource(Source):
         """
         return {"channels": self.channels}
 
-    async def play(self, entry: Entry) -> None:
+    async def play(self, entry: Entry, mpv_options: str) -> None:
         """
         Play the given entry.
 
@@ -240,6 +240,8 @@ class YoutubeSource(Source):
 
         :param entry: The entry to play.
         :type entry: Entry
+        :param mpv_options: The options to pass to ``mpv``.
+        :type mpv_options: str
         :rtype: None
         """
         if self.start_streaming and not self.downloaded_files[entry.ident].complete:
@@ -249,10 +251,11 @@ class YoutubeSource(Source):
                 "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
                 f"--ytdl-format={self.formatstring}",
                 "--fullscreen",
+                mpv_options,
             )
             await self.player.wait()
         else:
-            await super().play(entry)
+            await super().play(entry, mpv_options)
 
     async def get_entry(self, performer: str, ident: str) -> Optional[Entry]:
         """

@@ -298,6 +298,7 @@ class GeneralConfig(OptionFrame):
         self.add_string_option(
             "key", "Key for server (if necessary)", config["key"], is_password=True
         )
+        self.add_string_option("mpv_options", "Additional MPV Arguments", config["mpv_options"])
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()

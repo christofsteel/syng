@@ -66,6 +66,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "last_song": None,
         "waiting_room_policy": None,
         "key": None,
+        "mpv_options": "",
     }
 
 
@@ -254,6 +255,7 @@ async def preview(entry: Entry) -> None:
             "--sub-pos=50",
             "--sub-file=-",
             "--fullscreen",
+            state.config["mpv_options"],
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -290,7 +292,7 @@ async def handle_play(data: dict[str, Any]) -> None:
         state.current_source = sources[entry.source]
         if state.config["preview_duration"] > 0:
             await preview(entry)
-        await sources[entry.source].play(entry)
+        await sources[entry.source].play(entry, state.config["mpv_options"])
     except Exception:  # pylint: disable=broad-except
         print_exc()
     state.current_source = None

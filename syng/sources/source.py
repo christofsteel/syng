@@ -260,7 +260,7 @@ class Source(ABC):
 
         self.downloaded_files[entry.ident].ready.set()
 
-    async def play(self, entry: Entry) -> None:
+    async def play(self, entry: Entry, mpv_options: str) -> None:
         """
         Play the entry.
 
@@ -269,6 +269,8 @@ class Source(ABC):
 
         :param entry: The entry to play
         :type entry: Entry
+        :param mpv_options: Extra options for the mpv player
+        :type mpv_options: str
         :rtype: None
         """
         await self.ensure_playable(entry)
@@ -287,6 +289,7 @@ class Source(ABC):
                 self.downloaded_files[entry.ident].video,
                 self.downloaded_files[entry.ident].audio,
                 *self.extra_mpv_arguments,
+                mpv_options,
             )
         await self.player.wait()
         self.player = None
