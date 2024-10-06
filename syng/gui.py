@@ -551,9 +551,11 @@ class SyngGui(QMainWindow):
             if tabbar is not None:
                 tabbar.hide()
             self.tabview.setCurrentIndex(0)
+            self.general_config.form_layout.addRow(self.qr_widget)
         else:
             if tabbar is not None:
                 tabbar.show()
+            self.frm.addWidget(self.qr_widget)
 
     def init_frame(self) -> None:
         self.frm = QHBoxLayout()
@@ -579,7 +581,7 @@ class SyngGui(QMainWindow):
 
         self.frm.addWidget(self.tabview)
 
-    def add_qr(self) -> None:
+    def add_qr(self, show_advanced: bool) -> None:
         self.qr_widget = QWidget(parent=self.central_widget)
         self.qr_layout = QVBoxLayout(self.qr_widget)
         self.qr_widget.setLayout(self.qr_layout)
@@ -596,8 +598,10 @@ class SyngGui(QMainWindow):
         self.qr_layout.setAlignment(self.qr_label, Qt.AlignmentFlag.AlignCenter)
 
         self.linklabel.setOpenExternalLinks(True)
-
-        self.frm.addWidget(self.qr_widget)
+        if not show_advanced:
+            self.general_config.form_layout.addRow(self.qr_widget)
+        else:
+            self.frm.addWidget(self.qr_widget)
 
     def add_general_config(self, config: dict[str, Any]) -> None:
         self.general_config = GeneralConfig(self, config, self.update_qr)
@@ -628,8 +632,8 @@ class SyngGui(QMainWindow):
         self.init_frame()
         self.init_tabs(config["config"]["show_advanced"])
         self.add_buttons(config["config"]["show_advanced"])
-        self.add_qr()
         self.add_general_config(config["config"])
+        self.add_qr(config["config"]["show_advanced"])
         self.tabs: dict[str, SourceTab] = {}
 
         for source_name in available_sources:
