@@ -112,7 +112,7 @@ jobs:
             type=semver,pattern={{major}}
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./resources/docker/Dockerfile
@@ -125,5 +125,3 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
-
-
