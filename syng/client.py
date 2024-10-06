@@ -381,7 +381,10 @@ async def handle_request_config(data: dict[str, Any]) -> None:
 
     A Source can decide, that the config will be split up in multiple Parts.
     If this is the case, multiple "config-chunk" messages will be send with a
-    running enumerator. Otherwise a singe "config" message will be send.
+    running enumerator. Otherwise a single "config" message will be send.
+
+    After the configuration is send, the source is asked to update its
+    configuration. This can also be split up in multiple parts.
 
     :param data: A dictionary with the entry `source` and a string, that
         corresponds to the name of a source.
@@ -404,6 +407,22 @@ async def handle_request_config(data: dict[str, Any]) -> None:
                 )
         else:
             await sio.emit("config", {"source": data["source"], "config": config})
+
+        updated_config = await sources[data["source"]].update_config()
+        if isinstance(updated_config, list):
+            num_chunks: int = len(updated_config)
+            for current, chunk in enumerate(updated_config):
+                await sio.emit(
+                    "config-chunk",
+                    {
+                        "source": data["source"],
+                        "config": chunk,
+                        "number": current + 1,
+                        "total": num_chunks,
+                    },
+                )
+        elif updated_config is not None:
+            await sio.emit("config", {"source": data["source"], "config": updated_config})
 
 
 def signal_handler() -> None:

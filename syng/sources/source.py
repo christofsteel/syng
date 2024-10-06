@@ -385,6 +385,45 @@ class Source(ABC):
         """
         return []
 
+    async def update_file_list(self) -> Optional[list[str]]:
+        """
+        Update the internal list of files.
+
+        This is called after the client sends its initial file list to the
+        server to update the list of files since the last time an index file
+        was written.
+
+        It should return None, if the list is already up to date.
+        Otherwise it should return the new list of files.
+
+
+        :rtype: Optional[list[str]]
+        """
+        return None
+
+    async def update_config(self) -> Optional[dict[str, Any] | list[dict[str, Any]]]:
+        """
+        Update the config of the source.
+
+        This is called after the client sends its initial config to the server to
+        update the config. E.g. to update the list of files, that should be send to
+        the server.
+
+        It returns None, if the config is already up to date.
+        Otherwise returns the new config.
+
+        :rtype: Optional[dict[str, Any] | list[dict[str, Any]]
+        """
+
+        logger.warning(f"{self.source_name}: updating index")
+        new_index = await self.update_file_list()
+        logger.warning(f"{self.source_name}: done")
+        if new_index is not None:
+            self._index = new_index
+            chunked = zip_longest(*[iter(new_index)] * 1000, fillvalue="")
+            return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+        return None
+
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """
         Return the part of the config, that should be send to the server.
@@ -405,13 +444,13 @@ class Source(ABC):
         """
         if not self._index:
             self._index = []
-            logger.warn(f"{self.source_name}: generating index")
+            logger.warning(f"{self.source_name}: generating index")
             self._index = await self.get_file_list()
-            logger.warn(f"{self.source_name}: done")
+            logger.warning(f"{self.source_name}: done")
         chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
         return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
 
-    def add_to_config(self, config: dict[str, Any]) -> None:
+    def add_to_config(self, config: dict[str, Any], running_number: int) -> None:
         """
         Add the config to the own config.
 
@@ -421,10 +460,16 @@ class Source(ABC):
         In the default configuration, this just adds the index key of the
         config to the index attribute of the source
 
+        If the running_number is 0, the index will be reset.
+
         :param config: The part of the config to add.
         :type config: dict[str, Any]
+        :param running_number: The running number of the config
+        :type running_number: int
         :rtype: None
         """
+        if running_number == 0:
+            self._index = []
         self._index += config["index"]
 
 

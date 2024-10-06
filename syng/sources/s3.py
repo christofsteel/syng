@@ -5,6 +5,7 @@ Adds it to the ``available_sources`` with the name ``s3``
 """
 
 import asyncio
+from itertools import zip_longest
 import os
 from json import dump, load
 from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
@@ -79,6 +80,32 @@ class S3Source(FileBasedSource):
         self.index_file: Optional[str] = config["index_file"] if "index_file" in config else None
         self.extra_mpv_arguments = ["--scale=oversample"]
 
+    def load_file_list_from_server(self) -> list[str]:
+        """
+        Load the file list from the s3 instance.
+
+        :return: A list of file paths
+        :rtype: list[str]
+        """
+
+        file_list = [
+            obj.object_name
+            for obj in self.minio.list_objects(self.bucket, recursive=True)
+            if obj.object_name is not None and self.has_correct_extension(obj.object_name)
+        ]
+        return file_list
+
+    def write_index(self, file_list: list[str]) -> None:
+        if self.index_file is None:
+            return
+
+        index_dir = os.path.dirname(self.index_file)
+        if index_dir:
+            os.makedirs(os.path.dirname(self.index_file), exist_ok=True)
+
+        with open(self.index_file, "w", encoding="utf8") as index_file_handle:
+            dump(file_list, index_file_handle)
+
     async def get_file_list(self) -> list[str]:
         """
         Return the list of files on the s3 instance, according to the extensions.
@@ -96,21 +123,28 @@ class S3Source(FileBasedSource):
                 with open(self.index_file, "r", encoding="utf8") as index_file_handle:
                     return cast(list[str], load(index_file_handle))
 
-            file_list = [
-                obj.object_name
-                for obj in self.minio.list_objects(self.bucket, recursive=True)
-                if obj.object_name is not None and self.has_correct_extension(obj.object_name)
-            ]
+            file_list = self.load_file_list_from_server()
             if self.index_file is not None and not os.path.isfile(self.index_file):
-                index_dir = os.path.dirname(self.index_file)
-                if index_dir:
-                    os.makedirs(os.path.dirname(self.index_file), exist_ok=True)
+                self.write_index(file_list)
 
-                with open(self.index_file, "w", encoding="utf8") as index_file_handle:
-                    dump(file_list, index_file_handle)
             return file_list
 
         return await asyncio.to_thread(_get_file_list)
+
+    async def update_file_list(self) -> Optional[list[str]]:
+        """
+        Rescan the file list and update the index file.
+
+        :return: The updated file list
+        :rtype: list[str]
+        """
+
+        def _update_file_list() -> list[str]:
+            file_list = self.load_file_list_from_server()
+            self.write_index(file_list)
+            return file_list
+
+        return await asyncio.to_thread(_update_file_list)
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """
