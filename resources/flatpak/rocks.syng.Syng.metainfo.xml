@@ -3,7 +3,7 @@
   <id>rocks.syng.Syng</id>
 
   <name>Syng</name>
-  <summary>All-in-one karaoke software</summary>
+  <summary>Easily host karaoke events</summary>
 
   <developer id="rocks.syng">
     <name>Christoph Stahl</name>
@@ -57,27 +57,14 @@
 
   <description>
     <p>
-      Syng is an all-in-one karaoke software, consisting of a <em>backend server</em>, a <em>web frontend</em> and a <em>playback client</em>. Karaoke performers can search a library using the web frontend, and add songs to the queue. The playback client retrieves songs from the backend server and plays them in order.
+      Syng is an easy-to-use karaoke software. Just start the client and let users connect via their web browser. 
+      You can set up your own <em>Syng server</em> or simply use a publicly available one.
     </p>
     <p>
-      To host a karaoke event, you only need to use this playback client, as you can use a publicly available instance (See project page).
+        Songs can be played from <em>YouTube</em>, an <em>S3</em> Storage or <em>your local machine</em>.
     </p>
     <p>
-      Currently, songs can be accessed using the following sources:
-    </p>
-    <ul>
-      <li>
-        <em>YouTube</em>. The backend server queries YouTube for the song and forwards the URL to the playback client. The playback client then downloads the video from YouTube for playback.
-      </li>
-      <li>
-        <em>S3</em>. The backend server holds a list of all file paths accessible through the s3 storage, and forwards the chosen path to the playback client. The playback client then downloads the needed files from the s3 for playback.
-      </li>
-      <li>
-        <em>Files</em>. Same as S3, but all files reside locally on the playback client.
-      </li>
-    </ul>
-    <p>
-      The playback client uses <code>mpv</code> for playback and can therefore play a variety of file formats, such as <code>mp3+cdg</code>, <code>webm</code>, <code>mp4</code>, ...
+      You can play a variety of file formats, such as <code>mp3+cdg</code>, <code>webm</code>, <code>mp4</code>, ...
     </p>
   </description>
 

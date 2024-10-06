@@ -10,16 +10,13 @@
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
 [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/christofsteel%2Fsyng2?gitlab_url=https%3A%2F%2Fgit.k-fortytwo.de%2F&branch=main&logo=python&label=mypy%2Bruff)](https://git.k-fortytwo.de/christofsteel/syng2)
 
+Easily host karaoke events.
 
 **Syng** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.
 The playback client retrieves songs from the backend server and plays them in order.
 
-Currently, songs can be accessed using the following sources:
-
-  - **YouTube.** The backend server queries YouTube for the song and forwards the URL to the playback client. The playback client then downloads the video from YouTube for playback.
-  - **S3.** The backend server holds a list of all file paths accessible through the s3 storage, and forwards the chosen path to the playback client. The playback client then downloads the needed files from the s3 for playback.
-  - **Files.** Same as S3, but all files reside locally on the playback client.
+You can play songs from **YouTube**, an **S3** storage or simply share local **files**.
 
 The playback client uses [mpv](https://mpv.io/) for playback and can therefore play a variety of file formats, such as `mp3+cdg`, `webm`, `mp4`, ...
 
@@ -48,15 +45,9 @@ This installs both the playback client (`syng client`) and a configuration GUI (
 Windows support is experimental, but you can download the current version from [Releases](https://github.com/christofsteel/syng/releases). No installation necessary, you can just run the `exe`.
 
 
-## Running
-
-The simplest way to run Syng is through the configuration GUI. Executing `syng` without parameters will open the GUI, from which you can start configure and start the playback client. You can start the playback client without the GUI using `syng client`.
-
-Web clients should connect to the server using a room code, that can be configured in the client. 
-
 ## Configuration
 
-You can either configure Syng using the GUI or via a text editor by editing `~/.config/syng/config.yaml`. There are the following settings:
+You can host karaoke events using the default configuration. But if you need more advanced configuration, you can either configure Syng using the GUI or via a text editor by editing `~/.config/syng/config.yaml`. There are the following settings:
 
   * `server`: URL of the server to connect to.
   * `room`: The room code for your karaoke event. Can be chosen arbitrarily, but must be unique. Unused rooms will be deleted after some time. _Note:_ Everyone, that has access to the room code can join the karaoke event.
@@ -65,6 +56,8 @@ You can either configure Syng using the GUI or via a text editor by editing `~/.
   * `last_song`: `none` or a time in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601). When a song is added to the queue, and its ending time exceeds this value, it is rejected.
   * `preview_duration`: Before every song, there is a short slide for the next performer. This sets how long it is shown in seconds.
   * `key`: If the server, you want to connect to is in _private_ or _restricted_ mode, this will authenticate the client. Private server reject unauthenticated playback clients, restricted servers limit the searching to be _client only_.
+  * `mpv_options`: additional options forwarded to `mpv`.
+  * `show_advanced`: show advanced options in the configuration GUI.
 
 In addition to the general config, has its own configuration under the `sources` key of the configuration.
 
@@ -98,7 +91,6 @@ Configuration is done under `sources` → `files` with the following settings:
   * `enabled`: `true` or `false`.
   * `extensions`: List of extensions to be searched. For karaoke songs, that separate audio and video (e.g. CDG files), you can use `mp3+cdg` to signify, that the audio part is a `mp3` file and the video is a `cdg` file. For karaoke songs, that do not separate this (e.g. mp4 files), you can simply use `mp4`.
   * `dir`: Directory, where the karaoke files are stored. 
-  * `index_file`: Cache file, that contains the filenames of the karaoke files in the s3.
 
 ### Default configuration
 
@@ -111,13 +103,14 @@ config:
   secret: <Random secret>
   server: https://syng.rocks
   waiting_room_policy: none
+  mpv_options: ''
+  show_advanced: False
 sources:
   files:
     dir: .
     enabled: false
     extensions:
     - mp3+cdg
-    index_file: ~/.cache/syng/files-index
   s3:
     access_key: ''
     bucket: ''
