@@ -67,6 +67,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "waiting_room_policy": None,
         "key": None,
         "mpv_options": "",
+        "show_advanced": False,
     }
 
 

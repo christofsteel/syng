@@ -15,6 +15,7 @@ import secrets
 import string
 import signal
 
+
 try:
     if not TYPE_CHECKING:
         from ctypes import windll
@@ -25,7 +26,7 @@ except ImportError:
     pass
 
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -36,8 +37,10 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QSpacerItem,
@@ -335,6 +338,7 @@ class OptionFrame(QWidget):
 
         for name, textbox in self.int_options.items():
             config[name] = textbox.value()
+
         for name, optionmenu in self.choose_options.items():
             config[name] = optionmenu.currentText().strip()
 
@@ -356,6 +360,35 @@ class OptionFrame(QWidget):
                 config[name] = None
 
         return config
+
+    def load_config(self, config: dict[str, Any]) -> None:
+        for name, textbox in self.string_options.items():
+            textbox.setText(config[name])
+
+        for name, textbox in self.int_options.items():
+            try:
+                textbox.setValue(config[name])
+            except ValueError:
+                textbox.setValue(0)
+
+        for name, optionmenu in self.choose_options.items():
+            optionmenu.setCurrentText(str(config[name]))
+
+        for name, checkbox in self.bool_options.items():
+            checkbox.setChecked(config[name])
+
+        for name, textboxes in self.list_options.items():
+            for i, textbox in enumerate(textboxes):
+                textbox.setText(config[name][i])
+
+        for name, (picker, checkbox) in self.date_time_options.items():
+            if config[name] is not None:
+                picker.setDateTime(datetime.fromisoformat(config[name]))
+                checkbox.setChecked(True)
+            else:
+                picker.setDateTime(datetime.now())
+                picker.setEnabled(False)
+                checkbox.setChecked(False)
 
 
 class SourceTab(OptionFrame):
@@ -411,6 +444,25 @@ class GeneralConfig(OptionFrame):
         )
         self.add_string_option("mpv_options", "Additional MPV Arguments", config["mpv_options"])
 
+        if not config["show_advanced"]:
+            for option in [
+                "waiting_room_policy",
+                "last_song",
+                "preview_duration",
+                "key",
+                "mpv_options",
+            ]:
+                self.rows[option][0].setVisible(False)
+                widget_or_layout = self.rows[option][1]
+                if isinstance(widget_or_layout, QWidget):
+                    widget_or_layout.setVisible(False)
+                else:
+                    for i in range(widget_or_layout.count()):
+                        item = widget_or_layout.itemAt(i)
+                        widget = item.widget() if item else None
+                        if widget:
+                            widget.setVisible(False)
+
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
         return config
@@ -429,7 +481,7 @@ class SyngGui(QMainWindow):
 
         self.destroy()
 
-    def add_buttons(self) -> None:
+    def add_buttons(self, show_advanced: bool) -> None:
         self.buttons_layout = QHBoxLayout()
         self.central_layout.addLayout(self.buttons_layout)
 
@@ -437,27 +489,78 @@ class SyngGui(QMainWindow):
         # self.startsyng_serverbutton.clicked.connect(self.start_syng_server)
         # self.buttons_layout.addWidget(self.startsyng_serverbutton)
 
-        spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self.notification_label = QLabel("", self)
-        spacer_item2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self.buttons_layout.addItem(spacer_item)
-        self.buttons_layout.addWidget(self.notification_label)
-        self.buttons_layout.addItem(spacer_item2)
+        self.resetbutton = QPushButton("Set Config to Default")
+        self.exportbutton = QPushButton("Export Config")
+        self.importbutton = QPushButton("Import Config")
+        self.buttons_layout.addWidget(self.resetbutton)
+        self.buttons_layout.addWidget(self.exportbutton)
+        self.buttons_layout.addWidget(self.importbutton)
+        self.resetbutton.clicked.connect(self.clear_config)
+        self.exportbutton.clicked.connect(self.export_config)
+        self.importbutton.clicked.connect(self.import_config)
+        if not show_advanced:
+            self.resetbutton.hide()
+            self.exportbutton.hide()
+            self.importbutton.hide()
 
-        self.savebutton = QPushButton("Apply")
+        self.show_advanced_toggle = QCheckBox("Show Advanced Options")
+        self.show_advanced_toggle.setChecked(show_advanced)
+        self.show_advanced_toggle.stateChanged.connect(self.toggle_advanced)
+        self.buttons_layout.addWidget(self.show_advanced_toggle)
+
+        spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        # self.notification_label = QLabel("", self)
+        # spacer_item2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.buttons_layout.addItem(spacer_item)
+        # self.buttons_layout.addWidget(self.notification_label)
+        # self.buttons_layout.addItem(spacer_item2)
+
+        self.savebutton = QPushButton("Save")
         self.savebutton.clicked.connect(self.save_config)
         self.buttons_layout.addWidget(self.savebutton)
 
-        self.startbutton = QPushButton("Apply and Start")
+        self.startbutton = QPushButton("Save and Start")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
+
+    def toggle_advanced(self, state: bool) -> None:
+        self.resetbutton.setVisible(state)
+        self.exportbutton.setVisible(state)
+        self.importbutton.setVisible(state)
+
+        for option in [
+            "waiting_room_policy",
+            "last_song",
+            "preview_duration",
+            "key",
+            "mpv_options",
+        ]:
+            self.general_config.rows[option][0].setVisible(state)
+            widget_or_layout = self.general_config.rows[option][1]
+            if isinstance(widget_or_layout, QWidget):
+                widget_or_layout.setVisible(state)
+            else:
+                for i in range(widget_or_layout.count()):
+                    item = widget_or_layout.itemAt(i)
+                    widget = item.widget() if item else None
+                    if widget:
+                        widget.setVisible(state)
+
+        tabbar = self.tabview.tabBar()
+        if not state:
+            if tabbar is not None:
+                tabbar.hide()
+            self.tabview.setCurrentIndex(0)
+        else:
+            if tabbar is not None:
+                tabbar.show()
 
     def init_frame(self) -> None:
         self.frm = QHBoxLayout()
         self.central_layout.addLayout(self.frm)
 
-    def init_tabs(self) -> None:
+    def init_tabs(self, show_advanced: bool) -> None:
         self.tabview = QTabWidget(parent=self.central_widget)
         self.tabview.setAcceptDrops(False)
         self.tabview.setTabPosition(QTabWidget.TabPosition.West)
@@ -470,6 +573,11 @@ class SyngGui(QMainWindow):
         for i, source in enumerate(available_sources):
             self.tabview.setTabText(i + 1, source)
 
+        if not show_advanced:
+            tabbar = self.tabview.tabBar()
+            if tabbar is not None:
+                tabbar.hide()
+
         self.frm.addWidget(self.tabview)
 
     def add_qr(self) -> None:
@@ -479,9 +587,14 @@ class SyngGui(QMainWindow):
 
         self.qr_label = QLabel(self.qr_widget)
         self.linklabel = QLabel(self.qr_widget)
+        self.notification_label = QLabel("", self.qr_widget)
 
         self.qr_layout.addWidget(self.qr_label)
         self.qr_layout.addWidget(self.linklabel)
+        self.qr_layout.addWidget(self.notification_label)
+        self.qr_layout.setAlignment(self.linklabel, Qt.AlignmentFlag.AlignCenter)
+        self.qr_layout.setAlignment(self.notification_label, Qt.AlignmentFlag.AlignCenter)
+        self.qr_layout.setAlignment(self.qr_label, Qt.AlignmentFlag.AlignCenter)
 
         self.linklabel.setOpenExternalLinks(True)
 
@@ -508,46 +621,20 @@ class SyngGui(QMainWindow):
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
-        try:
-            with open(self.configfile, encoding="utf8") as cfile:
-                loaded_config = load(cfile, Loader=Loader)
-        except FileNotFoundError:
-            print("No config found, using default values")
-            loaded_config = {}
-        config: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
-
-        try:
-            config["config"] |= loaded_config["config"]
-        except (KeyError, TypeError):
-            print("Could not load config")
-
-        if not config["config"]["secret"]:
-            config["config"]["secret"] = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-            )
-
-        if config["config"]["room"] == "":
-            config["config"]["room"] = "".join(
-                [random.choice(string.ascii_letters) for _ in range(6)]
-            ).upper()
-
         self.central_widget = QWidget(parent=self)
         self.central_layout = QVBoxLayout(self.central_widget)
 
+        config = self.load_config(self.configfile)
+
         self.init_frame()
-        self.init_tabs()
-        self.add_buttons()
+        self.init_tabs(config["config"]["show_advanced"])
+        self.add_buttons(config["config"]["show_advanced"])
         self.add_qr()
         self.add_general_config(config["config"])
         self.tabs: dict[str, SourceTab] = {}
 
         for source_name in available_sources:
-            try:
-                source_config = loaded_config["sources"][source_name]
-            except (KeyError, TypeError):
-                source_config = {}
-
-            self.add_source_config(source_name, source_config)
+            self.add_source_config(source_name, config["sources"][source_name])
 
         self.update_qr()
 
@@ -556,6 +643,65 @@ class SyngGui(QMainWindow):
         # check every 500 ms if client is running
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_if_client_is_running)
+
+    def complete_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        output: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
+
+        try:
+            output["config"] |= config["config"]
+        except (KeyError, TypeError):
+            print("Could not load config")
+
+        if not output["config"]["secret"]:
+            output["config"]["secret"] = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+            )
+
+        if output["config"]["room"] == "":
+            output["config"]["room"] = "".join(
+                [random.choice(string.ascii_letters) for _ in range(6)]
+            ).upper()
+
+        for source_name, source in available_sources.items():
+            source_config = {}
+            for name, option in source.config_schema.items():
+                source_config[name] = option.default
+
+            output["sources"][source_name] = source_config
+
+            try:
+                output["sources"][source_name] |= config["sources"][source_name]
+            except (KeyError, TypeError):
+                pass
+
+        return output
+
+    def clear_config(self) -> None:
+        answer = QMessageBox.question(
+            self,
+            "Set to Config to Default",
+            "Are you sure you want to clear the config?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.update_config(self.complete_config({"config": {}, "sources": {}}))
+
+    def load_config(self, filename: str) -> dict[str, Any]:
+        try:
+            with open(filename, encoding="utf8") as cfile:
+                loaded_config = load(cfile, Loader=Loader)
+        except FileNotFoundError:
+            print("No config found, using default values")
+            loaded_config = {}
+
+        return self.complete_config(loaded_config)
+
+    def update_config(self, config: dict[str, Any]) -> None:
+        self.general_config.load_config(config["config"])
+        for source_name, source_config in config["sources"].items():
+            self.tabs[source_name].load_config(source_config)
+
+        self.update_qr()
 
     def save_config(self) -> None:
         os.makedirs(os.path.dirname(self.configfile), exist_ok=True)
@@ -568,9 +714,26 @@ class SyngGui(QMainWindow):
         for source, tab in self.tabs.items():
             sources[source] = tab.get_config()
 
-        general_config = self.general_config.get_config()
+        general_config = self.general_config.get_config() | {
+            "show_advanced": self.show_advanced_toggle.isChecked()
+        }
 
         return {"sources": sources, "config": general_config}
+
+    def import_config(self) -> None:
+        filename = QFileDialog.getOpenFileName(self, "Open File", "", "YAML Files (*.yaml)")[0]
+
+        if filename:
+            config = self.load_config(filename)
+            self.update_config(config)
+
+    def export_config(self) -> None:
+        filename = QFileDialog.getSaveFileName(self, "Save File", "", "YAML Files (*.yaml)")[0]
+        if filename:
+            config = self.gather_config()
+
+            with open(filename, "w", encoding="utf-8") as f:
+                dump(config, f, Dumper=Dumper)
 
     def check_if_client_is_running(self) -> None:
         if self.syng_client is None:
@@ -674,6 +837,9 @@ def run_gui() -> None:
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         base_dir = sys._MEIPASS
 
+    # initialize cache dir
+    os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication([])
@@ -683,3 +849,7 @@ def run_gui() -> None:
     window = SyngGui()
     window.show()
     app.exec()
+
+
+if __name__ == "__main__":
+    run_gui()
