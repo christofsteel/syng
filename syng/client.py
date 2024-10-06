@@ -410,7 +410,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
 
         updated_config = await sources[data["source"]].update_config()
         if isinstance(updated_config, list):
-            num_chunks: int = len(updated_config)
+            num_chunks = len(updated_config)
             for current, chunk in enumerate(updated_config):
                 await sio.emit(
                     "config-chunk",

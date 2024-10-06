@@ -5,7 +5,6 @@ Adds it to the ``available_sources`` with the name ``s3``
 """
 
 import asyncio
-from itertools import zip_longest
 import os
 from json import dump, load
 from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
