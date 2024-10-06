@@ -21,9 +21,11 @@ from typing import Tuple
 from typing import Type
 from abc import ABC, abstractmethod
 
+
 from ..log import logger
 from ..entry import Entry
 from ..result import Result
+from ..config import BoolOption, ConfigOption
 
 # logger: logging.Logger = logging.getLogger(__name__)
 
@@ -106,8 +108,8 @@ class Source(ABC):
     """
 
     source_name: str = ""
-    config_schema: dict[str, tuple[type | list[type] | str, str, Any]] = {
-        "enabled": (bool, "Enable this source", False)
+    config_schema: dict[str, ConfigOption[Any]] = {
+        "enabled": ConfigOption(BoolOption(), "Enable this source", False)
     }
 
     def __init__(self, config: dict[str, Any]):

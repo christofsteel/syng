@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
 
 from platformdirs import user_cache_dir
 
+
 try:
     from minio import Minio
 
@@ -23,6 +24,7 @@ except ImportError:
 from ..entry import Entry
 from .filebased import FileBasedSource
 from .source import available_sources
+from ..config import BoolOption, ConfigOption, FileOption, FolderOption, PasswordOption, StrOption
 
 
 class S3Source(FileBasedSource):
@@ -40,13 +42,19 @@ class S3Source(FileBasedSource):
 
     source_name = "s3"
     config_schema = FileBasedSource.config_schema | {
-        "endpoint": (str, "Endpoint of the s3", ""),
-        "access_key": ("password", "Access Key of the s3", ""),
-        "secret_key": ("password", "Secret Key of the s3", ""),
-        "secure": (bool, "Use SSL", True),
-        "bucket": (str, "Bucket of the s3", ""),
-        "tmp_dir": (str, "Folder for\ntemporary download", user_cache_dir("syng")),
-        "index_file": (str, "Index file", os.path.join(user_cache_dir("syng"), "s3-index")),
+        "endpoint": ConfigOption(StrOption(), "Endpoint of the s3", ""),
+        "access_key": ConfigOption(StrOption(), "Access Key of the s3 (username)", ""),
+        "secret_key": ConfigOption(PasswordOption(), "Secret Key of the s3 (password)", ""),
+        "secure": ConfigOption(BoolOption(), "Use SSL", True),
+        "bucket": ConfigOption(StrOption(), "Bucket of the s3", ""),
+        "tmp_dir": ConfigOption(
+            FolderOption(), "Folder for\ntemporary download", user_cache_dir("syng")
+        ),
+        "index_file": ConfigOption(
+            FileOption(),
+            "Index file",
+            os.path.join(user_cache_dir("syng"), "s3-index"),
+        ),
     }
 
     def __init__(self, config: dict[str, Any]):

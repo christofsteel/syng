@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
+    QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -40,6 +41,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSpacerItem,
+    QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -52,6 +54,16 @@ from . import resources  # noqa
 from .client import create_async_and_start_client, default_config
 
 from .sources import available_sources
+from .config import (
+    BoolOption,
+    ChoiceOption,
+    FileOption,
+    FolderOption,
+    IntOption,
+    ListStrOption,
+    PasswordOption,
+    StrOption,
+)
 
 # try:
 #     from .server import run_server
@@ -72,7 +84,6 @@ class OptionFrame(QWidget):
         self.bool_options[name] = QCheckBox(self)
         self.bool_options[name].setChecked(value)
         self.form_layout.addRow(label, self.bool_options[name])
-        self.number_of_options += 1
 
     def add_string_option(
         self,
@@ -105,9 +116,100 @@ class OptionFrame(QWidget):
 
         self.string_options[name].insert(value)
         self.form_layout.addRow(label, self.string_options[name])
+        self.rows[name] = (label, self.string_options[name])
         if callback is not None:
             self.string_options[name].textChanged.connect(callback)
-        self.number_of_options += 1
+
+    def path_setter(self, line: QLineEdit, name: Optional[str]) -> None:
+        if name:
+            line.setText(name)
+
+    def add_file_option(
+        self,
+        name: str,
+        description: str,
+        value: Optional[str] = "",
+        callback: Optional[Callable[..., None]] = None,
+    ) -> None:
+        if value is None:
+            value = ""
+
+        label = QLabel(description, self)
+        file_layout = QHBoxLayout()
+        file_name_widget = QLineEdit(value, self)
+        file_button = QPushButton(QIcon.fromTheme("document-open"), "", self)
+
+        file_button.clicked.connect(
+            lambda: self.path_setter(
+                file_name_widget,
+                QFileDialog.getOpenFileName(
+                    self, "Select File", directory=os.path.dirname(file_name_widget.text())
+                )[0],
+            )
+        )
+
+        if callback is not None:
+            file_name_widget.textChanged.connect(callback)
+
+        file_layout.addWidget(file_name_widget)
+        file_layout.addWidget(file_button)
+
+        self.string_options[name] = file_name_widget
+        self.rows[name] = (label, file_name_widget)
+        self.form_layout.addRow(label, file_layout)
+
+    def add_folder_option(
+        self,
+        name: str,
+        description: str,
+        value: Optional[str] = "",
+        callback: Optional[Callable[..., None]] = None,
+    ) -> None:
+        if value is None:
+            value = ""
+
+        label = QLabel(description, self)
+        folder_layout = QHBoxLayout()
+        folder_name_widget = QLineEdit(value, self)
+        folder_button = QPushButton(QIcon.fromTheme("folder-open"), "", self)
+
+        folder_button.clicked.connect(
+            lambda: self.path_setter(
+                folder_name_widget,
+                QFileDialog.getExistingDirectory(
+                    self, "Select Folder", directory=folder_name_widget.text()
+                ),
+            )
+        )
+
+        if callback is not None:
+            folder_name_widget.textChanged.connect(callback)
+
+        folder_layout.addWidget(folder_name_widget)
+        folder_layout.addWidget(folder_button)
+
+        self.string_options[name] = folder_name_widget
+        self.rows[name] = (label, folder_name_widget)
+        self.form_layout.addRow(label, folder_layout)
+
+    def add_int_option(
+        self,
+        name: str,
+        description: str,
+        value: Optional[int] = 0,
+        callback: Optional[Callable[..., None]] = None,
+    ) -> None:
+        if value is None:
+            value = 0
+
+        label = QLabel(description, self)
+
+        self.int_options[name] = QSpinBox(self)
+        self.int_options[name].setValue(value)
+        self.form_layout.addRow(label, self.int_options[name])
+        self.rows[name] = (label, self.int_options[name])
+        if callback is not None:
+            self.int_options[name].textChanged.connect(callback)
 
     def del_list_element(
         self,
@@ -165,6 +267,7 @@ class OptionFrame(QWidget):
         container_layout = QVBoxLayout()
 
         self.form_layout.addRow(label, container_layout)
+        self.rows[name] = (label, container_layout)
 
         self.list_options[name] = []
         for v in value:
@@ -177,8 +280,6 @@ class OptionFrame(QWidget):
 
         container_layout.addWidget(plus_button)
 
-        self.number_of_options += 1
-
     def add_choose_option(
         self, name: str, description: str, values: list[str], value: str = ""
     ) -> None:
@@ -186,9 +287,9 @@ class OptionFrame(QWidget):
 
         self.choose_options[name] = QComboBox(self)
         self.choose_options[name].addItems(values)
-        self.choose_options[name].setCurrentText(value)
+        self.choose_options[name].setCurrentText(str(value))
         self.form_layout.addRow(label, self.choose_options[name])
-        self.number_of_options += 1
+        self.rows[name] = (label, self.choose_options[name])
 
     def add_date_time_option(self, name: str, description: str, value: str) -> None:
         label = QLabel(description, self)
@@ -213,25 +314,27 @@ class OptionFrame(QWidget):
         date_time_layout.addWidget(date_time_enabled)
 
         self.form_layout.addRow(label, date_time_layout)
-
-        self.number_of_options += 1
+        self.rows[name] = (label, date_time_layout)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.form_layout = QFormLayout(self)
         self.setLayout(self.form_layout)
-        self.number_of_options: int = 0
         self.string_options: dict[str, QLineEdit] = {}
+        self.int_options: dict[str, QSpinBox] = {}
         self.choose_options: dict[str, QComboBox] = {}
         self.bool_options: dict[str, QCheckBox] = {}
         self.list_options: dict[str, list[QLineEdit]] = {}
         self.date_time_options: dict[str, tuple[QDateTimeEdit, QCheckBox]] = {}
+        self.rows: dict[str, tuple[QLabel, QWidget | QLayout]] = {}
 
     def get_config(self) -> dict[str, Any]:
         config: dict[str, Any] = {}
         for name, textbox in self.string_options.items():
             config[name] = textbox.text().strip()
 
+        for name, textbox in self.int_options.items():
+            config[name] = textbox.value()
         for name, optionmenu in self.choose_options.items():
             config[name] = optionmenu.currentText().strip()
 
@@ -260,17 +363,25 @@ class SourceTab(OptionFrame):
         super().__init__(parent)
         source = available_sources[source_name]
         self.vars: dict[str, str | bool | list[str]] = {}
-        for name, (typ, desc, default) in source.config_schema.items():
-            value = config[name] if name in config else default
-            match typ:
-                case builtins.bool:
-                    self.add_bool_option(name, desc, value=value)
-                case builtins.list:
-                    self.add_list_option(name, desc, value=value)
-                case builtins.str:
-                    self.add_string_option(name, desc, value=value)
-                case "password":
-                    self.add_string_option(name, desc, value=value, is_password=True)
+        for name, option in source.config_schema.items():
+            value = config[name] if name in config else option.default
+            match option.type:
+                case BoolOption():
+                    self.add_bool_option(name, option.description, value=value)
+                case ListStrOption():
+                    self.add_list_option(name, option.description, value=value)
+                case StrOption():
+                    self.add_string_option(name, option.description, value=value)
+                case IntOption():
+                    self.add_int_option(name, option.description, value=value)
+                case PasswordOption():
+                    self.add_string_option(name, option.description, value=value, is_password=True)
+                case FolderOption():
+                    self.add_folder_option(name, option.description, value=value)
+                case FileOption():
+                    self.add_file_option(name, option.description, value=value)
+                case ChoiceOption(choices):
+                    self.add_choose_option(name, option.description, choices, value)
 
 
 class GeneralConfig(OptionFrame):
@@ -292,8 +403,8 @@ class GeneralConfig(OptionFrame):
             str(config["waiting_room_policy"]).lower(),
         )
         self.add_date_time_option("last_song", "Last song ends at", config["last_song"])
-        self.add_string_option(
-            "preview_duration", "Preview duration in seconds", str(config["preview_duration"])
+        self.add_int_option(
+            "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
         )
         self.add_string_option(
             "key", "Key for server (if necessary)", config["key"], is_password=True
@@ -302,11 +413,6 @@ class GeneralConfig(OptionFrame):
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
-        try:
-            config["preview_duration"] = int(config["preview_duration"])
-        except ValueError:
-            config["preview_duration"] = 0
-
         return config
 
 

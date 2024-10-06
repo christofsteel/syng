@@ -4,6 +4,7 @@ import asyncio
 import os
 from typing import TYPE_CHECKING, Any, Optional
 
+
 try:
     from pymediainfo import MediaInfo
 
@@ -14,6 +15,7 @@ except ImportError:
     PYMEDIAINFO_AVAILABLE = False
 
 from .source import Source
+from ..config import ListStrOption, ConfigOption
 
 
 class FileBasedSource(Source):
@@ -25,8 +27,8 @@ class FileBasedSource(Source):
     """
 
     config_schema = Source.config_schema | {
-        "extensions": (
-            list,
+        "extensions": ConfigOption(
+            ListStrOption(),
             "List of filename extensions\n(mp3+cdg, mp4, ...)",
             ["mp3+cdg"],
         )

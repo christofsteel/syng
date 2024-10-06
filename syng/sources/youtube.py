@@ -18,9 +18,11 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 from platformdirs import user_cache_dir
 
+
 from ..entry import Entry
 from ..result import Result
 from .source import Source, available_sources
+from ..config import BoolOption, ChoiceOption, FolderOption, ListStrOption, Option, ConfigOption
 
 
 class YouTube:
@@ -28,9 +30,9 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    __cache__: dict[
-        str, Any
-    ] = {}  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
+    __cache__: dict[str, Any] = (
+        {}
+    )  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
 
     def __init__(self, url: Optional[str] = None):
         """
@@ -182,12 +184,18 @@ class YoutubeSource(Source):
 
     source_name = "youtube"
     config_schema = Source.config_schema | {
-        "enabled": (bool, "Enable this source", True),
-        "channels": (list, "A list channels\nto search in", []),
-        "tmp_dir": (str, "Folder for\ntemporary download", user_cache_dir("syng")),
-        "max_res": (int, "Maximum resolution\nto download", 720),
-        "start_streaming": (
-            bool,
+        "enabled": ConfigOption(BoolOption(), "Enable this source", True),
+        "channels": ConfigOption(ListStrOption(), "A list channels\nto search in", []),
+        "tmp_dir": ConfigOption(
+            FolderOption(), "Folder for\ntemporary download", user_cache_dir("syng")
+        ),
+        "max_res": ConfigOption(
+            ChoiceOption(["144", "240", "360", "480", "720", "1080", "2160"]),
+            "Maximum resolution\nto download",
+            "720",
+        ),
+        "start_streaming": ConfigOption(
+            BoolOption(),
             "Start streaming if\ndownload is not complete",
             False,
         ),
@@ -205,7 +213,10 @@ class YoutubeSource(Source):
 
         self.channels: list[str] = config["channels"] if "channels" in config else []
         self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
-        self.max_res: int = config["max_res"] if "max_res" in config else 720
+        try:
+            self.max_res: int = int(config["max_res"])
+        except (ValueError, KeyError):
+            self.max_res = 720
         self.start_streaming: bool = (
             config["start_streaming"] if "start_streaming" in config else False
         )
