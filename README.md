@@ -56,7 +56,7 @@ You can host karaoke events using the default configuration. But if you need mor
   * `waiting_room_policy`: One of `none`, `optional`, `forced`. When a performer wants to be added to the playback queue, but has already a song queued, they can be added to the _waiting room_. `none` disables this behavior and performers can have multiple songs in the queue, `optional` gives the performer a notification, and they can decide for themselves, and `forced` puts them in the waiting room every time. Once the current song of a performer leaves the queue, the song from the waiting room will be added to the queue.
   * `last_song`: `none` or a time in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601). When a song is added to the queue, and its ending time exceeds this value, it is rejected.
   * `preview_duration`: Before every song, there is a short slide for the next performer. This sets how long it is shown in seconds.
-  * `key`: If the server, you want to connect to is in _private_ or _restricted_ mode, this will authenticate the client. Private server reject unauthenticated playback clients, restricted servers limit the searching to be _client only_.
+  * `key`: If the server, you want to connect to is in _private_ or _restricted_ mode, this will authorize the client. Private server reject unauthorized playback clients, restricted servers limit the searching to be _client only_.
   * `mpv_options`: additional options forwarded to `mpv`.
   * `show_advanced`: show advanced options in the configuration GUI.
 
@@ -134,16 +134,36 @@ sources:
 
 If you want to host your own Syng server, you can do that, but you can also use the publicly available Syng instance at https://syng.rocks.
 
-## Installation
+## Python Package Index
 
-Installation is done via pip.
+You can install the server via pip:
 
     pip install 'syng[server]'
 
-## Running
+and then run via:
 
-Running `syng server` will start the server.
-  
+    syng server
+
+## Docker
+
+Alternatively you can run the server using docker. It listens on port 8080 and reads a key file at `/app/keys.txt` when configured as private or restricted.
+
+    docker run --rm -v /path/to/your/keys.txt:/app/keys.txt -p 8080:8080 ghcr.io/christofsteel/syng -H 0.0.0.0
+
 ## Configuration
 
 Configuration is done via command line arguments, see `syng server --help` for an overview. 
+
+## Public, Restricted, Private and keys.txt
+
+Syng can run in three modes: public, restricted and private. This restricts which playback clients can start an event and what capabilities the event has.
+This has no bearing on the web clients. Every web client, that has access to the room code can join the event. 
+Authorization is done via an entry in the `keys.txt`
+
+ - Public means, that there are no restrictions. Every playback client can start an event and has support for all features
+ - Restricted means, that every playback client can start an event, but server side searching is limited to authorized clients. For unauthorized clients, a search request is forwarded to the playback client, that handles that search.
+ - Private means, that only authorized clients can start an event.
+
+The `keys.txt` file is a simple text file holding one `sha256` encrypted password per line. Passwords are stored as their hex value and only the first 64 characters per line are read by the server. You can use the rest to add comments.
+To add a key to the file, you can simply use `echo -n "PASSWORD" | sha256sum | cut -d ' ' -f 1 >> keys.txt`.
+
