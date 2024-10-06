@@ -108,14 +108,21 @@ class OptionFrame(QWidget):
                 QIcon(":/icons/eye_strike.svg"),
                 QLineEdit.ActionPosition.TrailingPosition,
             )
+
             if action is not None:
-                action.triggered.connect(
-                    lambda: self.string_options[name].setEchoMode(
+
+                def toggle_visibility() -> None:
+                    self.string_options[name].setEchoMode(
                         QLineEdit.EchoMode.Normal
                         if self.string_options[name].echoMode() == QLineEdit.EchoMode.Password
                         else QLineEdit.EchoMode.Password
                     )
-                )
+                    if self.string_options[name].echoMode() == QLineEdit.EchoMode.Password:
+                        action.setIcon(QIcon(":/icons/eye_strike.svg"))
+                    else:
+                        action.setIcon(QIcon(":/icons/eye_clear.svg"))
+
+                action.triggered.connect(toggle_visibility)
 
         self.string_options[name].insert(value)
         self.form_layout.addRow(label, self.string_options[name])
