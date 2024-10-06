@@ -30,6 +30,17 @@
 
 
   <releases>
+    <release version="2.0.2" date="2024-10-06">
+      <description>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Simplified user interface (Advanced)</li>
+          <li>Added config option to add parameters to mpv</li>
+          <li>Index files are now updated in the background after starting</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.1" date="2024-09-30">
       <description>
         <p>
