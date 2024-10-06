@@ -102,7 +102,9 @@ class S3Source(FileBasedSource):
                 if obj.object_name is not None and self.has_correct_extension(obj.object_name)
             ]
             if self.index_file is not None and not os.path.isfile(self.index_file):
-                os.makedirs(os.path.dirname(self.index_file), exist_ok=True)
+                index_dir = os.path.dirname(self.index_file)
+                if index_dir:
+                    os.makedirs(os.path.dirname(self.index_file), exist_ok=True)
 
                 with open(self.index_file, "w", encoding="utf8") as index_file_handle:
                     dump(file_list, index_file_handle)
