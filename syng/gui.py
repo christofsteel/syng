@@ -582,7 +582,7 @@ class SyngGui(QMainWindow):
         self.frm.addWidget(self.tabview)
 
     def add_qr(self, show_advanced: bool) -> None:
-        self.qr_widget = QWidget(parent=self.central_widget)
+        self.qr_widget: QWidget = QWidget(parent=self.central_widget)
         self.qr_layout = QVBoxLayout(self.qr_widget)
         self.qr_widget.setLayout(self.qr_layout)
 
