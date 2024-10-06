@@ -401,7 +401,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
                     {
                         "source": data["source"],
                         "config": chunk,
-                        "number": current + 1,
+                        "number": current,
                         "total": num_chunks,
                     },
                 )
@@ -417,7 +417,7 @@ async def handle_request_config(data: dict[str, Any]) -> None:
                     {
                         "source": data["source"],
                         "config": chunk,
-                        "number": current + 1,
+                        "number": current,
                         "total": num_chunks,
                     },
                 )
