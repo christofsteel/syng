@@ -48,6 +48,7 @@ from yaml import dump, load, Loader, Dumper
 from qrcode.main import QRCode
 import platformdirs
 
+from . import resources  # noqa
 from .client import create_async_and_start_client, default_config
 
 from .sources import available_sources
@@ -90,7 +91,8 @@ class OptionFrame(QWidget):
         if is_password:
             self.string_options[name].setEchoMode(QLineEdit.EchoMode.Password)
             action = self.string_options[name].addAction(
-                QIcon.fromTheme("dialog-password"), QLineEdit.ActionPosition.TrailingPosition
+                QIcon(":/icons/eye_strike.svg"),
+                QLineEdit.ActionPosition.TrailingPosition,
             )
             if action is not None:
                 action.triggered.connect(
@@ -391,9 +393,7 @@ class SyngGui(QMainWindow):
         self.setWindowTitle("Syng")
 
         if os.name != "nt":
-            rel_path = os.path.dirname(__file__)
-            qt_img = QPixmap(os.path.join(rel_path, "static", "syng.png"))
-            self.setWindowIcon(QIcon(qt_img))
+            self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
         self.syng_server: Optional[Process] = None
         self.syng_client: Optional[Process] = None
@@ -570,7 +570,7 @@ def run_gui() -> None:
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication([])
-    app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
+    app.setWindowIcon(QIcon(":/icons/syng.ico"))
     app.setApplicationName("Syng")
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()

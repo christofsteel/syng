@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/eye_strike.svg</file>
+        <file>icons/eye_clear.svg</file>
+        <file>icons/syng.ico</file>
+    </qresource>
+</RCC>
