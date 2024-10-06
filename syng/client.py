@@ -32,6 +32,7 @@ from typing import Any, Optional
 from qrcode.main import QRCode
 
 import socketio
+from socketio.exceptions import ConnectionError
 import engineio
 from PIL import Image
 from yaml import load, Loader
@@ -445,7 +446,11 @@ async def start_client(config: dict[str, Any]) -> None:
     if not ("key" in state.config and state.config["key"]):
         state.config["key"] = ""
 
-    await sio.connect(state.config["server"])
+    try:
+        await sio.connect(state.config["server"])
+    except ConnectionError:
+        logger.error("Could not connect to server")
+        return
 
     # this is not supported under windows
     if os.name != "nt":
