@@ -1,4 +1,5 @@
 from io import BytesIO
+import sys
 import logging
 from logging.handlers import QueueListener
 from multiprocessing import Process, Queue
@@ -838,11 +839,17 @@ class LoggingLabelHandler(logging.Handler):
 def run_gui() -> None:
     # initialize cache dir
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
+    base_dir = os.path.dirname(__file__)
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        base_dir = getattr(sys, "_MEIPASS")
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication([])
-    app.setWindowIcon(QIcon(":/icons/syng.ico"))
+    if os.name == "nt":
+        app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
+    else:
+        app.setWindowIcon(QIcon(":/icons/syng.ico"))
     app.setApplicationName("Syng")
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
