@@ -19,11 +19,15 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/christofsteel/syng/6472ef4b5a8a71389b8c3bbf2d4141e34c1010ad/resources/screenshots/syng.png</image>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng.png</image>
       <caption>Syng configuration window</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/6472ef4b5a8a71389b8c3bbf2d4141e34c1010ad/resources/screenshots/syng-web.png</image>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng_advanced.png</image>
+      <caption>Syng configuration window (Advanced settings)</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng-web.png</image>
       <caption>Syng web interface</caption>
     </screenshot>
   </screenshots>
@@ -36,7 +40,7 @@
           <em>Changes</em>:
         </p>
         <ul>
-          <li>Simplified user interface (Advanced)</li>
+          <li>Simplified user interface</li>
           <li>Added config option to add parameters to mpv</li>
           <li>Index files are now updated in the background after starting</li>
         </ul>
@@ -69,11 +73,11 @@
 
   <description>
     <p>
-      Syng is an easy-to-use karaoke software. Just start the client and let users connect via their web browser. 
+      Syng is an easy-to-use karaoke software. Just start the client and let your users connect via their web browser.
       You can set up your own <em>Syng server</em> or simply use a publicly available one.
     </p>
     <p>
-        Songs can be played from <em>YouTube</em>, an <em>S3</em> Storage or <em>your local machine</em>.
+      Songs can be searched and played from <em>YouTube</em>, an <em>S3</em> storage or <em>your local machine</em>.
     </p>
     <p>
       You can play a variety of file formats, such as <code>mp3+cdg</code>, <code>webm</code>, <code>mp4</code>, ...
