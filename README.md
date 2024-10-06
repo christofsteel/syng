@@ -1,6 +1,7 @@
 <p align="center">
     <img src="https://raw.githubusercontent.com/christofsteel/syng/refs/heads/main/resources/icons/hicolor/512x512/apps/rocks.syng.Syng.png"
         height="130">
+    _Easily host karaoke events_
 <p align="center">
 
 [![Matrix](https://img.shields.io/matrix/syng%3Amatrix.org?logo=matrix&label=%23syng%3Amatrix.org)](https://matrix.to/#/#syng:matrix.org)
@@ -10,7 +11,6 @@
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fsyng.rocks%2F&label=syng.rocks)](https://syng.rocks)
 [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/christofsteel%2Fsyng2?gitlab_url=https%3A%2F%2Fgit.k-fortytwo.de%2F&branch=main&logo=python&label=mypy%2Bruff)](https://git.k-fortytwo.de/christofsteel/syng2)
 
-Easily host karaoke events.
 
 **Syng** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.

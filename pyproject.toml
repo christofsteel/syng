@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "syng"
 version = "2.0.1"
-description = "All-in-one webbased karaoke system with YouTube support"
+description = "Easily host karaoke events"
 authors = ["Christoph Stahl <christoph.stahl@tu-dortmund.de>"]
 license = "AGPL-3.0-or-later"
 readme = "README.md"
