@@ -6,6 +6,7 @@ _Easily host karaoke events_
 <p align="center">
 
 [![Matrix](https://img.shields.io/matrix/syng%3Amatrix.org?logo=matrix&label=%23syng%3Amatrix.org)](https://matrix.to/#/#syng:matrix.org)
+[![Mastodon Follow](https://img.shields.io/mastodon/follow/113266262154630635?domain=https%3A%2F%2Ffloss.social&style=flat&logo=mastodon&logoColor=white)](https://floss.social/@syng)
 [![PyPI - Version](https://img.shields.io/pypi/v/syng?logo=pypi)](https://pypi.org/project/syng/)
 [![Flathub Version](https://img.shields.io/flathub/v/rocks.syng.Syng?logo=flathub)](https://flathub.org/apps/rocks.syng.Syng)
 [![PyPI - License](https://img.shields.io/pypi/l/syng)](https://www.gnu.org/licenses/agpl-3.0.en.html)
@@ -20,6 +21,8 @@ The playback client retrieves songs from the backend server and plays them in or
 You can play songs from **YouTube**, an **S3** storage or simply share local **files**.
 
 The playback client uses [mpv](https://mpv.io/) for playback and can therefore play a variety of file formats, such as `mp3+cdg`, `webm`, `mp4`, ...
+
+Join our [matrix room](https://matrix.to/#/#syng:matrix.org) or follow us on [mastodon](https://floss.social/@syng) for update notifications and support.
 
 # Client
 
