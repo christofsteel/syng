@@ -287,11 +287,16 @@ class Source(ABC):
                 entry.skip = True
                 return
 
+            extra_options = (
+                (self.extra_mpv_arguments + [mpv_options])
+                if mpv_options
+                else self.extra_mpv_arguments
+            )
+
             self.player = await self.play_mpv(
                 self.downloaded_files[entry.ident].video,
                 self.downloaded_files[entry.ident].audio,
-                *self.extra_mpv_arguments,
-                mpv_options,
+                *extra_options,
             )
         await self.player.wait()
         self.player = None
