@@ -164,8 +164,9 @@ class Client:
         :rtype: None
         """
         logger.info("Skipping current")
-        if self.state.current_source is not None:
-            await self.state.current_source.skip_current(Entry(**data))
+        self.player.skip_current()
+        # if self.state.current_source is not None:
+        #     await self.state.current_source.skip_current(Entry(**data))
 
     async def handle_state(self, data: dict[str, Any]) -> None:
         """
@@ -247,7 +248,7 @@ class Client:
         :type entry: :py:class:`Entry`
         :rtype: None
         """
-        self.player.queue_next(entry)
+        await self.player.queue_next(entry)
 
     async def handle_play(self, data: dict[str, Any]) -> None:
         """
@@ -302,7 +303,7 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
-        logger.info(f"Searching for: {data['query']}")
+        print(f"Searching for: {data['query']}")
         query = data["query"]
         sid = data["sid"]
         results_list = await asyncio.gather(
@@ -421,7 +422,7 @@ class Client:
         """
         engineio.async_client.async_signal_handler()
         if self.state.current_source is not None:
-            if self.state.current_source.player is not None:
+            if self.state.current_source.player is not None:  # TODO old player
                 self.state.current_source.player.kill()
 
     async def start_client(self, config: dict[str, Any]) -> None:
@@ -469,7 +470,7 @@ class Client:
             pass
         finally:
             if self.state.current_source is not None:
-                if self.state.current_source.player is not None:
+                if self.state.current_source.player is not None:  # TODO old player
                     self.state.current_source.player.kill()
 
 

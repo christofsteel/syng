@@ -263,7 +263,7 @@ class YoutubeSource(Source):
             #     mpv_options,
             # )
             # await self.player.wait()
-            player.play(entry.ident)
+            await player.play(entry.ident)
         else:
             await super().play(entry, player, mpv_options)
 

@@ -127,7 +127,7 @@ class Source(ABC):
         """
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
-        self.player: Optional[asyncio.subprocess.Process] = None
+        # self.player: Optional[asyncio.subprocess.Process] = None
         self._index: list[str] = config["index"] if "index" in config else []
         self.extra_mpv_arguments: list[str] = []
         self._skip_next = False
@@ -309,11 +309,11 @@ class Source(ABC):
             #     self.downloaded_files[entry.ident].audio,
             #     *extra_options,
             # )
-            player.play(
+            await player.play(
                 self.downloaded_files[entry.ident].video, self.downloaded_files[entry.ident].audio
             )
         # await self.player.wait()
-        self.player = None
+        # self.player = None
         if self._skip_next:
             self._skip_next = False
             entry.skip = True
@@ -338,8 +338,8 @@ class Source(ABC):
                 buffer_task.cancel()
             self.downloaded_files[entry.ident].ready.set()
 
-            if self.player is not None:
-                self.player.kill()
+            # if self.player is not None:
+            #     self.player.kill()
 
     async def ensure_playable(self, entry: Entry) -> None:
         """
