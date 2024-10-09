@@ -130,6 +130,7 @@ class Source(ABC):
         # self.player: Optional[asyncio.subprocess.Process] = None
         self._index: list[str] = config["index"] if "index" in config else []
         self.extra_mpv_arguments: list[str] = []
+        self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
 
     @staticmethod
@@ -341,7 +342,7 @@ class Source(ABC):
             # if self.player is not None:
             #     self.player.kill()
 
-    async def ensure_playable(self, entry: Entry) -> None:
+    async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
         """
         Guaranties that the given entry can be played.
 
@@ -352,7 +353,9 @@ class Source(ABC):
         :rtype: None
         """
         await self.buffer(entry)
-        await self.downloaded_files[entry.ident].ready.wait()
+        dlfilesentry = self.downloaded_files[entry.ident]
+        await dlfilesentry.ready.wait()
+        return dlfilesentry.video, dlfilesentry.audio
 
     async def get_missing_metadata(self, _entry: Entry) -> dict[str, Any]:
         """

@@ -40,6 +40,7 @@ class FileBasedSource(Source):
 
         self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
         self.extra_mpv_arguments = ["--scale=oversample"]
+        self.extra_mpv_options = {"scale": "oversample"}
 
     def has_correct_extension(self, path: Optional[str]) -> bool:
         """

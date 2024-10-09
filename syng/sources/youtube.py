@@ -221,6 +221,7 @@ class YoutubeSource(Source):
         self.formatstring = (
             f"bestvideo[height<={self.max_res}]+" f"bestaudio/best[height<={self.max_res}]"
         )
+        self.extra_mpv_options = {"ytdl-format": self.formatstring}
         self._yt_dlp = YoutubeDL(
             params={
                 "paths": {"home": self.tmp_dir},
