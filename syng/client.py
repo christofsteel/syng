@@ -123,6 +123,7 @@ class Client:
         self.sources = configure_sources(config["sources"])
         self.state = State()
         self.currentLock = asyncio.Semaphore(0)
+        print("blubb")
         self.player = Player()
         self.register_handlers()
 
@@ -270,17 +271,20 @@ class Client:
         :rtype: None
         """
         entry: Entry = Entry(**data)
+        source = self.sources[entry.source]
         print(
             f"Playing: {entry.artist} - {entry.title} [{entry.album}] "
             f"({entry.source}) for {entry.performer}"
         )
         try:
-            self.state.current_source = self.sources[entry.source]
+            # self.state.current_source = self.sources[entry.source]
             if self.state.config["preview_duration"] > 0:
                 await self.preview(entry)
-            await self.sources[entry.source].play(
-                entry, self.player, self.state.config["mpv_options"]
-            )
+            video, audio = await source.ensure_playable(entry)
+            await self.player.play(video, audio, source.extra_mpv_options)
+            # await self.sources[entry.source].play(
+            #     entry, self.player, self.state.config["mpv_options"]
+            # )
         except Exception:  # pylint: disable=broad-except
             print_exc()
         self.state.current_source = None
@@ -421,9 +425,8 @@ class Client:
         :rtype: None
         """
         engineio.async_client.async_signal_handler()
-        if self.state.current_source is not None:
-            if self.state.current_source.player is not None:  # TODO old player
-                self.state.current_source.player.kill()
+        if self.player is not None:
+            self.player.mpv.terminate()
 
     async def start_client(self, config: dict[str, Any]) -> None:
         """
@@ -469,9 +472,8 @@ class Client:
         except asyncio.CancelledError:
             pass
         finally:
-            if self.state.current_source is not None:
-                if self.state.current_source.player is not None:  # TODO old player
-                    self.state.current_source.player.kill()
+            if self.player is not None:
+                self.player.mpv.terminate()
 
 
 def create_async_and_start_client(
