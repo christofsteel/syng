@@ -37,6 +37,8 @@ import engineio
 from PIL import Image
 from yaml import load, Loader
 
+from syng.player_libmpv import Player
+
 from . import jsonencoder
 from .entry import Entry
 from .sources import configure_sources, Source
@@ -121,6 +123,7 @@ class Client:
         self.sources = configure_sources(config["sources"])
         self.state = State()
         self.currentLock = asyncio.Semaphore(0)
+        self.player = Player()
         self.register_handlers()
 
     def register_handlers(self) -> None:
@@ -244,26 +247,7 @@ class Client:
         :type entry: :py:class:`Entry`
         :rtype: None
         """
-        background = Image.new("RGB", (1280, 720))
-        subtitle: str = f"""1
-00:00:00,00 --> 00:05:00,00
-{entry.artist} - {entry.title}
-{entry.performer}"""
-        with tempfile.NamedTemporaryFile() as tmpfile:
-            background.save(tmpfile, "png")
-            process = await asyncio.create_subprocess_exec(
-                "mpv",
-                tmpfile.name,
-                f"--image-display-duration={self.state.config['preview_duration']}",
-                "--sub-pos=50",
-                "--sub-file=-",
-                "--fullscreen",
-                self.state.config["mpv_options"],
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            await process.communicate(subtitle.encode())
+        self.player.queue_next(entry)
 
     async def handle_play(self, data: dict[str, Any]) -> None:
         """
@@ -293,7 +277,9 @@ class Client:
             self.state.current_source = self.sources[entry.source]
             if self.state.config["preview_duration"] > 0:
                 await self.preview(entry)
-            await self.sources[entry.source].play(entry, self.state.config["mpv_options"])
+            await self.sources[entry.source].play(
+                entry, self.player, self.state.config["mpv_options"]
+            )
         except Exception:  # pylint: disable=broad-except
             print_exc()
         self.state.current_source = None
