@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import tempfile
 from typing import Iterable, Optional
@@ -35,10 +36,6 @@ class Player:
             if self.audio:
                 self.mpv.audio_add(self.audio)
 
-    def eof_handler(self, *args):
-        if self.mpv.filename not in ["background.png", "background20perc.png"]:
-            self.callback()
-
     def __init__(self):
         self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
         self.mpv.keep_open = "yes"
@@ -52,18 +49,17 @@ class Player:
         self.mpv.play(
             f"{__dirname__}/static/background.png",
         )
-        self.callback = lambda: None
 
         self.mpv.register_event_callback(self.event_handler)
-        self.mpv.observe_property("eof-reached", self.eof_handler)
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
 
-    def play_entry(self, entry: Entry, video: str, audio: Optional[str] = None):
-        self.queue_next(entry)
-        self.play(video, audio)
+    # def play_entry(self, entry: Entry, video: str, audio: Optional[str] = None):
+    #     self.queue_next(entry)
+    #     self.play(video, audio)
 
-    def queue_next(self, entry: Entry):
+    async def queue_next(self, entry: Entry):
+        loop = asyncio.get_running_loop()
         self.play_image(f"{__dirname__}/static/background20perc.png", 3)
 
         frame = sys._getframe()
@@ -81,7 +77,7 @@ class Player:
         self.mpv.sub_pos = 50
         self.mpv.sub_add(f"python://{stream_name}")
 
-        self.mpv.wait_for_property("eof-reached")
+        await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
 
     def play_image(self, image: str, duration: int):
         self.mpv.image_display_duration = duration
@@ -89,9 +85,16 @@ class Player:
         self.mpv.play(image)
         self.mpv.pause = False
 
-    def play(self, video: str, audio: Optional[str] = None):
+    async def play(self, video: str, audio: Optional[str] = None):
+        loop = asyncio.get_running_loop()
         self.audio = audio
         self.mpv.pause = True
         self.mpv.play(video)
         self.mpv.pause = False
-        self.mpv.wait_for_property("eof-reached")
+        await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+
+    def skip_current(self):
+        self.mpv.playlist_append(
+            f"{__dirname__}/static/background.png",
+        )
+        self.mpv.playlist_next()
