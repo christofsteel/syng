@@ -1,5 +1,6 @@
+import sys
 import tempfile
-from typing import Optional
+from typing import Iterable, Optional
 from qrcode.main import QRCode
 import mpv
 import os
@@ -64,16 +65,23 @@ class Player:
 
     def queue_next(self, entry: Entry):
         self.play_image(f"{__dirname__}/static/background20perc.png", 3)
-        subtitle: str = f"""1
+
+        frame = sys._getframe()
+        stream_name = f"__python_mpv_play_generator_{hash(frame)}"
+
+        @self.mpv.python_stream(stream_name)
+        def preview() -> Iterable[bytes]:
+            subtitle: str = f"""1
 00:00:00,00 --> 00:05:00,00
 {entry.artist} - {entry.title}
 {entry.performer}"""
-        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
-            print(tmpfile.name)
-            tmpfile.write(subtitle.encode())
-            tmpfile.flush()
-            self.mpv.sub_pos = 50
-            self.mpv.sub_add(tmpfile.name)
+            yield subtitle.encode()
+            preview.unregister()
+
+        self.mpv.sub_pos = 50
+        self.mpv.sub_add(f"python://{stream_name}")
+
+        self.mpv.wait_for_property("eof-reached")
 
     def play_image(self, image: str, duration: int):
         self.mpv.image_display_duration = duration
@@ -86,3 +94,4 @@ class Player:
         self.mpv.pause = True
         self.mpv.play(video)
         self.mpv.pause = False
+        self.mpv.wait_for_property("eof-reached")

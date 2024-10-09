@@ -21,6 +21,8 @@ from typing import Tuple
 from typing import Type
 from abc import ABC, abstractmethod
 
+from syng.player_libmpv import Player
+
 
 from ..log import logger
 from ..entry import Entry
@@ -271,7 +273,7 @@ class Source(ABC):
 
         self.downloaded_files[entry.ident].ready.set()
 
-    async def play(self, entry: Entry, mpv_options: str) -> None:
+    async def play(self, entry: Entry, player: Player, mpv_options: str) -> None:
         """
         Play the entry.
 
@@ -302,13 +304,15 @@ class Source(ABC):
                 else self.extra_mpv_arguments
             )
 
-            self.player = await self.play_mpv(
-                self.downloaded_files[entry.ident].video,
-                self.downloaded_files[entry.ident].audio,
-                *extra_options,
+            # self.player = await self.play_mpv(
+            #     self.downloaded_files[entry.ident].video,
+            #     self.downloaded_files[entry.ident].audio,
+            #     *extra_options,
+            # )
+            player.play(
+                self.downloaded_files[entry.ident].video, self.downloaded_files[entry.ident].audio
             )
-        await self.player.communicate()
-        await self.player.wait()
+        # await self.player.wait()
         self.player = None
         if self._skip_next:
             self._skip_next = False

@@ -18,6 +18,8 @@ from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 from platformdirs import user_cache_dir
 
+from syng.player_libmpv import Player
+
 
 from ..entry import Entry
 from ..result import Result
@@ -236,7 +238,7 @@ class YoutubeSource(Source):
         """
         return {"channels": self.channels}
 
-    async def play(self, entry: Entry, mpv_options: str) -> None:
+    async def play(self, entry: Entry, player: Player, mpv_options: str) -> None:
         """
         Play the given entry.
 
@@ -252,18 +254,18 @@ class YoutubeSource(Source):
         :rtype: None
         """
         if self.start_streaming and not self.downloaded_files[entry.ident].complete:
-            self.player = await self.play_mpv(
-                entry.ident,
-                None,
-                "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
-                f"--ytdl-format={self.formatstring}",
-                "--fullscreen",
-                mpv_options,
-            )
-            await self.player.communicate()
-            await self.player.wait()
+            # self.player = await self.play_mpv(
+            #     entry.ident,
+            #     None,
+            #     "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
+            #     f"--ytdl-format={self.formatstring}",
+            #     "--fullscreen",
+            #     mpv_options,
+            # )
+            # await self.player.wait()
+            player.play(entry.ident)
         else:
-            await super().play(entry, mpv_options)
+            await super().play(entry, player, mpv_options)
 
     async def get_entry(
         self,
