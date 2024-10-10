@@ -91,10 +91,10 @@ class Player:
 
         loop = asyncio.get_running_loop()
         self.mpv.pause = True
-        self.mpv.play(video)
-        await loop.run_in_executor(None, self.mpv.wait_for_event, "file-loaded")
         if audio:
-            self.mpv.audio_add(audio)
+            self.mpv.loadfile(video, audio_file=audio)
+        else:
+            self.mpv.loadfile(video)
         self.mpv.pause = False
         await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
         self.mpv.play(f"{__dirname__}/static/background.png")
