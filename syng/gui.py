@@ -3,6 +3,7 @@ from io import BytesIO
 import sys
 import logging
 from logging.handlers import QueueListener
+from logging.handlers import QueueHandler
 
 # from multiprocessing import Process, Queue
 from queue import Queue
@@ -58,6 +59,7 @@ import platformdirs
 
 from . import resources  # noqa
 from .client import Client, create_async_and_start_client, default_config
+from .log import logger
 
 from .sources import available_sources
 from .config import (
@@ -632,6 +634,7 @@ class SyngGui(QMainWindow):
         self.loop = asyncio.get_event_loop()
         self.syng_server: Optional[threading.Thread] = None
         self.syng_client: Optional[threading.Thread] = None
+        self.client: Optional[Client] = None
         self.syng_client_logging_listener: Optional[QueueListener] = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
@@ -751,16 +754,14 @@ class SyngGui(QMainWindow):
                 dump(config, f, Dumper=Dumper)
 
     def check_if_client_is_running(self) -> None:
-        if self.syng_client is None:
+        if self.client is None:
             self.timer.stop()
             return
 
-        if not self.syng_client.is_alive():
-            print("Client is not running")
-            self.syng_client = None
+        if not self.client.is_running:
+            self.client = None
             self.set_client_button_start()
         else:
-            print("Client is running")
             self.set_client_button_stop()
 
     def set_client_button_stop(self) -> None:
@@ -770,7 +771,7 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Save and Start")
 
     def start_syng_client(self) -> None:
-        if self.syng_client is None or not self.syng_client.is_alive():
+        if self.client is None or not self.client.is_running:
             self.save_config()
             config = self.gather_config()
             queue: Queue[logging.LogRecord] = Queue()
@@ -783,6 +784,7 @@ class SyngGui(QMainWindow):
             # self.syng_client = multiprocessing.Process(
             #     target=create_async_and_start_client, args=[config, queue]
             # )
+            logger.addHandler(QueueHandler(queue))
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
             # self.syng_client = threading.Thread(
@@ -794,7 +796,7 @@ class SyngGui(QMainWindow):
             self.set_client_button_stop()
         else:
             self.client.quit_callback()
-            self.syng_client.join(1.0)
+            # self.syng_client.join(1.0)
             self.set_client_button_start()
 
     # def start_syng_server(self) -> None:

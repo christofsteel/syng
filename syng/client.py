@@ -118,6 +118,7 @@ class State:
 
 class Client:
     def __init__(self, config: dict[str, Any]):
+        self.is_running = False
         self.sio = socketio.AsyncClient(json=jsonencoder)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.skipped = []
@@ -452,7 +453,6 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
-        print("Starting client")
 
         self.loop = asyncio.get_running_loop()
 
@@ -487,10 +487,12 @@ class Client:
             asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, self.signal_handler)
 
         try:
+            self.is_running = True
             await self.sio.wait()
         except asyncio.CancelledError:
             pass
         finally:
+            self.is_running = False
             if self.player is not None:
                 self.player.mpv.terminate()
 
