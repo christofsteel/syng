@@ -119,14 +119,20 @@ class State:
 class Client:
     def __init__(self, config: dict[str, Any]):
         self.sio = socketio.AsyncClient(json=jsonencoder)
-        self.skipped = False
-        self.config = config
+        self.skipped = []
         self.sources = configure_sources(config["sources"])
         self.state = State()
         self.currentLock = asyncio.Semaphore(0)
-        print("blubb")
-        self.player = Player()
+        self.player = Player(f"{config['config']['server']}/{config['config']['room']}", self.quit)
         self.register_handlers()
+
+    def quit(self, event):
+        e = event.as_dict()
+        if e["event"] == b"shutdown":
+            quit()
+        # if value is None:
+        #     return
+        # print(value)
 
     def register_handlers(self) -> None:
         self.sio.on("update_config", self.handle_update_config)
@@ -166,11 +172,12 @@ class Client:
         :rtype: None
         """
         logger.info("Skipping current")
+        self.skipped.append(data["uuid"])
+
         entry = Entry(**data)
         print("Skipping: ", entry.title)
         source = self.sources[entry.source]
 
-        self.skipped = True
         await source.skip_current(Entry(**data))
         self.player.skip_current()
         # if self.state.current_source is not None:
@@ -283,20 +290,20 @@ class Client:
             f"Playing: {entry.artist} - {entry.title} [{entry.album}] "
             f"({entry.source}) for {entry.performer}"
         )
-        try:
-            # self.state.current_source = self.sources[entry.source]
-            if self.state.config["preview_duration"] > 0:
-                await self.preview(entry)
-            video, audio = await source.ensure_playable(entry)
-            await self.player.play(video, audio, source.extra_mpv_options)
-            # await self.sources[entry.source].play(
-            #     entry, self.player, self.state.config["mpv_options"]
-            # )
-        except Exception:  # pylint: disable=broad-except
-            print_exc()
-        self.state.current_source = None
+        print(entry)
+        print(self.skipped)
+        if entry.uuid not in self.skipped:
+            try:
+                if self.state.config["preview_duration"] > 0:
+                    await self.preview(entry)
+                video, audio = await source.ensure_playable(entry)
+                if entry.uuid not in self.skipped:
+                    self.skipped = []
+                    await self.player.play(video, audio, source.extra_mpv_options)
+            except Exception:  # pylint: disable=broad-except
+                print_exc()
         if self.skipped:
-            self.skipped = False
+            self.skipped.remove(entry.uuid)
             await self.sio.emit("get-first")
         else:
             await self.sio.emit("pop-then-get-next")
@@ -353,14 +360,16 @@ class Client:
         """
         if data["success"]:
             logger.info("Registered")
-
+            qr_string = f"{self.state.config['server']}/{data['room']}"
+            self.player.update_qr(qr_string)
             # this is borked on windows
             if os.name != "nt":
                 print(f"Join here: {self.state.config['server']}/{data['room']}")
                 qr = QRCode(box_size=20, border=2)
-                qr.add_data(f"{self.state.config['server']}/{data['room']}")
+                qr.add_data(qr_string)
                 qr.make()
                 qr.print_ascii()
+
             self.state.config["room"] = data["room"]
             await self.sio.emit("sources", {"sources": list(self.sources.keys())})
             if self.state.current_source is None:  # A possible race condition can occur here

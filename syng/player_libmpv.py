@@ -13,15 +13,15 @@ __dirname__ = os.path.dirname(__file__)
 
 
 class Player:
-    def __init__(self) -> None:
+    def __init__(self, qr_string: str, quit_callback) -> None:
         locale.setlocale(locale.LC_ALL, "C")
         self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
+        self.mpv.title = "Syng - Player"
         self.mpv.keep_open = "yes"
         self.qr_overlay: Optional[mpv.ImageOverlay] = None
-        qr = QRCode(box_size=5, border=1)
-        qr.add_data("https://syng.rocks/")
-        qr.make()
-        self.qr = qr.make_image().convert("RGBA")
+        self.update_qr(
+            qr_string,
+        )
 
         self.mpv.play(
             f"{__dirname__}/static/background.png",
@@ -33,6 +33,17 @@ class Player:
 
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
+        # self.mpv.register_event_callback(quit_callback)
+        # self.mpv.observe_property("exit-handler", quit_callback)
+
+    def event_printer(self, *args):
+        print(args)
+
+    def update_qr(self, qr_string: str) -> None:
+        qr = QRCode(box_size=5, border=1)
+        qr.add_data(qr_string)
+        qr.make()
+        self.qr = qr.make_image().convert("RGBA")
 
     def osd_size_handler(self, attribute: str, value: int) -> None:
         if self.qr_overlay:
