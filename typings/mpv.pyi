@@ -16,6 +16,7 @@ class MPV:
     sub_pos: int
     osd_width: str
     osd_height: str
+    title: str
 
     def __init__(
         self, ytdl: bool, input_default_bindings: bool, input_vo_keyboard: bool, osc: bool
