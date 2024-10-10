@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING
 from argparse import ArgumentParser
 import os
 import multiprocessing
+import traceback
 
 import platformdirs
 
@@ -46,6 +47,7 @@ try:
 except ImportError:
     if TYPE_CHECKING:
         from syng.gui import run_gui
+    gui_exception = traceback.format_exc()
     GUI_AVAILABLE = False
 
 try:
@@ -116,7 +118,10 @@ def main() -> None:
     elif args.action == "gui":
         run_gui()
     else:
-        run_gui()
+        try:
+            run_gui()
+        except NameError:
+            print(gui_exception)
 
 
 if __name__ == "__main__":
