@@ -119,6 +119,7 @@ class State:
 class Client:
     def __init__(self, config: dict[str, Any]):
         self.sio = socketio.AsyncClient(json=jsonencoder)
+        self.skipped = False
         self.config = config
         self.sources = configure_sources(config["sources"])
         self.state = State()
@@ -165,6 +166,12 @@ class Client:
         :rtype: None
         """
         logger.info("Skipping current")
+        entry = Entry(**data)
+        print("Skipping: ", entry.title)
+        source = self.sources[entry.source]
+
+        self.skipped = True
+        await source.skip_current(Entry(**data))
         self.player.skip_current()
         # if self.state.current_source is not None:
         #     await self.state.current_source.skip_current(Entry(**data))
@@ -288,7 +295,8 @@ class Client:
         except Exception:  # pylint: disable=broad-except
             print_exc()
         self.state.current_source = None
-        if entry.skip:
+        if self.skipped:
+            self.skipped = False
             await self.sio.emit("get-first")
         else:
             await self.sio.emit("pop-then-get-next")

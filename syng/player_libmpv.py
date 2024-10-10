@@ -48,7 +48,6 @@ class Player:
 
     async def queue_next(self, entry: Entry) -> None:
         loop = asyncio.get_running_loop()
-        self.play_image(f"{__dirname__}/static/background20perc.png", 3)
 
         frame = sys._getframe()
         stream_name = f"__python_mpv_play_generator_{hash(frame)}"
@@ -63,16 +62,21 @@ class Player:
             preview.unregister()
 
         self.mpv.sub_pos = 50
-        self.mpv.sub_add(f"python://{stream_name}")
+        self.play_image(
+            f"{__dirname__}/static/background20perc.png", 3, sub_file=f"python://{stream_name}"
+        )
 
         await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
 
-    def play_image(self, image: str, duration: int) -> None:
+    def play_image(self, image: str, duration: int, sub_file: Optional[str] = None) -> None:
         for property, value in self.default_options.items():
             self.mpv[property] = value
         self.mpv.image_display_duration = duration
         self.mpv.keep_open = "yes"
-        self.mpv.play(image)
+        if sub_file:
+            self.mpv.loadfile(image, sub_file=sub_file)
+        else:
+            self.mpv.loadfile(image)
         self.mpv.pause = False
 
     async def play(
@@ -97,10 +101,12 @@ class Player:
             self.mpv.loadfile(video)
         self.mpv.pause = False
         await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+        self.mpv.image_display_duration = 0
         self.mpv.play(f"{__dirname__}/static/background.png")
 
     def skip_current(self) -> None:
-        self.mpv.playlist_append(
+        self.mpv.image_display_duration = 0
+        self.mpv.play(
             f"{__dirname__}/static/background.png",
         )
-        self.mpv.playlist_next()
+        # self.mpv.playlist_next()
