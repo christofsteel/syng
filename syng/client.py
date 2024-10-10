@@ -452,6 +452,7 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
+        print("Starting client")
 
         self.loop = asyncio.get_running_loop()
 
@@ -495,7 +496,9 @@ class Client:
 
 
 def create_async_and_start_client(
-    config: dict[str, Any], queue: Optional[Queue[LogRecord]] = None
+    config: dict[str, Any],
+    queue: Optional[Queue[LogRecord]] = None,
+    client: Optional[Client] = None,
 ) -> None:
     """
     Create an asyncio event loop and start the client.
@@ -512,7 +515,8 @@ def create_async_and_start_client(
     if queue is not None:
         logger.addHandler(QueueHandler(queue))
 
-    client = Client(config)
+    if client is None:
+        client = Client(config)
 
     asyncio.run(client.start_client(config))
 

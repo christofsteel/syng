@@ -1,15 +1,18 @@
+import asyncio
 from io import BytesIO
 import sys
 import logging
 from logging.handlers import QueueListener
-from multiprocessing import Process, Queue
+
+# from multiprocessing import Process, Queue
+from queue import Queue
 from collections.abc import Callable
 from datetime import datetime
 import os
 from functools import partial
 import random
 from typing import TYPE_CHECKING, Any, Optional
-import multiprocessing
+import threading
 import secrets
 import string
 import signal
@@ -24,11 +27,11 @@ try:
 except ImportError:
     pass
 
-
+from qasync import QEventLoop, QApplication
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
-    QApplication,
+    # QApplication,
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
@@ -54,7 +57,7 @@ from qrcode.main import QRCode
 import platformdirs
 
 from . import resources  # noqa
-from .client import create_async_and_start_client, default_config
+from .client import Client, create_async_and_start_client, default_config
 
 from .sources import available_sources
 from .config import (
@@ -626,8 +629,9 @@ class SyngGui(QMainWindow):
         if os.name != "nt":
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
-        self.syng_server: Optional[Process] = None
-        self.syng_client: Optional[Process] = None
+        self.loop = asyncio.get_event_loop()
+        self.syng_server: Optional[threading.Thread] = None
+        self.syng_client: Optional[threading.Thread] = None
         self.syng_client_logging_listener: Optional[QueueListener] = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
@@ -752,9 +756,11 @@ class SyngGui(QMainWindow):
             return
 
         if not self.syng_client.is_alive():
+            print("Client is not running")
             self.syng_client = None
             self.set_client_button_start()
         else:
+            print("Client is running")
             self.set_client_button_stop()
 
     def set_client_button_stop(self) -> None:
@@ -767,24 +773,28 @@ class SyngGui(QMainWindow):
         if self.syng_client is None or not self.syng_client.is_alive():
             self.save_config()
             config = self.gather_config()
-            queue: Queue[logging.LogRecord] = multiprocessing.Queue()
+            queue: Queue[logging.LogRecord] = Queue()
 
             self.syng_client_logging_listener = QueueListener(
                 queue, LoggingLabelHandler(self.notification_label)
             )
             self.syng_client_logging_listener.start()
 
-            self.syng_client = multiprocessing.Process(
-                target=create_async_and_start_client, args=[config, queue]
-            )
-            self.syng_client.start()
+            # self.syng_client = multiprocessing.Process(
+            #     target=create_async_and_start_client, args=[config, queue]
+            # )
+            self.client = Client(config)
+            asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
+            # self.syng_client = threading.Thread(
+            #     target=create_async_and_start_client, args=[config, queue, self.client]
+            # )
+            # self.syng_client.start()
             self.notification_label.setText("")
             self.timer.start(500)
             self.set_client_button_stop()
         else:
-            self.syng_client.terminate()
+            self.client.quit_callback()
             self.syng_client.join(1.0)
-            self.syng_client.kill()
             self.set_client_button_start()
 
     # def start_syng_server(self) -> None:
@@ -853,6 +863,9 @@ def run_gui() -> None:
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication([])
+    event_loop = QEventLoop(app)
+    asyncio.set_event_loop(event_loop)
+
     if os.name == "nt":
         app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
     else:
@@ -861,7 +874,9 @@ def run_gui() -> None:
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
     window.show()
-    app.exec()
+    # app.exec()
+    with event_loop:
+        event_loop.run_forever()
 
 
 if __name__ == "__main__":
