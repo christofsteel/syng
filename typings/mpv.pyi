@@ -2,12 +2,18 @@ from typing import Any, Callable, Iterable, Optional, Protocol
 
 from PIL.Image import Image
 
+class ShutdownError(Exception):
+    pass
+
 class Unregisterable(Protocol):
     def unregister(self) -> None: ...
 
 class ImageOverlay:
     overlay_id: int
     def remove(self) -> None: ...
+
+class MpvEvent:
+    def as_dict(self) -> dict[str, bytes]: ...
 
 class MPV:
     pause: bool

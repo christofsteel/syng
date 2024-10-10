@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from traceback import print_exc
 from typing import Any, Optional
+from uuid import UUID
 
 from qrcode.main import QRCode
 
@@ -121,7 +122,7 @@ class Client:
         self.is_running = False
         self.sio = socketio.AsyncClient(json=jsonencoder)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self.skipped = []
+        self.skipped: list[UUID] = []
         self.sources = configure_sources(config["sources"])
         self.state = State()
         self.currentLock = asyncio.Semaphore(0)
@@ -441,7 +442,7 @@ class Client:
         if self.player is not None:
             self.player.mpv.terminate()
 
-    def quit_callback(self):
+    def quit_callback(self) -> None:
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.sio.disconnect(), self.loop)
 

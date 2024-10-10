@@ -482,14 +482,14 @@ class GeneralConfig(OptionFrame):
 
 class SyngGui(QMainWindow):
     def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
-        if self.syng_server is not None:
-            self.syng_server.kill()
-            self.syng_server.join()
+        # if self.syng_server is not None:
+        #     self.syng_server.kill()
+        #     self.syng_server.join()
 
-        if self.syng_client is not None:
-            self.syng_client.terminate()
-            self.syng_client.join(1.0)
-            self.syng_client.kill()
+        # if self.syng_client is not None:
+        #     self.syng_client.terminate()
+        #     self.syng_client.join(1.0)
+        #     self.syng_client.kill()
 
         self.destroy()
 
@@ -632,8 +632,8 @@ class SyngGui(QMainWindow):
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
         self.loop = asyncio.get_event_loop()
-        self.syng_server: Optional[threading.Thread] = None
-        self.syng_client: Optional[threading.Thread] = None
+        # self.syng_server: Optional[threading.Thread] = None
+        # self.syng_client: Optional[threading.Thread] = None
         self.client: Optional[Client] = None
         self.syng_client_logging_listener: Optional[QueueListener] = None
 
