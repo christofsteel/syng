@@ -30,14 +30,16 @@ class Player:
         self.default_options = {
             "scale": "bilinear",
         }
+        self.quit_callback = quit_callback
 
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
-        # self.mpv.register_event_callback(quit_callback)
-        # self.mpv.observe_property("exit-handler", quit_callback)
+        self.mpv.register_event_callback(self.event_callback)
 
-    def event_printer(self, *args):
-        print(args)
+    def event_callback(self, event):
+        e = event.as_dict()
+        if e["event"] == b"shutdown":
+            self.quit_callback()
 
     def update_qr(self, qr_string: str) -> None:
         qr = QRCode(box_size=5, border=1)

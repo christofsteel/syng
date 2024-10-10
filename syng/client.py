@@ -119,20 +119,15 @@ class State:
 class Client:
     def __init__(self, config: dict[str, Any]):
         self.sio = socketio.AsyncClient(json=jsonencoder)
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.skipped = []
         self.sources = configure_sources(config["sources"])
         self.state = State()
         self.currentLock = asyncio.Semaphore(0)
-        self.player = Player(f"{config['config']['server']}/{config['config']['room']}", self.quit)
+        self.player = Player(
+            f"{config['config']['server']}/{config['config']['room']}", self.quit_callback
+        )
         self.register_handlers()
-
-    def quit(self, event):
-        e = event.as_dict()
-        if e["event"] == b"shutdown":
-            quit()
-        # if value is None:
-        #     return
-        # print(value)
 
     def register_handlers(self) -> None:
         self.sio.on("update_config", self.handle_update_config)
@@ -445,6 +440,10 @@ class Client:
         if self.player is not None:
             self.player.mpv.terminate()
 
+    def quit_callback(self):
+        if self.loop is not None:
+            asyncio.run_coroutine_threadsafe(self.sio.disconnect(), self.loop)
+
     async def start_client(self, config: dict[str, Any]) -> None:
         """
         Initialize the client and connect to the server.
@@ -453,6 +452,8 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
+
+        self.loop = asyncio.get_running_loop()
 
         self.sources.update(configure_sources(config["sources"]))
 
