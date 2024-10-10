@@ -79,7 +79,10 @@ class Player:
             f"{__dirname__}/static/background20perc.png", 3, sub_file=f"python://{stream_name}"
         )
 
-        await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+        try:
+            await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+        except mpv.ShutdownError:
+            self.quit_callback()
 
     def play_image(self, image: str, duration: int, sub_file: Optional[str] = None) -> None:
         for property, value in self.default_options.items():
@@ -113,9 +116,12 @@ class Player:
         else:
             self.mpv.loadfile(video)
         self.mpv.pause = False
-        await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
-        self.mpv.image_display_duration = 0
-        self.mpv.play(f"{__dirname__}/static/background.png")
+        try:
+            await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+            self.mpv.image_display_duration = 0
+            self.mpv.play(f"{__dirname__}/static/background.png")
+        except mpv.ShutdownError:
+            self.quit_callback()
 
     def skip_current(self) -> None:
         self.mpv.image_display_duration = 0
