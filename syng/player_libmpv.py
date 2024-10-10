@@ -1,7 +1,7 @@
 import asyncio
 import locale
 import sys
-from typing import Iterable, Optional, cast
+from typing import Callable, Iterable, Optional, cast
 from qrcode.main import QRCode
 import mpv
 import os
@@ -13,7 +13,7 @@ __dirname__ = os.path.dirname(__file__)
 
 
 class Player:
-    def __init__(self, qr_string: str, quit_callback) -> None:
+    def __init__(self, qr_string: str, quit_callback: Callable[[], None]) -> None:
         locale.setlocale(locale.LC_ALL, "C")
         self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
         self.mpv.title = "Syng - Player"
@@ -36,7 +36,7 @@ class Player:
         self.mpv.observe_property("osd-height", self.osd_size_handler)
         self.mpv.register_event_callback(self.event_callback)
 
-    def event_callback(self, event):
+    def event_callback(self, event: mpv.MpvEvent) -> None:
         e = event.as_dict()
         if e["event"] == b"shutdown":
             self.quit_callback()
