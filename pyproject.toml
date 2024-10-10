@@ -43,6 +43,7 @@ pyyaml = { version = "^6.0.1", optional = true }
 alt-profanity-check = {version = "^1.4.1", optional = true}
 pyqt6 = {version="^6.7.1", optional = true}
 mpv = "^1.0.7"
+qasync = "^0.27.1"
 
 [tool.poetry.group.dev.dependencies]
 types-pyyaml = "^6.0.12.12"
