@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "syng"
-version = "2.0.2"
+version = "2.0.3"
 description = "Easily host karaoke events"
 authors = ["Christoph Stahl <christoph.stahl@tu-dortmund.de>"]
 license = "AGPL-3.0-or-later"
