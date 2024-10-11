@@ -34,6 +34,17 @@
 
 
   <releases>
+    <release version="2.0.3" date="2024-10-10">
+      <description>
+        <p>
+          <em>Bug fixes</em>:
+        </p>
+        <ul>
+          <li>More informative errors, if GUI could not start</li>
+          <li>Fixed <code>Cannot open file ''</code> error</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.2" date="2024-10-06">
       <description>
         <p>
