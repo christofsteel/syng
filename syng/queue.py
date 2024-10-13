@@ -181,3 +181,28 @@ class Queue:
                 tmp = self._queue[uuid_idx]
                 self._queue[uuid_idx] = self._queue[uuid_idx - 1]
                 self._queue[uuid_idx - 1] = tmp
+
+    async def move_to(self, uuid: str, target: int) -> None:
+        """
+        Move an :py:class:`syng.entry.Entry` with the uuid to a specific position.
+
+        :param uuid: The uuid of the entry.
+        :type uuid: str
+        :param target: The target position.
+        :type target: int
+        :rtype: None
+        """
+
+        async with self.readlock:
+            uuid_idx = 0
+            for idx, item in enumerate(self._queue):
+                if item.uuid == uuid or str(item.uuid) == uuid:
+                    uuid_idx = idx
+
+            if uuid_idx != target:
+                entry = self._queue[uuid_idx]
+                self._queue.remove(entry)
+
+                if target > uuid_idx:
+                    target = target - 1
+                self._queue.insert(target, entry)

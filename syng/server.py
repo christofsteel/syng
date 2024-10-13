@@ -972,6 +972,32 @@ async def handle_skip_current(sid: str) -> None:
         await send_state(state, room)
 
 
+@sio.on("move-to")
+async def handle_move_to(sid: str, data: dict[str, Any]) -> None:
+    """
+    Handle the "move-to" message.
+
+    If on an admin connection, moves the entry specified in the data to the
+    position specified in the data.
+
+    :param sid: The session id of the client requesting.
+    :type sid: str
+    :param data: A dictionary with at least an "uuid" and a "target" entry
+    :type data: dict[str, Any]
+    :rtype: None
+    """
+
+    async with sio.session(sid) as session:
+        room = session["room"]
+        is_admin = session["admin"]
+
+    state = clients[room]
+
+    if is_admin:
+        await state.queue.move_to(data["uuid"], data["target"])
+        await send_state(state, room)
+
+
 @sio.on("move-up")
 async def handle_move_up(sid: str, data: dict[str, Any]) -> None:
     """
