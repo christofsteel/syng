@@ -23,7 +23,7 @@ from json.decoder import JSONDecodeError
 from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
+from typing import Any, Callable, overload
 from typing import AsyncGenerator
 from typing import Optional
 
@@ -46,6 +46,70 @@ DEFAULT_CONFIG = {
     "waiting_room_policy": None,
     "last_song": None,
 }
+
+
+def with_state(handler: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator that forwards the state of a room to a handler.
+
+    :param forward_room: Either the handler to decorate or a boolean
+        defining if the room should be forwarded.
+    :type forward_room: bool | Callable[..., Any]
+    :return: The decorated handler or a function that decorates a handler
+    :rtype: Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]
+    """
+
+    async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
+        async with self.sio.session(sid) as session:
+            room = session["room"]
+        state = self.clients[room]
+        return await handler(self, state, sid, *args, **kwargs)
+
+    return wrapper
+
+
+def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator, that requires the client to be an admin.
+
+    If the client is not an admin, the handler is not called.
+
+    :param handler: The handler to decorate
+    :type handler: Callable[..., Any]
+    :return: The decorated handler
+    :rtype: Callable[..., Any]
+    """
+
+    async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
+        async with self.sio.session(sid) as session:
+            if not session["admin"]:
+                await self.sio.emit("err", {"type": "NO_ADMIN"}, sid)
+        return await handler(self, sid, *args, **kwargs)
+
+    return wrapper
+
+
+def playback(handler: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator, that requires the client to be a playback client.
+
+    If the client is not a playback client, the handler is not called.
+
+    :param handler: The handler to decorate
+    :type handler: Callable[..., Any]
+    :return: The decorated handler
+    :rtype: Callable[..., Any]
+    """
+
+    async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
+        async with self.sio.session(sid) as session:
+            room = session["room"]
+        state = self.clients[room]
+        if sid != state.sid:
+            return
+        return await handler(self, sid, *args, **kwargs)
+
+    return wrapper
 
 
 @dataclass
@@ -165,6 +229,11 @@ class Server:
             return web.FileResponse(os.path.join(self.app["root_folder"], "favicon.ico"))
         return web.FileResponse(os.path.join(self.app["root_folder"], "index.html"))
 
+    async def broadcast_state(self, state: State) -> None:
+        async with self.sio.session(state.sid) as session:
+            room = session["room"]
+        await self.send_state(state, room)
+
     async def send_state(self, state: State, sid: str) -> None:
         """
         Send the current state (queue and recent-list) to sid.
@@ -195,7 +264,8 @@ class Server:
             room=sid,
         )
 
-    async def handle_get_state(self, sid: str) -> None:
+    @with_state
+    async def handle_get_state(self, state: State, sid: str) -> None:
         """
         Handle the "get-state" message.
 
@@ -207,13 +277,12 @@ class Server:
         :type sid: str
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         await self.send_state(state, sid)
 
-    async def handle_waiting_room_append(self, sid: str, data: dict[str, Any]) -> None:
+    @with_state
+    async def handle_waiting_room_append(
+        self, state: State, sid: str, data: dict[str, Any]
+    ) -> None:
         """
         Append a song to the waiting room.
 
@@ -228,12 +297,7 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         source_obj = state.client.sources[data["source"]]
-
         entry = await source_obj.get_entry(data["performer"], data["ident"])
 
         if entry is None:
@@ -248,21 +312,21 @@ class Server:
             (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
             or (data["uid"] is None and state.queue.find_by_name(data["performer"]) is None)
         ):
-            await self.append_to_queue(room, entry, sid)
+            await self.append_to_queue(state, entry, sid)
             return
 
         entry.uid = data["uid"]
 
         state.waiting_room.append(entry)
-        await self.send_state(state, room)
+        await self.broadcast_state(state)
         await self.sio.emit(
             "get-meta-info",
             entry,
-            room=self.clients[room].sid,
+            room=state.sid,
         )
 
     async def append_to_queue(
-        self, room: str, entry: Entry, report_to: Optional[str] = None
+        self, state: State, entry: Entry, report_to: Optional[str] = None
     ) -> None:
         """
         Append a song to the queue for a given session.
@@ -278,8 +342,6 @@ class Server:
         :type report_to: Optional[str]
         :rtype: None
         """
-        state = self.clients[room]
-
         first_song = state.queue.try_peek()
         if first_song is None or first_song.started_at is None:
             start_time = datetime.datetime.now().timestamp()
@@ -305,15 +367,17 @@ class Server:
                 return
 
         state.queue.append(entry)
-        await self.send_state(state, room)
+        await self.broadcast_state(state)
 
         await self.sio.emit(
             "get-meta-info",
             entry,
-            room=self.clients[room].sid,
+            room=state.sid,
         )
 
-    async def handle_show_config(self, sid: str) -> None:
+    @admin
+    @with_state
+    async def handle_show_config(self, state: State, sid: str) -> None:
         """
         Sends public config to webclient.
 
@@ -323,22 +387,15 @@ class Server:
         :type sid: str
         :rtype: None
         """
+        await self.sio.emit(
+            "config",
+            state.client.config,
+            sid,
+        )
 
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-        state = self.clients[room]
-
-        if is_admin:
-            await self.sio.emit(
-                "config",
-                state.client.config,
-                sid,
-            )
-        else:
-            await self.sio.emit("err", {"type": "NO_ADMIN"}, sid)
-
-    async def handle_update_config(self, sid: str, data: dict[str, Any]) -> None:
+    @admin
+    @with_state
+    async def handle_update_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Forwards an updated config from an authorized webclient to the playback client.
 
@@ -350,28 +407,20 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-        state = self.clients[room]
+        try:
+            config = jsonencoder.loads(data["config"])
+            await self.sio.emit(
+                "update_config",
+                DEFAULT_CONFIG | config,
+                state.sid,
+            )
+            state.client.config = DEFAULT_CONFIG | config
+            # await self.sio.emit("update_config", config, room)
+        except JSONDecodeError:
+            await self.sio.emit("err", {"type": "JSON_MALFORMED"}, room=sid)
 
-        if is_admin:
-            try:
-                config = jsonencoder.loads(data["config"])
-                await self.sio.emit(
-                    "update_config",
-                    DEFAULT_CONFIG | config,
-                    state.sid,
-                )
-                state.client.config = DEFAULT_CONFIG | config
-                await self.sio.emit("update_config", config, room)
-            except JSONDecodeError:
-                await self.sio.emit("err", {"type": "JSON_MALFORMED"})
-
-        else:
-            await self.sio.emit("err", {"type": "NO_ADMIN"}, sid)
-
-    async def handle_append(self, sid: str, data: dict[str, Any]) -> None:
+    @with_state
+    async def handle_append(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "append" message.
 
@@ -406,10 +455,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
             return
@@ -456,9 +501,10 @@ class Server:
 
         entry.uid = data["uid"] if "uid" in data else None
 
-        await self.append_to_queue(room, entry, sid)
+        await self.append_to_queue(state, entry, sid)
 
-    async def handle_append_anyway(self, sid: str, data: dict[str, Any]) -> None:
+    @with_state
+    async def handle_append_anyway(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Appends a song to the queue, even if the performer is already in queue.
 
@@ -467,10 +513,6 @@ class Server:
 
         Only if the waiting_room_policy is not configured as forced.
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
             return
@@ -501,9 +543,11 @@ class Server:
 
         entry.uid = data["uid"] if "uid" in data else None
 
-        await self.append_to_queue(room, entry, sid)
+        await self.append_to_queue(state, entry, sid)
 
-    async def handle_meta_info(self, sid: str, data: dict[str, Any]) -> None:
+    @playback
+    @with_state
+    async def handle_meta_info(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "meta-info" message.
 
@@ -520,10 +564,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         state.queue.update(
             data["uuid"],
             lambda item: item.update(**data["meta"]),
@@ -533,9 +573,11 @@ class Server:
             if entry.uuid == data["uuid"] or str(entry.uuid) == data["uuid"]:
                 entry.update(**data["meta"])
 
-        await self.send_state(state, room)
+        await self.broadcast_state(state)
 
-    async def handle_get_first(self, sid: str) -> None:
+    @playback
+    @with_state
+    async def handle_get_first(self, state: State, sid: str) -> None:
         """
         Handle the "get-first" message.
 
@@ -553,16 +595,16 @@ class Server:
         :type sid: str
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         current = await state.queue.peek()
         current.started_at = datetime.datetime.now().timestamp()
 
         await self.sio.emit("play", current, room=sid)
 
-    async def handle_waiting_room_to_queue(self, sid: str, data: dict[str, Any]) -> None:
+    @admin
+    @with_state
+    async def handle_waiting_room_to_queue(
+        self, state: State, sid: str, data: dict[str, Any]
+    ) -> None:
         """
         Handle the "waiting-room-to-queue" message.
 
@@ -573,21 +615,15 @@ class Server:
         :type sid: str
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-        state = self.clients[room]
+        entry = next(
+            (wr_entry for wr_entry in state.waiting_room if str(wr_entry.uuid) == data["uuid"]),
+            None,
+        )
+        if entry is not None:
+            state.waiting_room.remove(entry)
+            await self.append_to_queue(state, entry, sid)
 
-        if is_admin:
-            entry = next(
-                (wr_entry for wr_entry in state.waiting_room if str(wr_entry.uuid) == data["uuid"]),
-                None,
-            )
-            if entry is not None:
-                state.waiting_room.remove(entry)
-                await self.append_to_queue(room, entry, sid)
-
-    async def add_songs_from_waiting_room(self, room: str) -> None:
+    async def add_songs_from_waiting_room(self, state: State) -> None:
         """
         Add all songs from the waiting room, that should be added to the queue.
 
@@ -599,18 +635,16 @@ class Server:
         :type room: str
         :rtype: None
         """
-        state = self.clients[room]
-
         wrs_to_remove = []
         for wr_entry in state.waiting_room:
             if state.queue.find_by_name(wr_entry.performer) is None:
-                await self.append_to_queue(room, wr_entry)
+                await self.append_to_queue(state, wr_entry)
                 wrs_to_remove.append(wr_entry)
 
         for wr_entry in wrs_to_remove:
             state.waiting_room.remove(wr_entry)
 
-    async def discard_first(self, room: str) -> Entry:
+    async def discard_first(self, state: State) -> Entry:
         """
         Gets the first element of the queue, handling resulting triggers.
 
@@ -622,18 +656,19 @@ class Server:
         :type room: str
         :rtype: Entry
         """
-        state = self.clients[room]
 
         old_entry = await state.queue.popleft()
 
-        await self.add_songs_from_waiting_room(room)
+        await self.add_songs_from_waiting_room(state)
 
         state.recent.append(old_entry)
         state.last_seen = datetime.datetime.now()
 
         return old_entry
 
-    async def handle_pop_then_get_next(self, sid: str) -> None:
+    @playback
+    @with_state
+    async def handle_pop_then_get_next(self, state: State, sid: str) -> None:
         """
         Handle the "pop-then-get-next" message.
 
@@ -651,19 +686,12 @@ class Server:
         :type sid: str
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
-        if sid != state.sid:
-            return
-
-        await self.discard_first(room)
-        await self.send_state(state, room)
+        await self.discard_first(state)
+        await self.broadcast_state(state)
 
         current = await state.queue.peek()
         current.started_at = datetime.datetime.now().timestamp()
-        await self.send_state(state, room)
+        await self.broadcast_state(state)
 
         await self.sio.emit("play", current, room=sid)
 
@@ -795,7 +823,9 @@ class Server:
             await self.sio.emit("client-registered", {"success": True, "room": room}, room=sid)
             await self.send_state(self.clients[room], sid)
 
-    async def handle_sources(self, sid: str, data: dict[str, Any]) -> None:
+    @playback
+    @with_state
+    async def handle_sources(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "sources" message.
 
@@ -816,13 +846,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
-        if sid != state.sid:
-            return
-
         unused_sources = state.client.sources.keys() - data["sources"]
         new_sources = data["sources"] - state.client.sources.keys()
 
@@ -834,7 +857,9 @@ class Server:
         for name in new_sources:
             await self.sio.emit("request-config", {"source": name}, room=sid)
 
-    async def handle_config_chunk(self, sid: str, data: dict[str, Any]) -> None:
+    @playback
+    @with_state
+    async def handle_config_chunk(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "config-chunk" message.
 
@@ -851,19 +876,14 @@ class Server:
             depends on the source.
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
-        if sid != state.sid:
-            return
-
         if data["source"] not in state.client.sources:
             state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
         else:
             state.client.sources[data["source"]].add_to_config(data["config"], data["number"])
 
-    async def handle_config(self, sid: str, data: dict[str, Any]) -> None:
+    @playback
+    @with_state
+    async def handle_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "config" message.
 
@@ -879,13 +899,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
-        if sid != state.sid:
-            return
-
         state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
 
     async def handle_register_web(self, sid: str, data: dict[str, Any]) -> bool:
@@ -911,7 +924,8 @@ class Server:
             return True
         return False
 
-    async def handle_register_admin(self, sid: str, data: dict[str, Any]) -> bool:
+    @with_state
+    async def handle_register_admin(self, state: State, sid: str, data: dict[str, Any]) -> bool:
         """
         Handle a "register-admin" message.
 
@@ -925,16 +939,14 @@ class Server:
         :returns: True, if the secret is correct, False otherwise
         :rtype: bool
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         is_admin: bool = data["secret"] == state.client.config["secret"]
         async with self.sio.session(sid) as session:
             session["admin"] = is_admin
         return is_admin
 
-    async def handle_skip_current(self, sid: str) -> None:
+    @admin
+    @with_state
+    async def handle_skip_current(self, state: State, sid: str) -> None:
         """
         Handle a "skip-current" message.
 
@@ -946,17 +958,13 @@ class Server:
         :type sid: str
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-        state = self.clients[room]
+        old_entry = await self.discard_first(state)
+        await self.sio.emit("skip-current", old_entry, room=state.sid)
+        await self.broadcast_state(state)
 
-        if is_admin:
-            old_entry = await self.discard_first(room)
-            await self.sio.emit("skip-current", old_entry, room=self.clients[room].sid)
-            await self.send_state(state, room)
-
-    async def handle_move_to(self, sid: str, data: dict[str, Any]) -> None:
+    @admin
+    @with_state
+    async def handle_move_to(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "move-to" message.
 
@@ -969,18 +977,12 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
+        await state.queue.move_to(data["uuid"], data["target"])
+        await self.broadcast_state(state)
 
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-
-        state = self.clients[room]
-
-        if is_admin:
-            await state.queue.move_to(data["uuid"], data["target"])
-            await self.send_state(state, room)
-
-    async def handle_move_up(self, sid: str, data: dict[str, Any]) -> None:
+    @admin
+    @with_state
+    async def handle_move_up(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "move-up" message.
 
@@ -993,15 +995,12 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-        state = self.clients[room]
-        if is_admin:
-            await state.queue.move_up(data["uuid"])
-            await self.send_state(state, room)
+        await state.queue.move_up(data["uuid"])
+        await self.broadcast_state(state)
 
-    async def handle_skip(self, sid: str, data: dict[str, Any]) -> None:
+    @admin
+    @with_state
+    async def handle_skip(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "skip" message.
 
@@ -1014,33 +1013,27 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-            is_admin = session["admin"]
-        state = self.clients[room]
+        entry = state.queue.find_by_uuid(data["uuid"])
+        if entry is not None:
+            logger.info("Skipping %s", entry)
 
-        if is_admin:
-            entry = state.queue.find_by_uuid(data["uuid"])
-            if entry is not None:
-                logger.info("Skipping %s", entry)
+            await self.add_songs_from_waiting_room(state)
 
-                await self.add_songs_from_waiting_room(room)
+            await state.queue.remove(entry)
 
-                await state.queue.remove(entry)
+        first_entry_index = None
+        for idx, wr_entry in enumerate(state.waiting_room):
+            if wr_entry.uuid == data["uuid"]:
+                first_entry_index = idx
+                break
 
-            first_entry_index = None
-            for idx, wr_entry in enumerate(state.waiting_room):
-                if wr_entry.uuid == data["uuid"]:
-                    first_entry_index = idx
-                    break
-
-            if first_entry_index is not None:
-                logger.info(
-                    "Deleting %s from waiting room",
-                    state.waiting_room[first_entry_index],
-                )
-                del state.waiting_room[first_entry_index]
-            await self.send_state(state, room)
+        if first_entry_index is not None:
+            logger.info(
+                "Deleting %s from waiting room",
+                state.waiting_room[first_entry_index],
+            )
+            del state.waiting_room[first_entry_index]
+        await self.broadcast_state(state)
 
     async def handle_disconnect(self, sid: str) -> None:
         """
@@ -1055,10 +1048,12 @@ class Server:
         :rtype: None
         """
         async with self.sio.session(sid) as session:
-            if "room" in session:
-                await self.sio.leave_room(sid, session["room"])
+            room = session.get("room")
+        if room is not None:
+            await self.sio.leave_room(sid, room)
 
-    async def handle_search(self, sid: str, data: dict[str, Any]) -> None:
+    @with_state
+    async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "search" message.
 
@@ -1075,10 +1070,6 @@ class Server:
         :type data: dict[str, str]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
         query = data["query"]
         if (
             self.app["type"] != "restricted"
@@ -1097,9 +1088,9 @@ class Server:
             ]
             await self.send_search_results(sid, results)
         else:
-            print("Denied")
             await self.sio.emit("search", {"query": query, "sid": sid}, room=state.sid)
 
+    @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "search-results" message.
@@ -1117,13 +1108,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        async with self.sio.session(sid) as session:
-            room = session["room"]
-        state = self.clients[room]
-
-        if sid != state.sid:
-            return
-
         web_sid = data["sid"]
         results = [Result.from_dict(result) for result in data["results"]]
 
