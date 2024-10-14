@@ -61,6 +61,7 @@ class Entry:
     uuid: UUID = field(default_factory=uuid4)
     uid: Optional[str] = None
     started_at: Optional[float] = None
+    incomplete_data: bool = False
 
     def update(self, **kwargs: Any) -> None:
         """

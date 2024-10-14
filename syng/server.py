@@ -23,7 +23,7 @@ from json.decoder import JSONDecodeError
 from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any, Callable, overload
+from typing import Any, Callable
 from typing import AsyncGenerator
 from typing import Optional
 
@@ -32,7 +32,6 @@ from aiohttp import web
 from profanity_check import predict
 
 from .result import Result
-from .sources.youtube import YouTube
 
 from . import jsonencoder
 from .log import logger
@@ -298,7 +297,9 @@ class Server:
         :rtype: None
         """
         source_obj = state.client.sources[data["source"]]
-        entry = await source_obj.get_entry(data["performer"], data["ident"])
+        entry = await source_obj.get_entry(
+            data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+        )
 
         if entry is None:
             await self.sio.emit(
@@ -476,6 +477,8 @@ class Server:
                             "source": data["source"],
                             "performer": data["performer"],
                             "ident": data["ident"],
+                            "artist": data["artist"],
+                            "title": data["title"],
                         },
                         "old_entry": {
                             "artist": old_entry.artist,
@@ -489,7 +492,9 @@ class Server:
 
         source_obj = state.client.sources[data["source"]]
 
-        entry = await source_obj.get_entry(data["performer"], data["ident"])
+        entry = await source_obj.get_entry(
+            data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+        )
 
         if entry is None:
             await self.sio.emit(
@@ -531,7 +536,9 @@ class Server:
 
         source_obj = state.client.sources[data["source"]]
 
-        entry = await source_obj.get_entry(data["performer"], data["ident"])
+        entry = await source_obj.get_entry(
+            data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+        )
 
         if entry is None:
             await self.sio.emit(
@@ -564,14 +571,15 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
+        print(data)
         state.queue.update(
             data["uuid"],
-            lambda item: item.update(**data["meta"]),
+            lambda item: item.update(**data["meta"], incomplete_data=False),
         )
 
         for entry in state.waiting_room:
             if entry.uuid == data["uuid"] or str(entry.uuid) == data["uuid"]:
-                entry.update(**data["meta"])
+                entry.update(**data["meta"], incomplete_data=False)
 
         await self.broadcast_state(state)
 
@@ -1110,21 +1118,6 @@ class Server:
         """
         web_sid = data["sid"]
         results = [Result.from_dict(result) for result in data["results"]]
-
-        # TODO: we convert the results to YouTube objects. This
-        # adds them to the cache to prevent YouTube from blocking us.
-        __unused_yt_list = [
-            YouTube.from_result(
-                {
-                    "duration": result.duration,
-                    "title": result.title,
-                    "channel": result.artist,
-                    "url": result.ident,
-                }
-            )
-            for result in results
-            if "youtube" == result.source
-        ]
 
         await self.send_search_results(web_sid, results)
 

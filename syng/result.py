@@ -26,8 +26,8 @@ class Result:
     ident: str
     source: str
     title: str
-    artist: str
-    album: str
+    artist: Optional[str]
+    album: Optional[str]
     duration: Optional[str] = None
 
     @classmethod
@@ -58,9 +58,7 @@ class Result:
             album = splitfile[2].strip()
             return cls(ident=ident, source=source, title=title, artist=artist, album=album)
         except IndexError:
-            return cls(
-                ident=filename, source=source, title=basename, artist="Unknown", album="Unknown"
-            )
+            return cls(ident=filename, source=source, title=basename, artist=None, album=None)
 
     @classmethod
     def from_dict(cls, values: dict[str, str]) -> Result:
@@ -97,20 +95,22 @@ class Result:
           - ident (str)
           - source (str)
           - title (str)
-          - artist (str)
-          - album (str)
+          - album (str, if available)
+          - artist (str, if available)
           - duration (str, if available)
 
         :return: The dictionary with the values
         :rtype: dict[str, str]
         """
-        output = {
+        output: dict[str, str] = {
             "ident": self.ident,
             "source": self.source,
             "title": self.title,
-            "artist": self.artist,
-            "album": self.album,
         }
+        if self.album is not None:
+            output["album"] = self.album
+        if self.artist is not None:
+            output["artist"] = self.artist
         if self.duration is not None:
             output["duration"] = self.duration
         return output

@@ -157,7 +157,14 @@ class Source(ABC):
         )
         return await mpv_process
 
-    async def get_entry(self, performer: str, ident: str) -> Optional[Entry]:
+    async def get_entry(
+        self,
+        performer: str,
+        ident: str,
+        /,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> Optional[Entry]:
         """
         Create an :py:class:`syng.entry.Entry` from a given identifier.
 
@@ -185,10 +192,11 @@ class Source(ABC):
             ident=ident,
             source=self.source_name,
             duration=180,
-            album=res.album,
-            title=res.title,
-            artist=res.artist,
+            album=res.album if res.album else "Unknown",
+            title=res.title if res.title else title if title else "Unknown",
+            artist=res.artist if res.artist else artist if artist else "Unknown",
             performer=performer,
+            incomplete_data=True,
         )
 
     async def search(self, query: str) -> list[Result]:

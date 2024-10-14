@@ -30,10 +30,6 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    __cache__: dict[str, Any] = (
-        {}
-    )  # TODO: this may grow fast... but atm it fixed youtubes anti bot measures
-
     def __init__(self, url: Optional[str] = None):
         """
         Construct a YouTube object from a url.
@@ -48,19 +44,16 @@ class YouTube:
         self._author: Optional[str]
 
         if url is not None:
-            if url in YouTube.__cache__:
-                self._infos = YouTube.__cache__[url]
-            else:
-                try:
-                    self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
-                except DownloadError:
-                    self.length = 300
-                    self._title = None
-                    self._author = None
-                    self.watch_url = url
-                    return
-                if self._infos is None:
-                    raise RuntimeError(f'Extraction not possible for "{url}"')
+            try:
+                self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
+            except DownloadError:
+                self.length = 300
+                self._title = None
+                self._author = None
+                self.watch_url = url
+                return
+            if self._infos is None:
+                raise RuntimeError(f'Extraction not possible for "{url}"')
             self.length = self._infos["duration"]
             self._title = self._infos["title"]
             self._author = self._infos["channel"]
@@ -107,12 +100,12 @@ class YouTube:
         :type search_result: dict[str, Any]
         """
         url = search_result["url"]
-        cls.__cache__[url] = {
-            "duration": int(search_result["duration"]),
-            "title": search_result["title"],
-            "channel": search_result["channel"],
-            "url": url,
-        }
+        # cls.__cache__[url] = {
+        #     "duration": int(search_result["duration"]),
+        #     "title": search_result["title"],
+        #     "channel": search_result["channel"],
+        #     "url": url,
+        # }
         return cls(url)
 
 
@@ -268,7 +261,14 @@ class YoutubeSource(Source):
         else:
             await super().play(entry, mpv_options)
 
-    async def get_entry(self, performer: str, ident: str) -> Optional[Entry]:
+    async def get_entry(
+        self,
+        performer: str,
+        ident: str,
+        /,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> Optional[Entry]:
         """
         Create an :py:class:`syng.entry.Entry` for the identifier.
 
@@ -283,33 +283,16 @@ class YoutubeSource(Source):
         :rtype: Optional[Entry]
         """
 
-        def _get_entry(performer: str, url: str) -> Optional[Entry]:
-            """
-            Create the entry in a thread.
-
-            :param performer: The person singing.
-            :type performer: str
-            :param url: A url to a YouTube video.
-            :type url: str
-            :return: An entry with the data.
-            :rtype: Optional[Entry]
-            """
-            yt_song = YouTube(url)
-            try:
-                length = yt_song.length
-            except TypeError:
-                length = 180
-            return Entry(
-                ident=url,
-                source="youtube",
-                album="YouTube",
-                duration=length,
-                title=yt_song._title,
-                artist=yt_song._author,
-                performer=performer,
-            )
-
-        return await asyncio.to_thread(_get_entry, performer, ident)
+        return Entry(
+            ident=ident,
+            source="youtube",
+            duration=180,
+            album="YouTube",
+            title=title,
+            artist=artist,
+            performer=performer,
+            incomplete_data=True,
+        )
 
     async def search(self, query: str) -> list[Result]:
         """
@@ -392,7 +375,7 @@ class YoutubeSource(Source):
         Video metadata should be read on the client to avoid banning
         the server.
         """
-        if entry.title is None or entry.artist is None:
+        if entry.incomplete_data:
             print(f"Looking up {entry.ident}")
             youtube_video: YouTube = await asyncio.to_thread(YouTube, entry.ident)
             return {
