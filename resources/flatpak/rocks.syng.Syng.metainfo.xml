@@ -34,6 +34,16 @@
 
 
   <releases>
+    <release version="2.0.4" date="2024-11-15">
+      <description>
+        <p>
+          <em>Bug fixes</em>:
+        </p>
+        <ul>
+          <li>Fixed a bug, that could lead to a deadlock in the player</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.3" date="2024-10-10">
       <description>
         <p>
