@@ -24,6 +24,12 @@ The playback client uses [mpv](https://mpv.io/) for playback and can therefore p
 
 Join our [matrix room](https://matrix.to/#/#syng:matrix.org) or follow us on [mastodon](https://floss.social/@syng) for update notifications and support.
 
+# Screenshots
+
+![Main window](https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng.png)
+![Main window](https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng_advanced.png)
+![Web Interface](https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng-web.png)
+
 # Client
 
 [![Get in on Flathub](https://flathub.org/api/badge?locale=en)](https://flathub.org/apps/rocks.syng.Syng)
