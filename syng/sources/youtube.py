@@ -257,6 +257,7 @@ class YoutubeSource(Source):
                 "--fullscreen",
                 mpv_options,
             )
+            await self.player.communicate()
             await self.player.wait()
         else:
             await super().play(entry, mpv_options)

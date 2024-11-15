@@ -154,6 +154,7 @@ class Source(ABC):
             "mpv",
             *args,
             stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
         return await mpv_process
 
@@ -306,6 +307,7 @@ class Source(ABC):
                 self.downloaded_files[entry.ident].audio,
                 *extra_options,
             )
+        await self.player.communicate()
         await self.player.wait()
         self.player = None
         if self._skip_next:
