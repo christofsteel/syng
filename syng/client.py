@@ -285,8 +285,6 @@ class Client:
             f"Playing: {entry.artist} - {entry.title} [{entry.album}] "
             f"({entry.source}) for {entry.performer}"
         )
-        print(entry)
-        print(self.skipped)
         if entry.uuid not in self.skipped:
             try:
                 if self.state.config["preview_duration"] > 0:
@@ -317,7 +315,6 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
-        print(f"Searching for: {data['query']}")
         query = data["query"]
         sid = data["sid"]
         results_list = await asyncio.gather(
@@ -441,6 +438,7 @@ class Client:
             self.player.mpv.terminate()
 
     def quit_callback(self) -> None:
+        self.player.close()
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.sio.disconnect(), self.loop)
 

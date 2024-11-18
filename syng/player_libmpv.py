@@ -6,15 +6,16 @@ from qrcode.main import QRCode
 import mpv
 import os
 
-
 from .entry import Entry
-
-__dirname__ = os.path.dirname(__file__)
-
 
 class Player:
     def __init__(self, qr_string: str, quit_callback: Callable[[], None]) -> None:
         locale.setlocale(locale.LC_ALL, "C")
+
+        self.base_dir = f"{os.path.dirname(__file__)}/static"
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            self.base_dir = getattr(sys, "_MEIPASS")
+        self.closing = False
         self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
         self.mpv.title = "Syng - Player"
         self.mpv.keep_open = "yes"
@@ -24,7 +25,7 @@ class Player:
         )
 
         self.mpv.play(
-            f"{__dirname__}/static/background.png",
+            f"{self.base_dir}/background.png",
         )
 
         self.default_options = {
@@ -39,7 +40,12 @@ class Player:
     def event_callback(self, event: mpv.MpvEvent) -> None:
         e = event.as_dict()
         if e["event"] == b"shutdown":
+            self.closing = True
             self.quit_callback()
+
+    def close(self):
+        if not self.closing:
+            self.mpv.terminate()
 
     def update_qr(self, qr_string: str) -> None:
         qr = QRCode(box_size=5, border=1)
@@ -76,7 +82,7 @@ class Player:
 
         self.mpv.sub_pos = 50
         self.play_image(
-            f"{__dirname__}/static/background20perc.png", 3, sub_file=f"python://{stream_name}"
+            f"{self.base_dir}/background20perc.png", 3, sub_file=f"python://{stream_name}"
         )
 
         try:
@@ -119,13 +125,13 @@ class Player:
         try:
             await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
             self.mpv.image_display_duration = 0
-            self.mpv.play(f"{__dirname__}/static/background.png")
+            self.mpv.play(f"{self.base_dir}/background.png")
         except mpv.ShutdownError:
             self.quit_callback()
 
     def skip_current(self) -> None:
         self.mpv.image_display_duration = 0
         self.mpv.play(
-            f"{__dirname__}/static/background.png",
+            f"{self.base_dir}/background.png",
         )
         # self.mpv.playlist_next()

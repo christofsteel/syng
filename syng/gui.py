@@ -21,7 +21,7 @@ try:
     if not TYPE_CHECKING:
         from ctypes import windll
 
-        appid = "rocks.syng.Syng.2.0.7"
+        appid = "rocks.syng.Syng.2.1"
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
 except ImportError:
     pass
