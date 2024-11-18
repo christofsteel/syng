@@ -187,7 +187,7 @@ if opts.requirements_file:
             )  # Remove when pip-generator can handle python_version
             reqs_list = [py_version_regex.sub("", p) for p in reqs_list_raw]
             if opts.ignore_pkg:
-                reqs_new = "\n".join(i for i in reqs_list if i.strip() not in opts.ignore_pkg)
+                reqs_new = "\n".join(i for i in reqs_list if i not in opts.ignore_pkg)
             else:
                 reqs_new = reqs_as_str
             packages = list(requirements.parse(reqs_new))
@@ -208,7 +208,7 @@ else:
         exit("Please specifiy either packages or requirements file argument")
     else:
         exit("This option can only be used with requirements file")
-
+qt = []
 for i in packages:
     if i["name"].lower().startswith("pyqt"):
         print("PyQt packages are not supported by flapak-pip-generator")
@@ -216,7 +216,10 @@ for i in packages:
         print(
             "Visit https://github.com/flathub/com.riverbankcomputing.PyQt.BaseApp for more information"
         )
-        sys.exit(0)
+        # sys.exit(0)
+        print("Ignoring", i["name"])
+        qt.append(i)
+packages = [i for i in packages if i not in qt]
 
 with open(requirements_file_output, "r") as req_file:
     use_hash = "--hash=" in req_file.read()
@@ -346,6 +349,7 @@ with tempfile.TemporaryDirectory(prefix=tempdir_prefix) as tempdir:
     for filename in os.listdir(tempdir):
         name = get_package_name(filename)
         sha256 = get_file_hash(os.path.join(tempdir, filename))
+        is_pypi = False
 
         if name in vcs_packages:
             uri = vcs_packages[name]["uri"]
@@ -364,6 +368,8 @@ with tempfile.TemporaryDirectory(prefix=tempdir_prefix) as tempdir:
             )
             is_vcs = True
         else:
+            name = name.casefold()
+            is_pypi = True
             url = get_pypi_url(name, filename)
             source = OrderedDict([("type", "file"), ("url", url), ("sha256", sha256)])
             if opts.checker_data:
@@ -371,7 +377,7 @@ with tempfile.TemporaryDirectory(prefix=tempdir_prefix) as tempdir:
                 if url.endswith(".whl"):
                     source["x-checker-data"]["packagetype"] = "bdist_wheel"
             is_vcs = False
-        sources[name] = {"source": source, "vcs": is_vcs}
+        sources[name] = {"source": source, "vcs": is_vcs, "pypi": is_pypi}
 
 # Python3 packages that come as part of org.freedesktop.Sdk.
 system_packages = [
@@ -446,9 +452,20 @@ for package in packages:
     is_vcs = True if package.vcs else False
     package_sources = []
     for dependency in dependencies:
-        if dependency in sources:
+        casefolded = dependency.casefold()
+        if casefolded in sources and sources[casefolded].get("pypi") is True:
+            source = sources[casefolded]
+        elif dependency in sources and sources[dependency].get("pypi") is False:
             source = sources[dependency]
-        elif dependency.replace("_", "-") in sources:
+        elif (
+            casefolded.replace("_", "-") in sources
+            and sources[casefolded.replace("_", "-")].get("pypi") is True
+        ):
+            source = sources[casefolded.replace("_", "-")]
+        elif (
+            dependency.replace("_", "-") in sources
+            and sources[dependency.replace("_", "-")].get("pypi") is False
+        ):
             source = sources[dependency.replace("_", "-")]
         else:
             continue

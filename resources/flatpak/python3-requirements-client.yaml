@@ -16,12 +16,12 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "aiohttp==3.10.9" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "aiohttp==3.10.11" --no-build-isolation
     sources:
       - *id001
       - type: file
-        url: https://files.pythonhosted.org/packages/14/40/f08c5d26398f987c1a27e1e351a4b461a01ffdbf9dde429c980db5286c92/aiohttp-3.10.9.tar.gz
-        sha256: 143b0026a9dab07a05ad2dd9e46aa859bffdd6348ddc5967b42161168c24f857
+        url: https://files.pythonhosted.org/packages/25/a8/8e2ba36c6e3278d62e0c88aa42bb92ddbef092ac363b390dab4421da5cf5/aiohttp-3.10.11.tar.gz
+        sha256: 9dc2b8f3dcab2e39e0fa309c8da50c3b55e6f34ab25f1a71d3288f24924d33a7
       - &id002
         type: file
         url: https://files.pythonhosted.org/packages/76/ac/a7305707cb852b7e16ff80eaf5692309bde30e2b1100a1fcacdc8f731d97/aiosignal-1.3.1-py3-none-any.whl
@@ -32,8 +32,8 @@ modules:
         sha256: 81921eb96de3191c8258c199618104dd27ac608d9366f5e35d011eae1867ede2
       - &id003
         type: file
-        url: https://files.pythonhosted.org/packages/cf/3d/2102257e7acad73efc4a0c306ad3953f68c504c16982bbdfee3ad75d8085/frozenlist-1.4.1.tar.gz
-        sha256: c037a86e8513059a2613aaba4d817bb90b9d9b6b69aace3ce9c877e8c8ed402b
+        url: https://files.pythonhosted.org/packages/8f/ed/0f4cec13a93c02c47ec32d81d11c0c1efbadf4a471e3f3ce7cad366cbbd3/frozenlist-1.5.0.tar.gz
+        sha256: 81d5af29e61b9c8348e876d442253723928dce6433e0e76cd925cd83f1b4b817
       - &id008
         type: file
         url: https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl
@@ -89,11 +89,11 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "async-timeout==4.0.3" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "async-timeout==5.0.1" --no-build-isolation
     sources:
       - type: file
-        url: https://files.pythonhosted.org/packages/a7/fa/e01228c2938de91d47b307831c62ab9e4001e747789d0b05baf779a6488c/async_timeout-4.0.3-py3-none-any.whl
-        sha256: 7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028
+        url: https://files.pythonhosted.org/packages/fe/ba/e2081de779ca30d473f21f5b30e0e737c438205440784c7dfc81efc2b029/async_timeout-5.0.1-py3-none-any.whl
+        sha256: 39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c
   - name: python3-attrs
     buildsystem: simple
     build-commands:
@@ -142,16 +142,24 @@ modules:
         type: file
         url: https://files.pythonhosted.org/packages/12/90/3c9ff0512038035f59d279fddeb79f5f1eccd8859f06d6163c58798b9487/certifi-2024.8.30-py3-none-any.whl
         sha256: 922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8
+  - name: python3-cffi
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "cffi==1.17.1" --no-build-isolation
+    sources:
+      - *id005
+      - *id006
   - name: python3-charset-normalizer
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "charset-normalizer==3.3.2" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "charset-normalizer==3.4.0" --no-build-isolation
     sources:
       - &id020
         type: file
-        url: https://files.pythonhosted.org/packages/63/09/c1bc53dab74b1816a00d8d030de5bf98f724c52c1635e07681d312f20be8/charset-normalizer-3.3.2.tar.gz
-        sha256: f30c3cb33b24454a82faecaf01b19c18562b1e89558fb6c56de4d9118a032fd5
+        url: https://files.pythonhosted.org/packages/f2/4f/e1808dc01273379acc506d18f1504eb2d299bd4131743b9fc54d7be4df1e/charset_normalizer-3.4.0.tar.gz
+        sha256: 223217c3d4f82c3ac5e29032b3f1c2eb0fb591b72161f86d93f5719079dae93e
   - name: python3-colorama
     buildsystem: simple
     build-commands:
@@ -165,7 +173,7 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "frozenlist==1.4.1" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "frozenlist==1.5.0" --no-build-isolation
     sources:
       - *id003
   - name: python3-h11
@@ -189,15 +197,15 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "minio==7.2.9" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "minio==7.2.10" --no-build-isolation
     sources:
       - *id009
       - *id004
       - *id010
       - *id005
       - type: file
-        url: https://files.pythonhosted.org/packages/fd/ec/57236b6f359ba2e8176a92805febe47f3f1c102588eb5d52dd978d347561/minio-7.2.9-py3-none-any.whl
-        sha256: fe5523d9c4a4d6cfc07e96905852841bccdb22b22770e1efca4bf5ae8b65774b
+        url: https://files.pythonhosted.org/packages/20/6f/1b1f5025bf43c2a4ca8112332db586c8077048ec8bcea2deb269eac84577/minio-7.2.10-py3-none-any.whl
+        sha256: 5961c58192b1d70d3a2a362064b8e027b8232688998a6d1251dadbb02ab57a7d
       - *id006
       - &id012
         type: file
@@ -293,17 +301,17 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "python-engineio==4.9.1" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "python-engineio==4.10.1" --no-build-isolation
     sources:
       - *id013
       - &id015
         type: file
-        url: https://files.pythonhosted.org/packages/ad/38/4642c75241686c9cf05d23c50b9ffbd760507292f12fdfb04adc2ab5d34a/python_engineio-4.9.1-py3-none-any.whl
-        sha256: f995e702b21f6b9ebde4e2000cd2ad0112ba0e5116ec8d22fe3515e76ba9dddd
+        url: https://files.pythonhosted.org/packages/fc/74/1cec7f067ade8ed0351aed93ae6cfcd070e803d60fa70ecac6705de62936/python_engineio-4.10.1-py3-none-any.whl
+        sha256: 445a94004ec8034960ab99e7ce4209ec619c6e6b6a12aedcb05abeab924025c0
       - &id016
         type: file
-        url: https://files.pythonhosted.org/packages/6d/ea/288a8ac1d9551354488ff60c0ac6a76acc3b6b60f0460ac1944c75e240da/simple_websocket-1.0.0-py3-none-any.whl
-        sha256: 1d5bf585e415eaa2083e2bcf02a3ecf91f9712e7b3e6b9fa0b461ad04e0837bc
+        url: https://files.pythonhosted.org/packages/52/59/0782e51887ac6b07ffd1570e0364cf901ebc36345fea669969d2084baebb/simple_websocket-1.1.0-py3-none-any.whl
+        sha256: 4af6069630a38ed6c561010f0e11a5bc0d4ca569b36306eb257cd9a192497c8c
       - &id017
         type: file
         url: https://files.pythonhosted.org/packages/78/58/e860788190eba3bcce367f74d29c4675466ce8dddfba85f7827588416f01/wsproto-1.2.0-py3-none-any.whl
@@ -327,7 +335,7 @@ modules:
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
         --prefix=${FLATPAK_DEST} "pyyaml==6.0.2" --no-build-isolation
-    sources: 
+    sources:
       - type: file
         url: https://files.pythonhosted.org/packages/54/ed/79a089b6be93607fa5cdaedf301d7dfb23af5f25c398d5ead2525b063e17/pyyaml-6.0.2.tar.gz
         sha256: d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
@@ -360,7 +368,7 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "simple-websocket==1.0.0" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "simple-websocket==1.1.0" --no-build-isolation
     sources:
       - *id013
       - *id016
@@ -410,7 +418,7 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-        --prefix=${FLATPAK_DEST} "yt-dlp==2024.9.27" --no-build-isolation
+        --prefix=${FLATPAK_DEST} "yt-dlp[default]==2024.11.18" --no-build-isolation
     sources:
       - *id023
       - *id010
@@ -422,6 +430,6 @@ modules:
       - *id021
       - *id027
       - type: file
-        url: https://files.pythonhosted.org/packages/c6/26/5dc3a802bd85c19d3d2fa746e6b36979801e2f32a433799c57f646335a7d/yt_dlp-2024.9.27-py3-none-any.whl
-        sha256: 2717468dd697fcfcf9a89f493ba30a3830cdfb276c09750e5b561b08b9ef5f69
+        url: https://files.pythonhosted.org/packages/64/22/1918d2c8c123e9157efd7c2063ea89b4826f904d67b17e77152862ac3347/yt_dlp-2024.11.18-py3-none-any.whl
+        sha256: b9741695911dc566498b5f115cdd6b1abbc5be61cb01fd98abe649990a41656c
 name: python3-requirements-client

@@ -34,6 +34,26 @@
 
 
   <releases>
+    <release version="2.0.6" date="2024-11-18">
+      <description>
+        <p>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Update to latest version of yt-dlp. Search issues should be resolved.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="2.0.5" date="2024-11-16">
+      <description>
+        <p>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Downgraded yt-dlp due to search issues</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.4" date="2024-11-15">
       <description>
         <p>
