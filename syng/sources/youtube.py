@@ -30,7 +30,7 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    def __init__(self, url: Optional[str] = None):
+    def __init__(self, url: Optional[str] = None, info: Optional[dict[str, Any]] = None):
         """
         Construct a YouTube object from a url.
 
@@ -45,7 +45,10 @@ class YouTube:
 
         if url is not None:
             try:
-                self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
+                if info is not None:
+                    self._infos = info
+                else:
+                    self._infos = YoutubeDL({"quiet": True}).extract_info(url, download=False)
             except DownloadError:
                 self.length = 300
                 self._title = None
@@ -94,8 +97,6 @@ class YouTube:
         """
         Construct a YouTube object from yt-dlp search results.
 
-        Updates the cache with the url and the metadata.
-
         :param search_result: The search result from yt-dlp.
         :type search_result: dict[str, Any]
         """
@@ -106,7 +107,7 @@ class YouTube:
         #     "channel": search_result["channel"],
         #     "url": url,
         # }
-        return cls(url)
+        return cls(url, info=search_result)
 
 
 class Search:
@@ -128,9 +129,9 @@ class Search:
         :param channel: The channel to search in.
         :type channel: Optional[str]
         """
-        sp = "EgIQAfABAQ=="  # This is a magic string, that tells youtube to search for videos
+        sp = "EgIQAQ=="  # This is a magic string, that tells youtube to search for videos
         if channel is None:
-            query_url = f"https://youtube.com/results?{urlencode({'search_query': query, 'sp':sp})}"
+            query_url = f"https://youtube.com/results?{urlencode({'search_query': query})}"
         else:
             if channel[0] == "/":
                 channel = channel[1:]
@@ -141,7 +142,7 @@ class Search:
         results = YoutubeDL(
             {
                 "extract_flat": True,
-                "quiet": True,
+                "quiet": False,
                 "playlist_items": ",".join(map(str, range(1, 51))),
             }
         ).extract_info(
