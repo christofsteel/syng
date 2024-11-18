@@ -21,7 +21,6 @@ from typing import Tuple
 from typing import Type
 from abc import ABC, abstractmethod
 
-from syng.player_libmpv import Player
 
 
 from ..log import logger
