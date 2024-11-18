@@ -34,6 +34,17 @@
 
 
   <releases>
+    <release version="2.0.7" date="2024-11-18">
+      <description>
+        <p>
+          <em>Bug Fixes</em>:
+        </p>
+        <ul>
+          <li>Fixed local YT search.</li>
+          <li>Fixeds metadata fetch for directly added YT videos.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.6" date="2024-11-18">
       <description>
         <p>
