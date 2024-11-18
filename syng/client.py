@@ -21,7 +21,6 @@ from logging.handlers import QueueHandler
 from multiprocessing import Queue
 import secrets
 import string
-import tempfile
 import signal
 from argparse import Namespace
 from dataclasses import dataclass
@@ -35,7 +34,6 @@ from qrcode.main import QRCode
 import socketio
 from socketio.exceptions import ConnectionError
 import engineio
-from PIL import Image
 from yaml import load, Loader
 
 from syng.player_libmpv import Player

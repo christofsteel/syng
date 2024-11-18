@@ -5,7 +5,6 @@ import logging
 from logging.handlers import QueueListener
 from logging.handlers import QueueHandler
 
-# from multiprocessing import Process, Queue
 from queue import Queue
 from collections.abc import Callable
 from datetime import datetime
@@ -13,7 +12,6 @@ import os
 from functools import partial
 import random
 from typing import TYPE_CHECKING, Any, Optional
-import threading
 import secrets
 import string
 import signal
@@ -32,7 +30,6 @@ from qasync import QEventLoop, QApplication
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
-    # QApplication,
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
@@ -58,7 +55,7 @@ from qrcode.main import QRCode
 import platformdirs
 
 from . import resources  # noqa
-from .client import Client, create_async_and_start_client, default_config
+from .client import Client, default_config
 from .log import logger
 
 from .sources import available_sources
@@ -72,16 +69,6 @@ from .config import (
     PasswordOption,
     StrOption,
 )
-
-# try:
-#     from .server import run_server
-#
-#     SERVER_AVAILABLE = True
-# except ImportError:
-#     if TYPE_CHECKING:
-#         from .server import run_server
-#
-#     SERVER_AVAILABLE = False
 
 
 # TODO: ScrollableFrame
@@ -482,24 +469,14 @@ class GeneralConfig(OptionFrame):
 
 class SyngGui(QMainWindow):
     def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
-        # if self.syng_server is not None:
-        #     self.syng_server.kill()
-        #     self.syng_server.join()
-
-        # if self.syng_client is not None:
-        #     self.syng_client.terminate()
-        #     self.syng_client.join(1.0)
-        #     self.syng_client.kill()
+        if self.client is not None:
+            self.client.quit_callback()
 
         self.destroy()
 
     def add_buttons(self, show_advanced: bool) -> None:
         self.buttons_layout = QHBoxLayout()
         self.central_layout.addLayout(self.buttons_layout)
-
-        # self.startsyng_serverbutton = QPushButton("Start Local Server")
-        # self.startsyng_serverbutton.clicked.connect(self.start_syng_server)
-        # self.buttons_layout.addWidget(self.startsyng_serverbutton)
 
         self.resetbutton = QPushButton("Set Config to Default")
         self.exportbutton = QPushButton("Export Config")
@@ -521,11 +498,7 @@ class SyngGui(QMainWindow):
         self.buttons_layout.addWidget(self.show_advanced_toggle)
 
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        # self.notification_label = QLabel("", self)
-        # spacer_item2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttons_layout.addItem(spacer_item)
-        # self.buttons_layout.addWidget(self.notification_label)
-        # self.buttons_layout.addItem(spacer_item2)
 
         self.savebutton = QPushButton("Save")
         self.savebutton.clicked.connect(self.save_config)
@@ -632,8 +605,6 @@ class SyngGui(QMainWindow):
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
         self.loop = asyncio.get_event_loop()
-        # self.syng_server: Optional[threading.Thread] = None
-        # self.syng_client: Optional[threading.Thread] = None
         self.client: Optional[Client] = None
         self.syng_client_logging_listener: Optional[QueueListener] = None
 
@@ -658,7 +629,6 @@ class SyngGui(QMainWindow):
 
         self.setCentralWidget(self.central_widget)
 
-        # check every 500 ms if client is running
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_if_client_is_running)
 
@@ -781,47 +751,15 @@ class SyngGui(QMainWindow):
             )
             self.syng_client_logging_listener.start()
 
-            # self.syng_client = multiprocessing.Process(
-            #     target=create_async_and_start_client, args=[config, queue]
-            # )
             logger.addHandler(QueueHandler(queue))
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            # self.syng_client = threading.Thread(
-            #     target=create_async_and_start_client, args=[config, queue, self.client]
-            # )
-            # self.syng_client.start()
             self.notification_label.setText("")
             self.timer.start(500)
             self.set_client_button_stop()
         else:
             self.client.quit_callback()
-            # self.syng_client.join(1.0)
             self.set_client_button_start()
-
-    # def start_syng_server(self) -> None:
-    #     if self.syng_server is None:
-    #         root_path = os.path.join(os.path.dirname(__file__), "static")
-    #         self.syng_server = multiprocessing.Process(
-    #             target=run_server,
-    #             args=[
-    #                 Namespace(
-    #                     host="0.0.0.0",
-    #                     port=8080,
-    #                     registration_keyfile=None,
-    #                     root_folder=root_path,
-    #                     private=False,
-    #                     restricted=False,
-    #                 )
-    #             ],
-    #         )
-    #         self.syng_server.start()
-    #         self.startsyng_serverbutton.setText("Stop Local Server")
-    #     else:
-    #         self.syng_server.terminate()
-    #         self.syng_server.join()
-    #         self.syng_server = None
-    #         self.startsyng_serverbutton.setText("Start Local Server")
 
     def change_qr(self, data: str) -> None:
         qr = QRCode(box_size=10, border=2)
@@ -876,7 +814,6 @@ def run_gui() -> None:
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
     window.show()
-    # app.exec()
     with event_loop:
         event_loop.run_forever()
 

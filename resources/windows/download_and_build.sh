@@ -5,10 +5,13 @@ mkdir -p requirements
 cd requirements
 
 # download mpv
-wget https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-windows-msvc.zip
-unzip mpv-x86_64-windows-msvc.zip
-cp mpv.exe ../src
-cp vulkan-1.dll ../src
+# wget https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-windows-msvc.zip
+# unzip mpv-x86_64-windows-msvc.zip
+# cp mpv.exe ../src
+# cp vulkan-1.dll ../src
+wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20241118/mpv-dev-x86_64-20241118-git-e8fd7b8.7z
+7z x mpv-dev-x86_64-20241118-git-e8fd7b8.7z
+cp libmpv-2.dll ../src
 
 # download ffmpeg
 wget https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z
@@ -27,7 +30,7 @@ cp ../icons/syng.ico src/
 # rm -rf src/build
 # rm -rf src/dist
 # docker run --volume "$(pwd)/src:/src/" batonogov/pyinstaller-windows:latest "pyinstaller --onefile -w -i'.\syng.ico' --add-data='.\syng\static\syng.png;.\static' --add-binary '.\mpv.exe;.' --add-binary '.\vulkan-1.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py"
-docker run --volume "$(pwd)/src:/src/" batonogov/pyinstaller-windows:latest "pyinstaller -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-binary '.\mpv.exe;.' --add-binary '.\vulkan-1.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py"
+docker run --volume "$(pwd)/src:/src/" batonogov/pyinstaller-windows:latest "pyinstaller -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py"
 
 # cd syng-2.0.1
 # wine python -m poetry install -E client

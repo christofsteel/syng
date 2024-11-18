@@ -477,8 +477,8 @@ class Server:
                             "source": data["source"],
                             "performer": data["performer"],
                             "ident": data["ident"],
-                            "artist": data["artist"],
-                            "title": data["title"],
+                            "artist": data.get("artist", None),
+                            "title": data.get("title", None),
                         },
                         "old_entry": {
                             "artist": old_entry.artist,
@@ -493,7 +493,10 @@ class Server:
         source_obj = state.client.sources[data["source"]]
 
         entry = await source_obj.get_entry(
-            data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+            data["performer"],
+            data["ident"],
+            artist=data.get("artist", None),
+            title=data.get("title", None),
         )
 
         if entry is None:

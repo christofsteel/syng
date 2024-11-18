@@ -103,12 +103,6 @@ class YouTube:
         :type search_result: dict[str, Any]
         """
         url = search_result["url"]
-        # cls.__cache__[url] = {
-        #     "duration": int(search_result["duration"]),
-        #     "title": search_result["title"],
-        #     "channel": search_result["channel"],
-        #     "url": url,
-        # }
         return cls(url, info=search_result)
 
 
@@ -255,15 +249,6 @@ class YoutubeSource(Source):
         :rtype: None
         """
         if self.start_streaming and not self.downloaded_files[entry.ident].complete:
-            # self.player = await self.play_mpv(
-            #     entry.ident,
-            #     None,
-            #     "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-exclude='%.pls$'",
-            #     f"--ytdl-format={self.formatstring}",
-            #     "--fullscreen",
-            #     mpv_options,
-            # )
-            # await self.player.wait()
             await player.play(entry.ident)
         else:
             await super().play(entry, player, mpv_options)

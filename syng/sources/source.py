@@ -127,39 +127,10 @@ class Source(ABC):
         """
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
-        # self.player: Optional[asyncio.subprocess.Process] = None
         self._index: list[str] = config["index"] if "index" in config else []
         self.extra_mpv_arguments: list[str] = []
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
-
-    @staticmethod
-    async def play_mpv(
-        video: str, audio: Optional[str], /, *options: str
-    ) -> asyncio.subprocess.Process:
-        """
-        Create a mpv process to play a song in full screen.
-
-        :param video: Location of the video part.
-        :type video: str
-        :param audio: Location of the audio part, if it exists.
-        :type audio: Optional[str]
-        :param options: Extra arguments forwarded to the mpv player
-        :type options: str
-        :returns: An async reference to the process
-        :rtype: asyncio.subprocess.Process
-        """
-        args = ["--fullscreen", *options, video] + ([f"--audio-file={audio}"] if audio else [])
-
-        # print(f"File is {video=} and {audio=}")
-
-        mpv_process = asyncio.create_subprocess_exec(
-            "mpv",
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        return await mpv_process
 
     async def get_entry(
         self,
@@ -299,22 +270,10 @@ class Source(ABC):
                 entry.skip = True
                 return
 
-            extra_options = (
-                (self.extra_mpv_arguments + [mpv_options])
-                if mpv_options
-                else self.extra_mpv_arguments
-            )
-
-            # self.player = await self.play_mpv(
-            #     self.downloaded_files[entry.ident].video,
-            #     self.downloaded_files[entry.ident].audio,
-            #     *extra_options,
-            # )
             await player.play(
                 self.downloaded_files[entry.ident].video, self.downloaded_files[entry.ident].audio
             )
-        # await self.player.wait()
-        # self.player = None
+
         if self._skip_next:
             self._skip_next = False
             entry.skip = True
@@ -338,9 +297,6 @@ class Source(ABC):
             if buffer_task is not None:
                 buffer_task.cancel()
             self.downloaded_files[entry.ident].ready.set()
-
-            # if self.player is not None:
-            #     self.player.kill()
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
         """
