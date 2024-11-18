@@ -57,7 +57,7 @@ class YouTube:
                 return
             if self._infos is None:
                 raise RuntimeError(f'Extraction not possible for "{url}"')
-            self.length = self._infos["duration"]
+            self.length = int(self._infos["duration"])
             self._title = self._infos["title"]
             self._author = self._infos["channel"]
             self.watch_url = url
@@ -129,9 +129,11 @@ class Search:
         :param channel: The channel to search in.
         :type channel: Optional[str]
         """
-        sp = "EgIQAQ=="  # This is a magic string, that tells youtube to search for videos
+        sp = "EgIQAfABAQ=="  # This is a magic string, that tells youtube to search for videos
         if channel is None:
-            query_url = f"https://youtube.com/results?{urlencode({'search_query': query})}"
+            query_url = (
+                f"https://youtube.com/results?{urlencode({'search_query': query, 'sp': sp})}"
+            )
         else:
             if channel[0] == "/":
                 channel = channel[1:]
@@ -142,7 +144,7 @@ class Search:
         results = YoutubeDL(
             {
                 "extract_flat": True,
-                "quiet": False,
+                "quiet": True,
                 "playlist_items": ",".join(map(str, range(1, 51))),
             }
         ).extract_info(
@@ -377,8 +379,7 @@ class YoutubeSource(Source):
         Video metadata should be read on the client to avoid banning
         the server.
         """
-        if entry.incomplete_data:
-            print(f"Looking up {entry.ident}")
+        if entry.incomplete_data or None in (entry.artist, entry.title):
             youtube_video: YouTube = await asyncio.to_thread(YouTube, entry.ident)
             return {
                 "duration": youtube_video.length,
