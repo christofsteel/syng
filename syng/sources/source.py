@@ -80,7 +80,6 @@ class Source(ABC):
     attribute.
 
     Source specific tasks will be forwarded to the respective source, like:
-        - Playing the audio/video
         - Buffering the audio/video
         - Searching for a query
         - Getting an entry from an identifier
@@ -93,7 +92,7 @@ class Source(ABC):
     ``get_entry``, ``search``, ``add_to_config``
 
     Specific client methods:
-    ``buffer``, ``do_buffer``, ``play``, ``skip_current``, ``ensure_playable``,
+    ``buffer``, ``do_buffer``, ``skip_current``, ``ensure_playable``,
     ``get_missing_metadata``, ``get_config``
 
     Each source has a reference to all files, that are currently queued to
@@ -104,7 +103,7 @@ class Source(ABC):
                    :py:attr:`Entry.ident` to :py:class:`DLFilesEntry`.
                  - ``player``, the reference to the ``mpv`` process, if it has
                    started
-                 - ``extra_mpv_arguments``, list of arguments added to the mpv
+                 - ``extra_mpv_options``, dictionary of arguments added to the mpv
                    instance, can be overwritten by a subclass
                  - ``source_name``, the string used to identify the source
     """
@@ -128,7 +127,6 @@ class Source(ABC):
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
         self._index: list[str] = config["index"] if "index" in config else []
-        self.extra_mpv_arguments: list[str] = []
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
 
@@ -192,7 +190,7 @@ class Source(ABC):
         return results
 
     @abstractmethod
-    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
         """
         Source specific part of buffering.
 
@@ -205,11 +203,13 @@ class Source(ABC):
 
         :param entry: The entry to buffer
         :type entry: Entry
+        :param pos: The position in the queue, the entry is at.
+        :type pos: int
         :returns: A Tuple of the locations for the video and the audio file.
         :rtype: Tuple[str, Optional[str]]
         """
 
-    async def buffer(self, entry: Entry) -> None:
+    async def buffer(self, entry: Entry, pos: int) -> None:
         """
         Buffer all necessary files for the entry.
 
@@ -223,6 +223,8 @@ class Source(ABC):
 
         :param entry: The entry to buffer
         :type entry: Entry
+        :param pos: The position in the queue, the entry is at.
+        :type pos: int
         :rtype: None
         """
         async with self._masterlock:
@@ -231,7 +233,7 @@ class Source(ABC):
             self.downloaded_files[entry.ident].buffering = True
 
         try:
-            buffer_task = asyncio.create_task(self.do_buffer(entry))
+            buffer_task = asyncio.create_task(self.do_buffer(entry, pos))
             self.downloaded_files[entry.ident].buffer_task = buffer_task
             video, audio = await buffer_task
 
@@ -244,39 +246,6 @@ class Source(ABC):
             self.downloaded_files[entry.ident].failed = True
 
         self.downloaded_files[entry.ident].ready.set()
-
-    async def play(self, entry: Entry, player: Player, mpv_options: str) -> None:
-        """
-        Play the entry.
-
-        This waits until buffering is complete and starts
-        playing the entry.
-
-        :param entry: The entry to play
-        :type entry: Entry
-        :param mpv_options: Extra options for the mpv player
-        :type mpv_options: str
-        :rtype: None
-        """
-        await self.ensure_playable(entry)
-
-        if self.downloaded_files[entry.ident].failed:
-            del self.downloaded_files[entry.ident]
-            return
-
-        async with self._masterlock:
-            if self._skip_next:
-                self._skip_next = False
-                entry.skip = True
-                return
-
-            await player.play(
-                self.downloaded_files[entry.ident].video, self.downloaded_files[entry.ident].audio
-            )
-
-        if self._skip_next:
-            self._skip_next = False
-            entry.skip = True
 
     async def skip_current(self, entry: Entry) -> None:
         """
@@ -308,7 +277,7 @@ class Source(ABC):
         :type entry: Entry
         :rtype: None
         """
-        await self.buffer(entry)
+        await self.buffer(entry, 0)
         dlfilesentry = self.downloaded_files[entry.ident]
         await dlfilesentry.ready.wait()
         return dlfilesentry.video, dlfilesentry.audio

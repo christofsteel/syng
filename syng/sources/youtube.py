@@ -233,25 +233,22 @@ class YoutubeSource(Source):
         """
         return {"channels": self.channels}
 
-    async def play(self, entry: Entry, player: Player, mpv_options: str) -> None:
+    async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
         """
-        Play the given entry.
+        Ensure that the entry is playable.
 
-        If ``start_streaming`` is set and buffering is not yet done, starts
-        immediatly and forwards the url to ``mpv``.
+        If the entry is not yet downloaded, download it.
+        If start_streaming is set, start streaming immediatly.
 
-        Otherwise wait for buffering and start playing.
-
-        :param entry: The entry to play.
+        :param entry: The entry to download.
         :type entry: Entry
-        :param mpv_options: The options to pass to ``mpv``.
-        :type mpv_options: str
         :rtype: None
         """
+
         if self.start_streaming and not self.downloaded_files[entry.ident].complete:
-            await player.play(entry.ident)
-        else:
-            await super().play(entry, player, mpv_options)
+            return (entry.ident, None)
+
+        return await super().ensure_playable(entry)
 
     async def get_entry(
         self,
@@ -376,7 +373,7 @@ class YoutubeSource(Source):
             }
         return {}
 
-    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
         """
         Download the video.
 
@@ -387,11 +384,20 @@ class YoutubeSource(Source):
         location exists, the return value for the audio part will always be
         ``None``.
 
+        If pos is 0 and start_streaming is set, no buffering is done, instead the
+        youtube url is returned.
+
         :param entry: The entry to download.
         :type entry: Entry
+        :param pos: The position in the video to start buffering.
+        :type pos: int
         :return: The location of the video file and ``None``.
         :rtype: Tuple[str, Optional[str]]
         """
+
+        if pos == 0 and self.start_streaming:
+            return entry.ident, None
+
         info: Any = await asyncio.to_thread(self._yt_dlp.extract_info, entry.ident)
         combined_path = info["requested_downloads"][0]["filepath"]
         return combined_path, None

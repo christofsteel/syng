@@ -30,7 +30,6 @@ class FilesSource(FileBasedSource):
         super().__init__(config)
 
         self.dir = config["dir"] if "dir" in config else "."
-        self.extra_mpv_arguments = ["--scale=oversample"]
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension"""
@@ -60,7 +59,7 @@ class FilesSource(FileBasedSource):
 
         return {"duration": duration}
 
-    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
         """
         No buffering needs to be done, since the files are already on disk.
 

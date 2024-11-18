@@ -441,7 +441,11 @@ class GeneralConfig(OptionFrame):
         self.add_string_option(
             "key", "Key for server (if necessary)", config["key"], is_password=True
         )
-        self.add_string_option("mpv_options", "Additional MPV Arguments", config["mpv_options"])
+        self.add_int_option(
+            "buffer_in_advance",
+            "Buffer the next songs in advance",
+            int(config["buffer_in_advance"]),
+        )
 
         if not config["show_advanced"]:
             for option in [
@@ -449,7 +453,7 @@ class GeneralConfig(OptionFrame):
                 "last_song",
                 "preview_duration",
                 "key",
-                "mpv_options",
+                "buffer_in_advance",
             ]:
                 self.rows[option][0].setVisible(False)
                 widget_or_layout = self.rows[option][1]
@@ -519,7 +523,7 @@ class SyngGui(QMainWindow):
             "last_song",
             "preview_duration",
             "key",
-            "mpv_options",
+            "buffer_in_advance",
         ]:
             self.general_config.rows[option][0].setVisible(state)
             widget_or_layout = self.general_config.rows[option][1]

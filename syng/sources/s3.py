@@ -77,7 +77,6 @@ class S3Source(FileBasedSource):
             self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
 
         self.index_file: Optional[str] = config["index_file"] if "index_file" in config else None
-        self.extra_mpv_arguments = ["--scale=oversample"]
 
     def load_file_list_from_server(self) -> list[str]:
         """
@@ -164,7 +163,7 @@ class S3Source(FileBasedSource):
 
         return {"duration": duration}
 
-    async def do_buffer(self, entry: Entry) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
         """
         Download the file from the s3.
 

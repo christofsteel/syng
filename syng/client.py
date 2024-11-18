@@ -59,7 +59,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "last_song": None,
         "waiting_room_policy": None,
         "key": None,
-        "mpv_options": "",
+        "buffer_in_advance": 2,
         "show_advanced": False,
     }
 
@@ -100,6 +100,8 @@ class State:
             - `optional`, if a performer is already in the queue, they have the option
                           to be put in the waiting room.
             - `None`, performers are always added to the queue.
+        * `buffer_in_advance` (`int`): The number of songs, that are buffered in
+            advance.
     :type config: dict[str, Any]:
     """
 
@@ -124,6 +126,7 @@ class Client:
         self.sources = configure_sources(config["sources"])
         self.state = State()
         self.currentLock = asyncio.Semaphore(0)
+        self.buffer_in_advance = config["config"]["buffer_in_advance"]
         self.player = Player(
             f"{config['config']['server']}/{config['config']['room']}", self.quit_callback
         )
@@ -197,9 +200,9 @@ class Client:
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
 
-        for entry in self.state.queue[:2]:
+        for pos, entry in enumerate(self.state.queue[0 : self.buffer_in_advance]):
             logger.info("Buffering: %s", entry.title)
-            await self.sources[entry.source].buffer(entry)
+            await self.sources[entry.source].buffer(entry, pos)
 
     async def handle_connect(self) -> None:
         """
@@ -351,6 +354,8 @@ class Client:
         :rtype: None
         """
         if data["success"]:
+            self.player.start()
+
             logger.info("Registered")
             qr_string = f"{self.state.config['server']}/{data['room']}"
             self.player.update_qr(qr_string)
@@ -434,11 +439,10 @@ class Client:
         :rtype: None
         """
         engineio.async_client.async_signal_handler()
-        if self.player is not None:
+        if self.player.mpv is not None:
             self.player.mpv.terminate()
 
     def quit_callback(self) -> None:
-        self.player.close()
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.sio.disconnect(), self.loop)
 
@@ -474,23 +478,20 @@ class Client:
 
         try:
             await self.sio.connect(self.state.config["server"])
-        except ConnectionError:
-            logger.error("Could not connect to server")
-            return
 
-        # this is not supported under windows
-        if os.name != "nt":
-            asyncio.get_event_loop().add_signal_handler(signal.SIGINT, self.signal_handler)
-            asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, self.signal_handler)
+            # this is not supported under windows
+            if os.name != "nt":
+                asyncio.get_event_loop().add_signal_handler(signal.SIGINT, self.signal_handler)
 
-        try:
             self.is_running = True
             await self.sio.wait()
         except asyncio.CancelledError:
             pass
+        except ConnectionError:
+            logger.error("Could not connect to server")
         finally:
             self.is_running = False
-            if self.player is not None:
+            if self.player.mpv is not None:
                 self.player.mpv.terminate()
 
 

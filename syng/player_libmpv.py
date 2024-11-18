@@ -8,6 +8,7 @@ import os
 
 from .entry import Entry
 
+
 class Player:
     def __init__(self, qr_string: str, quit_callback: Callable[[], None]) -> None:
         locale.setlocale(locale.LC_ALL, "C")
@@ -16,16 +17,10 @@ class Player:
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             self.base_dir = getattr(sys, "_MEIPASS")
         self.closing = False
-        self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
-        self.mpv.title = "Syng - Player"
-        self.mpv.keep_open = "yes"
+        self.mpv: Optional[mpv.MPV] = None
         self.qr_overlay: Optional[mpv.ImageOverlay] = None
         self.update_qr(
             qr_string,
-        )
-
-        self.mpv.play(
-            f"{self.base_dir}/background.png",
         )
 
         self.default_options = {
@@ -33,6 +28,13 @@ class Player:
         }
         self.quit_callback = quit_callback
 
+    def start(self) -> None:
+        self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
+        self.mpv.title = "Syng - Player"
+        self.mpv.keep_open = "yes"
+        self.mpv.play(
+            f"{self.base_dir}/background.png",
+        )
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
         self.mpv.register_event_callback(self.event_callback)
@@ -40,12 +42,9 @@ class Player:
     def event_callback(self, event: mpv.MpvEvent) -> None:
         e = event.as_dict()
         if e["event"] == b"shutdown":
-            self.closing = True
-            self.quit_callback()
-
-    def close(self):
-        if not self.closing:
-            self.mpv.terminate()
+            if not self.closing:
+                self.closing = True
+                self.quit_callback()
 
     def update_qr(self, qr_string: str) -> None:
         qr = QRCode(box_size=5, border=1)
@@ -54,6 +53,9 @@ class Player:
         self.qr = qr.make_image().convert("RGBA")
 
     def osd_size_handler(self, attribute: str, value: int) -> None:
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
         if self.qr_overlay:
             self.mpv.remove_overlay(self.qr_overlay.overlay_id)
 
@@ -66,6 +68,10 @@ class Player:
         self.qr_overlay = self.mpv.create_image_overlay(self.qr, pos=(x_pos, y_pos))
 
     async def queue_next(self, entry: Entry) -> None:
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+
         loop = asyncio.get_running_loop()
 
         frame = sys._getframe()
@@ -91,6 +97,10 @@ class Player:
             self.quit_callback()
 
     def play_image(self, image: str, duration: int, sub_file: Optional[str] = None) -> None:
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+
         for property, value in self.default_options.items():
             self.mpv[property] = value
         self.mpv.image_display_duration = duration
@@ -107,6 +117,10 @@ class Player:
         audio: Optional[str] = None,
         override_options: Optional[dict[str, str]] = None,
     ) -> None:
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+
         if override_options is None:
             override_options = {}
         for property, value in self.default_options.items():
@@ -130,6 +144,10 @@ class Player:
             self.quit_callback()
 
     def skip_current(self) -> None:
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+
         self.mpv.image_display_duration = 0
         self.mpv.play(
             f"{self.base_dir}/background.png",
