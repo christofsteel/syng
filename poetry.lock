@@ -808,7 +808,7 @@ urllib3 = "*"
 name = "mpv"
 version = "1.0.7"
 description = "A python interface to the mpv media player"
-optional = false
+optional = true
 python-versions = ">=3.9"
 files = [
     {file = "mpv-1.0.7-py3-none-any.whl", hash = "sha256:520fb134c18185b69c7fce4aa3514f14371028022d92eb193818e9fefb1e9fe8"},
@@ -1492,7 +1492,7 @@ files = [
 name = "qasync"
 version = "0.27.1"
 description = "Python library for using asyncio in Qt-based applications"
-optional = false
+optional = true
 python-versions = ">=3.8,<4.0"
 files = [
     {file = "qasync-0.27.1-py3-none-any.whl", hash = "sha256:5d57335723bc7d9b328dadd8cb2ed7978640e4bf2da184889ce50ee3ad2602c7"},
@@ -1720,13 +1720,13 @@ files = [
 
 [[package]]
 name = "types-setuptools"
-version = "75.5.0.20241116"
+version = "75.5.0.20241119"
 description = "Typing stubs for setuptools"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "types-setuptools-75.5.0.20241116.tar.gz", hash = "sha256:b6939ffdbc50ffdc0bcfbf14f7a6de1ddc5510906c1ca2bd62c23646e5798b1a"},
-    {file = "types_setuptools-75.5.0.20241116-py3-none-any.whl", hash = "sha256:1144b2ab8fa986061f963391fdbde16df20582e3cc39c94340e71aa61cc7203f"},
+    {file = "types-setuptools-75.5.0.20241119.tar.gz", hash = "sha256:2b1ec21346656aeb4f43fa6b70b223b4fa726e324c509a05f35611209f134014"},
+    {file = "types_setuptools-75.5.0.20241119-py3-none-any.whl", hash = "sha256:6e7f1937a8b70cc5c724facc619da721b86d47ac673e3eb739e44d36afd260fc"},
 ]
 
 [[package]]
@@ -2009,4 +2009,4 @@ server = ["alt-profanity-check"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "5f116d69fb741dbba9c1719f16045a8e32cf59c9aec4ed416a017059d1630e3d"
+content-hash = "8c1f5823100350e920105e05612a3908d3f9055759d487324dd3a05b3542c1e4"
