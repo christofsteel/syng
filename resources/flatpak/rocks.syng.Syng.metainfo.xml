@@ -34,6 +34,17 @@
 
 
   <releases>
+    <release version="2.1.0" date="2024-11-19">
+      <description>
+        <p>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Only opens a single video window.</li>
+          <li>Added branding and qr code to video window</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.7" date="2024-11-18">
       <description>
         <p>

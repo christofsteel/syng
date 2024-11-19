@@ -1,4 +1,4 @@
-# Generated with flatpak-pip-generator --requirements-file ../../requirements-client.txt --ignore-pkg pyqt6-qt6==6.7.3 pyqt6-sip==13.8.0 pyqt6==6.7.1 cffi==1.17.1 --yaml
+# Generated with flatpak-pip-generator --requirements-file requirements-client.txt --ignore-pkg cffi==1.17.1 --yaml
 build-commands: []
 buildsystem: simple
 modules:
@@ -219,6 +219,15 @@ modules:
         type: file
         url: https://files.pythonhosted.org/packages/ce/d9/5f4c13cecde62396b0d3fe530a50ccea91e7dfc1ccf0e09c228841bb5ba8/urllib3-2.2.3-py3-none-any.whl
         sha256: ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac
+  - name: python3-mpv
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "mpv==1.0.7" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/aa/3f/d835556e34804cd0078507ed0f8a550f15d2861b875656193dd3451b720b/mpv-1.0.7-py3-none-any.whl
+        sha256: 520fb134c18185b69c7fce4aa3514f14371028022d92eb193818e9fefb1e9fe8
   - name: python3-multidict
     buildsystem: simple
     build-commands:
@@ -339,6 +348,15 @@ modules:
       - type: file
         url: https://files.pythonhosted.org/packages/54/ed/79a089b6be93607fa5cdaedf301d7dfb23af5f25c398d5ead2525b063e17/pyyaml-6.0.2.tar.gz
         sha256: d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
+  - name: python3-qasync
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "qasync==0.27.1" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/51/06/bc628aa2981bcfd452a08ee435b812fd3eee4ada8acb8a76c4a09d1a5a77/qasync-0.27.1-py3-none-any.whl
+        sha256: 5d57335723bc7d9b328dadd8cb2ed7978640e4bf2da184889ce50ee3ad2602c7
   - name: python3-qrcode
     buildsystem: simple
     build-commands:
