@@ -17,9 +17,6 @@
   <url type="bugtracker">https://github.com/christofsteel/syng/issues</url>
   <url type="vcs-browser">https://github.com/christofsteel/syng</url>
 
-  <img src="https://raw.githubusercontent.com/christofsteel/syng/
-  94e0d9c0b77579ed256bf74412a20da314dd7166
-  /resources/screenshots/syng.png" alt="Main Window" height=250/> <img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_advanced.png" alt="Main Window (Advanced)" height=250/><img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_web2.png" alt="Web Interface" height=250/>
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng.png</image>
