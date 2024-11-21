@@ -1,4 +1,5 @@
 import asyncio
+from enum import Enum
 import locale
 import sys
 from typing import Callable, Iterable, Optional, cast
@@ -9,8 +10,35 @@ import os
 from .entry import Entry
 
 
+class QRPosition(Enum):
+    TOP_LEFT = 1
+    TOP_RIGHT = 2
+    BOTTOM_LEFT = 3
+    BOTTOM_RIGHT = 4
+
+    @staticmethod
+    def from_string(value: str) -> "QRPosition":
+        match value:
+            case "top-left":
+                return QRPosition.TOP_LEFT
+            case "top-right":
+                return QRPosition.TOP_RIGHT
+            case "bottom-left":
+                return QRPosition.BOTTOM_LEFT
+            case "bottom-right":
+                return QRPosition.BOTTOM_RIGHT
+            case _:
+                return QRPosition.BOTTOM_LEFT
+
+
 class Player:
-    def __init__(self, qr_string: str, quit_callback: Callable[[], None]) -> None:
+    def __init__(
+        self,
+        qr_string: str,
+        qr_box_size: int,
+        qr_position: QRPosition,
+        quit_callback: Callable[[], None],
+    ) -> None:
         locale.setlocale(locale.LC_ALL, "C")
 
         self.base_dir = f"{os.path.dirname(__file__)}/static"
@@ -19,6 +47,8 @@ class Player:
         self.closing = False
         self.mpv: Optional[mpv.MPV] = None
         self.qr_overlay: Optional[mpv.ImageOverlay] = None
+        self.qr_box_size = qr_box_size
+        self.qr_position = qr_position
         self.update_qr(
             qr_string,
         )
@@ -47,7 +77,7 @@ class Player:
                 self.quit_callback()
 
     def update_qr(self, qr_string: str) -> None:
-        qr = QRCode(box_size=5, border=1)
+        qr = QRCode(box_size=self.qr_box_size, border=1)
         qr.add_data(qr_string)
         qr.make()
         self.qr = qr.make_image().convert("RGBA")
@@ -62,8 +92,19 @@ class Player:
         osd_width: int = cast(int, self.mpv.osd_width)
         osd_height: int = cast(int, self.mpv.osd_height)
 
-        x_pos = osd_width - self.qr.width - 10
-        y_pos = osd_height - self.qr.height - 10
+        match self.qr_position:
+            case QRPosition.BOTTOM_LEFT:
+                x_pos = osd_width - self.qr.width - 10
+                y_pos = osd_height - self.qr.height - 10
+            case QRPosition.BOTTOM_RIGHT:
+                x_pos = 10
+                y_pos = osd_height - self.qr.height - 10
+            case QRPosition.TOP_LEFT:
+                x_pos = osd_width - self.qr.width - 10
+                y_pos = 10
+            case QRPosition.TOP_RIGHT:
+                x_pos = 10
+                y_pos = 10
 
         self.qr_overlay = self.mpv.create_image_overlay(self.qr, pos=(x_pos, y_pos))
 

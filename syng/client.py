@@ -36,7 +36,7 @@ from socketio.exceptions import ConnectionError
 import engineio
 from yaml import load, Loader
 
-from syng.player_libmpv import Player
+from syng.player_libmpv import Player, QRPosition
 
 from . import jsonencoder
 from .entry import Entry
@@ -60,6 +60,8 @@ def default_config() -> dict[str, Optional[int | str]]:
         "waiting_room_policy": None,
         "key": None,
         "buffer_in_advance": 2,
+        "qr_box_size": 5,
+        "qr_position": "bottom-left",
         "show_advanced": False,
     }
 
@@ -102,6 +104,15 @@ class State:
             - `None`, performers are always added to the queue.
         * `buffer_in_advance` (`int`): The number of songs, that are buffered in
             advance.
+        * `qr_box_size` (`int`): The size of one box in the QR code.
+        * `qr_position` (`str`): The position of the QR code on the screen. One of:
+            - `top-left`
+            - `top-right`
+            - `bottom-left`
+            - `bottom-right`
+        * `show_advanced` (`bool`): If the advanced options should be shown in the
+            gui.
+
     :type config: dict[str, Any]:
     """
 
@@ -128,7 +139,10 @@ class Client:
         self.currentLock = asyncio.Semaphore(0)
         self.buffer_in_advance = config["config"]["buffer_in_advance"]
         self.player = Player(
-            f"{config['config']['server']}/{config['config']['room']}", self.quit_callback
+            f"{config['config']['server']}/{config['config']['room']}",
+            1 if config["config"]["qr_box_size"] < 1 else config["config"]["qr_box_size"],
+            QRPosition.from_string(config["config"]["qr_position"]),
+            self.quit_callback,
         )
         self.register_handlers()
 

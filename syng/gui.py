@@ -330,6 +330,17 @@ class OptionFrame(QWidget):
         self.date_time_options: dict[str, tuple[QDateTimeEdit, QCheckBox]] = {}
         self.rows: dict[str, tuple[QLabel, QWidget | QLayout]] = {}
 
+    @property
+    def option_names(self) -> set[str]:
+        return set(
+            self.string_options.keys()
+            | self.int_options.keys()
+            | self.choose_options.keys()
+            | self.bool_options.keys()
+            | self.list_options.keys()
+            | self.date_time_options.keys()
+        )
+
     def get_config(self) -> dict[str, Any]:
         config: dict[str, Any] = {}
         for name, textbox in self.string_options.items():
@@ -446,15 +457,18 @@ class GeneralConfig(OptionFrame):
             "Buffer the next songs in advance",
             int(config["buffer_in_advance"]),
         )
+        self.add_int_option("qr_box_size", "QR Code Box Size", int(config["qr_box_size"]))
+        self.add_choose_option(
+            "qr_position",
+            "QR Code Position",
+            ["top-left", "top-right", "bottom-left", "bottom-right"],
+            config["qr_position"],
+        )
+
+        self.simple_options = ["server", "room", "secret"]
 
         if not config["show_advanced"]:
-            for option in [
-                "waiting_room_policy",
-                "last_song",
-                "preview_duration",
-                "key",
-                "buffer_in_advance",
-            ]:
+            for option in self.option_names.difference(self.simple_options):
                 self.rows[option][0].setVisible(False)
                 widget_or_layout = self.rows[option][1]
                 if isinstance(widget_or_layout, QWidget):
@@ -518,13 +532,9 @@ class SyngGui(QMainWindow):
         self.exportbutton.setVisible(state)
         self.importbutton.setVisible(state)
 
-        for option in [
-            "waiting_room_policy",
-            "last_song",
-            "preview_duration",
-            "key",
-            "buffer_in_advance",
-        ]:
+        for option in self.general_config.option_names.difference(
+            self.general_config.simple_options
+        ):
             self.general_config.rows[option][0].setVisible(state)
             widget_or_layout = self.general_config.rows[option][1]
             if isinstance(widget_or_layout, QWidget):
