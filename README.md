@@ -25,9 +25,9 @@ The playback client uses [mpv](https://mpv.io/) for playback and can therefore p
 Join our [matrix room](https://matrix.to/#/#syng:matrix.org) or follow us on [mastodon](https://floss.social/@syng) for update notifications and support.
 
 # Screenshots
-<img src="https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng.png" alt="Main Window" height=200/>
-<img src="https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng_advanced.png" alt="Main Window (Advanced)" height=200/>
-<img src="https://raw.githubusercontent.com/christofsteel/syng/3a537760d31f3ac81426d2cbbc06a63b47d3e485/resources/screenshots/syng-web.png" alt="Web Interface" height=200/>
+<img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng.png" alt="Main Window" height=250/> <img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_advanced.png" alt="Main Window (Advanced)" height=250/><img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_web2.png" alt="Web Interface" height=250/>
+
+<img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_mobile_search.png" alt="Web Interface on Mobile" height=250/>  <img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_player_next_up.png" alt="Player (next up)" height=250/> <img src="https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_player_song.png" alt="Player playing a song" height=250/>
 
 # Client
 
