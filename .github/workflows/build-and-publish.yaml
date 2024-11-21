@@ -29,13 +29,14 @@ jobs:
         with:
           repository: christofsteel/syng
 
-      - name: Download and extract latest MPV nightly
-        run: |
-          Invoke-WebRequest -Uri https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-windows-msvc.zip -OutFile mpv-x86_64-windows-msvc.zip
-          Expand-Archive -Path mpv-x86_64-windows-msvc.zip -DestinationPath .
-
       - name: Install 7-Zip
         run: choco install -y 7zip
+
+      - name: Download and extract latest MPV nightly
+        run: |
+          Invoke-WebRequest -Uri https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20241121/mpv-dev-x86_64-20241121-git-4b11f66.7z -OutFile mpv.7z
+          7z x mpv.7z
+
 
       - name: Download and extract FFMPEG 7.1
         run: |
@@ -48,8 +49,9 @@ jobs:
           Copy-Item -Recurse -Verbose syng work/syng
           Copy-Item -Verbose requirements-client.txt work/requirements.txt
           Copy-Item -Verbose resources/icons/syng.ico work/
-          Copy-Item -Verbose mpv.exe work/
-          Copy-Item -Verbose vulkan-1.dll work/
+          Copy-Item -Verbose syng/static/background.png work/
+          Copy-Item -Verbose syng/static/background20perc.png work/
+          Copy-Item -Verbose libmpv-2.dll work/
           Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/
 
       - uses: actions/setup-python@v5
@@ -70,8 +72,8 @@ jobs:
 
       - name: Bundle Syng
         run: |
-          pip install -r requirements.txt
-          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-binary '.\mpv.exe;.' --add-binary '.\vulkan-1.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+          pip install -r requirements-client.txt
+          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
 
       - name: Upload artifact
@@ -110,18 +112,18 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-      - name: Build and push Docker image
-        id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./resources/docker/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+      # - name: Build and push Docker image
+      #   id: push
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     context: .
+      #     file: ./resources/docker/Dockerfile
+      #     push: true
+      #     tags: ${{ steps.meta.outputs.tags }}
+      #     labels: ${{ steps.meta.outputs.labels }}
+      # - name: Generate artifact attestation
+      #   uses: actions/attest-build-provenance@v1
+      #   with:
+      #     subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+      #     subject-digest: ${{ steps.push.outputs.digest }}
+      #     push-to-registry: true
