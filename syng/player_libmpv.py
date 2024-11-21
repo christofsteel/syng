@@ -28,7 +28,7 @@ class QRPosition(Enum):
             case "bottom-right":
                 return QRPosition.BOTTOM_RIGHT
             case _:
-                return QRPosition.BOTTOM_LEFT
+                return QRPosition.BOTTOM_RIGHT
 
 
 class Player:
@@ -93,16 +93,16 @@ class Player:
         osd_height: int = cast(int, self.mpv.osd_height)
 
         match self.qr_position:
-            case QRPosition.BOTTOM_LEFT:
+            case QRPosition.BOTTOM_RIGHT:
                 x_pos = osd_width - self.qr.width - 10
                 y_pos = osd_height - self.qr.height - 10
-            case QRPosition.BOTTOM_RIGHT:
+            case QRPosition.BOTTOM_LEFT:
                 x_pos = 10
                 y_pos = osd_height - self.qr.height - 10
-            case QRPosition.TOP_LEFT:
+            case QRPosition.TOP_RIGHT:
                 x_pos = osd_width - self.qr.width - 10
                 y_pos = 10
-            case QRPosition.TOP_RIGHT:
+            case QRPosition.TOP_LEFT:
                 x_pos = 10
                 y_pos = 10
 

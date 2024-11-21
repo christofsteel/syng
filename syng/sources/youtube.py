@@ -19,7 +19,6 @@ from yt_dlp.utils import DownloadError
 from platformdirs import user_cache_dir
 
 
-
 from ..entry import Entry
 from ..result import Result
 from .source import Source, available_sources
@@ -165,7 +164,7 @@ class YoutubeSource(Source):
           Examples are ``/c/CCKaraoke`` or
           ``/channel/UCwTRjvjVge51X-ILJ4i22ew``
         - ``tmp_dir``: The folder, where temporary files are stored. Default
-          is ``/tmp/syng``
+          is ``${XDG_CACHE_DIR}/syng``.
         - ``max_res``: The highest video resolution, that should be
           downloaded/streamed. Default is 720.
         - ``start_streaming``: If set to ``True``, the client starts streaming

@@ -65,8 +65,10 @@ You can host karaoke events using the default configuration. But if you need mor
   * `last_song`: `none` or a time in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601). When a song is added to the queue, and its ending time exceeds this value, it is rejected.
   * `preview_duration`: Before every song, there is a short slide for the next performer. This sets how long it is shown in seconds.
   * `key`: If the server, you want to connect to is in _private_ or _restricted_ mode, this will authorize the client. Private server reject unauthorized playback clients, restricted servers limit the searching to be _client only_.
-  * `mpv_options`: additional options forwarded to `mpv`.
-  * `show_advanced`: show advanced options in the configuration GUI.
+  * `buffer_in_advance`: How many songs should be buffered in advanced.
+  * `qr_box_size`: The size of one box (think pixel) of the QR Code in the playback window.
+  * `qr_position`: Position of the QR Code in the playback window. One of `bottom-left`, `bottom-right`, `top-left`, `top-right`.
+  * `show_advanced`: Show advanced options in the configuration GUI.
 
 In addition to the general config, has its own configuration under the `sources` key of the configuration.
 
@@ -77,6 +79,7 @@ Configuration is done under `sources` → `youtube` with the following settings:
   * `enabled`: `true` or `false`.
   * `channels`: list of YouTube channels. If this is a nonempty list, Syng will only search these channels, otherwise YouTube will be searched as a whole.
   * `tmp_dir`: YouTube videos will be downloaded before playback. This sets the directory, where YouTube videos are stored.
+  * `max_res`: Maximum resolution of a video.
   * `start_streaming`: `true` or `false`. If `true`, videos will be streamed directly using `mpv`, if the video is not cached beforehand. Otherwise, Syng waits for the video to be downloaded.  
 
 ### S3
@@ -112,8 +115,11 @@ config:
   secret: <Random secret>
   server: https://syng.rocks
   waiting_room_policy: none
-  mpv_options: ''
-  show_advanced: False
+  show_advanced: false
+  buffer_in_advance: 2
+  qr_box_size: 5
+  qr_position: bottom-right
+  
 sources:
   files:
     dir: .
@@ -127,15 +133,16 @@ sources:
     endpoint: ''
     extensions:
     - mp3+cdg
-    index_file: ~/.cache/syng/s3-index
+    index_file: ${XDG_CACHE_DIR}/syng/s3-index
     secret_key: ''
     secure: true
-    tmp_dir: /tmp/syng
+    tmp_dir: ${XDG_CACHE_DIR}/syng
   youtube:
     channels: []
     enabled: true
     start_streaming: false
-    tmp_dir: /tmp/syng
+    max_res: 720
+    tmp_dir: ${XDG_CACHE_DIR}/syng
 ```
 
 # Server

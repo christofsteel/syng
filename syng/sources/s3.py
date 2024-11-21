@@ -34,7 +34,7 @@ class S3Source(FileBasedSource):
         - ``endpoint``, ``access_key``, ``secret_key``, ``secure``, ``bucket``: These
           will simply be forwarded to the ``minio`` client.
         - ``tmp_dir``: The folder, where temporary files are stored. Default
-          is ``/tmp/syng``
+          is ``${XDG_CACHE_DIR}/syng``
         - ``index_file``: If the file does not exist, saves the paths of
           files from the s3 instance to this file. If it exists, loads
           the list of files from this file.

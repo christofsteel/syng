@@ -61,7 +61,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "key": None,
         "buffer_in_advance": 2,
         "qr_box_size": 5,
-        "qr_position": "bottom-left",
+        "qr_position": "bottom-right",
         "show_advanced": False,
     }
 
