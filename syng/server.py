@@ -574,7 +574,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        print(data)
         state.queue.update(
             data["uuid"],
             lambda item: item.update(**data["meta"], incomplete_data=False),
