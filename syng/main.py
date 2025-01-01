@@ -11,7 +11,8 @@ run the client or server functions.
 Client usage: syng client [-h] [--room ROOM] [--secret SECRET] \
                     [--config-file CONFIG_FILE] [--server SERVER]
 Server usage: syng server [-h] [--host HOST] [--port PORT] [--root-folder ROOT_FOLDER] \
-                    [--registration-keyfile REGISTRATION_KEYFILE] [--private] [--restricted]
+                    [--registration-keyfile REGISTRATION_KEYFILE] [--private] [--restricted] \
+                    [--admin-password PASSWORD]
 GUI usage: syng gui
 
 The config file for the client should be a yaml file in the following style::
@@ -108,6 +109,7 @@ def main() -> None:
         server_parser.add_argument("--registration-keyfile", "-k", default=None)
         server_parser.add_argument("--private", "-P", action="store_true", default=False)
         server_parser.add_argument("--restricted", "-R", action="store_true", default=False)
+        server_parser.add_argument("--admin-password", "-A", default=None)
 
     args = parser.parse_args()
 

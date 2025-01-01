@@ -1227,6 +1227,8 @@ class Server:
         self.app.router.add_route("*", "/{room}/", self.root_handler)
 
         self.app.cleanup_ctx.append(self.background_tasks)
+        if args.admin_password:
+            self.sio.instrument(auth={"username": "admin", "password": args.admin_password})
 
         web.run_app(self.app, host=args.host, port=args.port)
 
