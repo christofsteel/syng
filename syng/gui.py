@@ -27,9 +27,9 @@ except ImportError:
     pass
 
 from qasync import QEventLoop, QApplication
-from PyQt6.QtCore import QTimer, Qt
-from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QDateTime, QTimer, Qt
+from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
@@ -145,7 +145,7 @@ class OptionFrame(QWidget):
             lambda: self.path_setter(
                 file_name_widget,
                 QFileDialog.getOpenFileName(
-                    self, "Select File", directory=os.path.dirname(file_name_widget.text())
+                    self, "Select File", dir=os.path.dirname(file_name_widget.text())
                 )[0],
             )
         )
@@ -179,7 +179,7 @@ class OptionFrame(QWidget):
             lambda: self.path_setter(
                 folder_name_widget,
                 QFileDialog.getExistingDirectory(
-                    self, "Select Folder", directory=folder_name_widget.text()
+                    self, "Select Folder", dir=folder_name_widget.text()
                 ),
             )
         )
@@ -293,7 +293,7 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, self.choose_options[name])
         self.rows[name] = (label, self.choose_options[name])
 
-    def add_date_time_option(self, name: str, description: str, value: str) -> None:
+    def add_date_time_option(self, name: str, description: str, value: Optional[str]) -> None:
         label = QLabel(description, self)
         date_time_layout = QHBoxLayout()
         date_time_widget = QDateTimeEdit(self)
@@ -305,10 +305,12 @@ class OptionFrame(QWidget):
         self.date_time_options[name] = (date_time_widget, date_time_enabled)
         date_time_widget.setCalendarPopup(True)
         try:
-            date_time_widget.setDateTime(datetime.fromisoformat(value))
+            if value is None:
+                raise ValueError("Value is None")
+            date_time_widget.setDateTime(QDateTime.fromString(value, Qt.DateFormat.ISODate))
             date_time_enabled.setChecked(True)
         except (TypeError, ValueError):
-            date_time_widget.setDateTime(datetime.now())
+            date_time_widget.setDateTime(QDateTime.currentDateTime())
             date_time_widget.setEnabled(False)
             date_time_enabled.setChecked(False)
 
@@ -365,7 +367,7 @@ class OptionFrame(QWidget):
                 config[name] = None
                 continue
             try:
-                config[name] = picker.dateTime().toPyDateTime().isoformat()
+                config[name] = picker.dateTime().toString(format=Qt.DateFormat.ISODate)
             except ValueError:
                 config[name] = None
 
@@ -486,7 +488,7 @@ class GeneralConfig(OptionFrame):
 
 
 class SyngGui(QMainWindow):
-    def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
+    def closeEvent(self, event: Optional[QCloseEvent]) -> None:
         if self.client is not None:
             self.client.quit_callback()
 
@@ -518,11 +520,11 @@ class SyngGui(QMainWindow):
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttons_layout.addItem(spacer_item)
 
-        self.savebutton = QPushButton("Save")
-        self.savebutton.clicked.connect(self.save_config)
-        self.buttons_layout.addWidget(self.savebutton)
+        # self.savebutton = QPushButton("Save")
+        # self.savebutton.clicked.connect(self.save_config)
+        # self.buttons_layout.addWidget(self.savebutton)
 
-        self.startbutton = QPushButton("Save and Start")
+        self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
