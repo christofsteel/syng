@@ -310,14 +310,14 @@ class Server:
                 {"msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"},
                 room=sid,
             )
-            return
+            return None
 
         if "uid" not in data or (
             (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
             or (data["uid"] is None and state.queue.find_by_name(data["performer"]) is None)
         ):
             await self.append_to_queue(state, entry, sid)
-            return
+            return None
 
         entry.uid = data["uid"]
 
@@ -463,11 +463,11 @@ class Server:
         """
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
-            return
+            return None
 
         if predict([data["performer"]]) == [1]:
             await self.sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
-            return
+            return None
 
         if state.client.config["waiting_room_policy"] and (
             state.client.config["waiting_room_policy"].lower() == "forced"
@@ -493,7 +493,7 @@ class Server:
                     },
                     room=sid,
                 )
-                return
+                return None
 
         source_obj = state.client.sources[data["source"]]
 
@@ -510,7 +510,7 @@ class Server:
                 {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
                 room=sid,
             )
-            return
+            return None
 
         entry.uid = data["uid"] if "uid" in data else None
 
@@ -534,11 +534,11 @@ class Server:
         """
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
-            return
+            return None
 
         if predict([data["performer"]]) == [1]:
             await self.sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
-            return
+            return None
 
         if state.client.config["waiting_room_policy"].lower() == "forced":
             await self.sio.emit(
@@ -546,7 +546,7 @@ class Server:
                 {"type": "WAITING_ROOM_FORCED"},
                 room=sid,
             )
-            return
+            return None
 
         source_obj = state.client.sources[data["source"]]
 
@@ -560,7 +560,7 @@ class Server:
                 {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
                 room=sid,
             )
-            return
+            return None
 
         entry.uid = data["uid"] if "uid" in data else None
 
