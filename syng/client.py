@@ -38,7 +38,7 @@ from yaml import load, Loader
 
 from syng.player_libmpv import Player, QRPosition
 
-from . import jsonencoder
+from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
 from .sources import configure_sources, Source
 from .log import logger
@@ -156,6 +156,27 @@ class Client:
         self.sio.on("search", self.handle_search)
         self.sio.on("client-registered", self.handle_client_registered)
         self.sio.on("request-config", self.handle_request_config)
+        self.sio.on("msg", self.handle_msg)
+
+    async def handle_msg(self, data: dict[str, Any]) -> None:
+        """
+        Handle the "msg" message.
+
+        This function is used to print messages from the server to the console.
+
+        :param data: A dictionary with the `msg` entry.
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+
+        msg_type = data.get("type", "info")
+        match msg_type:
+            case "info":
+                logger.info(data["msg"])
+            case "warning":
+                logger.warning(data["msg"])
+            case "error":
+                logger.error(data["msg"])
 
     async def handle_update_config(self, data: dict[str, Any]) -> None:
         """
@@ -242,6 +263,7 @@ class Client:
             "waiting_room": self.state.waiting_room,
             "recent": self.state.recent,
             "config": self.state.config,
+            "version": SYNG_VERSION,
         }
         await self.sio.emit("register-client", data)
 
@@ -389,7 +411,8 @@ class Client:
             if self.state.current_source is None:  # A possible race condition can occur here
                 await self.sio.emit("get-first")
         else:
-            logger.warning("Registration failed")
+            reason = data.get("reason", "Unknown")
+            logger.warning(f"Registration failed: {reason}")
             await self.sio.disconnect()
 
     async def handle_request_config(self, data: dict[str, Any]) -> None:

@@ -35,6 +35,7 @@ from profanity_check import predict
 from .result import Result
 
 from . import jsonencoder
+from . import SYNG_VERSION, SYNG_PROTOCOL_VERSION
 from .log import logger
 from .entry import Entry
 from .queue import Queue
@@ -746,6 +747,7 @@ class Server:
             - `recent`, a list of initial entries for the recent list. The entries
                         are encoded as a dictionary.
             - `secret`, the secret of the room
+            - `version`, the version of the client as a triple of integers
             - `key`, a registration key given out by the server administrator
 
         This will register a new playback client to a specific room. If there
@@ -779,6 +781,49 @@ class Server:
         :rtype: None
         """
 
+        if "version" not in data:
+            await self.sio.emit(
+                "client-registered",
+                {"success": False, "room": None, "reason": "NO_VERSION"},
+                room=sid,
+            )
+            return
+
+        client_version = tuple(data["version"])
+
+        if client_version < SYNG_PROTOCOL_VERSION:
+            await self.sio.emit(
+                "msg",
+                {"type": "error", "msg": "Client is incompatible and outdated. Please update."},
+                room=sid,
+            )
+            await self.sio.emit(
+                "client-registered",
+                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
+                room=sid,
+            )
+            return
+
+        if client_version > SYNG_VERSION:
+            await self.sio.emit(
+                "msg",
+                {"type": "error", "msg": "Server is outdated. Please update."},
+                room=sid,
+            )
+            await self.sio.emit(
+                "client-registered",
+                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
+                room=sid,
+            )
+            return
+
+        if client_version < SYNG_VERSION:
+            await self.sio.emit(
+                "msg",
+                {"type": "warning", "msg": "Client is compatible but outdated. Please update."},
+                room=sid,
+            )
+
         def gen_id(length: int = 4) -> str:
             client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
             if client_id in self.clients:
@@ -793,7 +838,11 @@ class Server:
         ):
             await self.sio.emit(
                 "client-registered",
-                {"success": False, "room": None},
+                {
+                    "success": False,
+                    "room": None,
+                    "reason": "PRIVATE",
+                },
                 room=sid,
             )
             return
