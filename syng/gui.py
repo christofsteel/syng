@@ -801,10 +801,13 @@ class SyngGui(QMainWindow):
 class LoggingLabelHandler(logging.Handler):
     def __init__(self, label: QLabel):
         super().__init__()
+        self.loglines = []
         self.label = label
 
     def emit(self, record: logging.LogRecord) -> None:
-        self.label.setText(self.format(record))
+        self.loglines.append(self.format(record))
+        self.loglines = self.loglines[-5:]
+        self.label.setText("\n".join(self.loglines))
 
 
 def run_gui() -> None:
