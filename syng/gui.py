@@ -801,7 +801,7 @@ class SyngGui(QMainWindow):
 class LoggingLabelHandler(logging.Handler):
     def __init__(self, label: QLabel):
         super().__init__()
-        self.loglines = []
+        self.loglines: list[str] = []
         self.label = label
 
     def emit(self, record: logging.LogRecord) -> None:
