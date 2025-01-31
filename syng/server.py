@@ -19,6 +19,7 @@ import hashlib
 import os
 import random
 import string
+import uuid
 from json.decoder import JSONDecodeError
 from argparse import Namespace
 from dataclasses import dataclass
@@ -281,7 +282,7 @@ class Server:
     @with_state
     async def handle_waiting_room_append(
         self, state: State, sid: str, data: dict[str, Any]
-    ) -> None:
+    ) -> Optional[str]:
         """
         Append a song to the waiting room.
 
@@ -294,7 +295,8 @@ class Server:
         :param data: A dictionary encoding the entry, that should be added to the
             waiting room.
         :type data: dict[str, Any]
-        :rtype: None
+        :return: The uuid of the added entry or None if the entry could not be added
+        :rtype: Optional[str]
         """
         source_obj = state.client.sources[data["source"]]
         entry = await source_obj.get_entry(
@@ -325,6 +327,7 @@ class Server:
             entry,
             room=state.sid,
         )
+        return str(entry.uuid)
 
     async def append_to_queue(
         self, state: State, entry: Entry, report_to: Optional[str] = None
@@ -421,7 +424,7 @@ class Server:
             await self.sio.emit("err", {"type": "JSON_MALFORMED"}, room=sid)
 
     @with_state
-    async def handle_append(self, state: State, sid: str, data: dict[str, Any]) -> None:
+    async def handle_append(self, state: State, sid: str, data: dict[str, Any]) -> Optional[str]:
         """
         Handle the "append" message.
 
@@ -454,7 +457,8 @@ class Server:
         :param data: A dictionary encoding the entry, that should be added to the
             queue.
         :type data: dict[str, Any]
-        :rtype: None
+        :return: The uuid of the added entry or None if the entry could not be added
+        :rtype: Optional[str]
         """
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
@@ -510,9 +514,12 @@ class Server:
         entry.uid = data["uid"] if "uid" in data else None
 
         await self.append_to_queue(state, entry, sid)
+        return str(entry.uuid)
 
     @with_state
-    async def handle_append_anyway(self, state: State, sid: str, data: dict[str, Any]) -> None:
+    async def handle_append_anyway(
+        self, state: State, sid: str, data: dict[str, Any]
+    ) -> Optional[str]:
         """
         Appends a song to the queue, even if the performer is already in queue.
 
@@ -520,6 +527,9 @@ class Server:
         in queue.
 
         Only if the waiting_room_policy is not configured as forced.
+
+        :return: The uuid of the added entry or None if the entry could not be added
+        :rtype: Optional[str]
         """
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
@@ -554,6 +564,7 @@ class Server:
         entry.uid = data["uid"] if "uid" in data else None
 
         await self.append_to_queue(state, entry, sid)
+        return str(entry.uuid)
 
     @playback
     @with_state
@@ -922,7 +933,7 @@ class Server:
         :type sid: str
         :param data: A dictionary, containing at least a "room" entry.
         :type data: dict[str, Any]
-        :returns: True, if the room exist, False otherwise
+        :return: True, if the room exist, False otherwise
         :rtype: bool
         """
         if data["room"] in self.clients:
@@ -946,7 +957,7 @@ class Server:
         :type sid: str:
         :param data: A dictionary with at least a "secret" entry.
         :type data: dict[str, Any]
-        :returns: True, if the secret is correct, False otherwise
+        :return: True, if the secret is correct, False otherwise
         :rtype: bool
         """
         is_admin: bool = data["secret"] == state.client.config["secret"]
@@ -1063,7 +1074,7 @@ class Server:
             await self.sio.leave_room(sid, room)
 
     @with_state
-    async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> None:
+    async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> str:
         """
         Handle the "search" message.
 
@@ -1078,27 +1089,48 @@ class Server:
         :type sid: str
         :param data: A dictionary with at least a "query" entry.
         :type data: dict[str, str]
-        :rtype: None
+        :return: The search id
+        :rtype: str
         """
         query = data["query"]
+        search_id = uuid.uuid4()
         if (
             self.app["type"] != "restricted"
             or "key" in state.client.config
             and self.check_registration(state.client.config["key"])
         ):
-            results_list = await asyncio.gather(
-                *[
-                    state.client.sources[source].search(query)
-                    for source in state.client.sources_prio
-                ]
-            )
-
-            results = [
-                search_result for source_result in results_list for search_result in source_result
-            ]
-            await self.send_search_results(sid, results)
+            asyncio.create_task(self.search_and_emit(search_id, query, state, sid))
         else:
-            await self.sio.emit("search", {"query": query, "sid": sid}, room=state.sid)
+            await self.sio.emit(
+                "search", {"query": query, "sid": sid, "search_id": search_id}, room=state.sid
+            )
+        return str(search_id)
+
+    async def search_and_emit(
+        self, search_id: uuid.UUID, query: str, state: State, sid: str
+    ) -> None:
+        """
+        Search for a query on a source and emit the results.
+
+        :param search_id: The search id
+        :type search_id: uuid.UUID
+        :param query: The query to search for
+        :type query: str
+        :param state: The state of the room
+        :type state: State
+        :param sid: The session id of the client
+        :type sid: str
+        :rtype: list[Result]
+        """
+
+        results_list = await asyncio.gather(
+            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
+        )
+
+        results = [
+            search_result for source_result in results_list for search_result in source_result
+        ]
+        await self.send_search_results(sid, results, search_id)
 
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:
@@ -1111,6 +1143,7 @@ class Server:
         The data dictionary should have the following keys:
             - `sid`, the session id of the web client (str)
             - `results`, a list of search results (list[dict[str, Any]])
+            - `search_id`, the search id (str) (Optional)
 
         :param sid: The session id of the playback client
         :type sid: str
@@ -1119,11 +1152,15 @@ class Server:
         :rtype: None
         """
         web_sid = data["sid"]
+        search_id = data["search_id"] if "search_id" in data else None
+
         results = [Result.from_dict(result) for result in data["results"]]
 
-        await self.send_search_results(web_sid, results)
+        await self.send_search_results(web_sid, results, search_id)
 
-    async def send_search_results(self, sid: str, results: list[Result]) -> None:
+    async def send_search_results(
+        self, sid: str, results: list[Result], search_id: Optional[uuid.UUID]
+    ) -> None:
         """
         Send search results to a client.
 
@@ -1135,7 +1172,7 @@ class Server:
         """
         await self.sio.emit(
             "search-results",
-            {"results": results},
+            {"results": results, "search_id": search_id},
             room=sid,
         )
 

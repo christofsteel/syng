@@ -334,6 +334,7 @@ class Client:
         """
         query = data["query"]
         sid = data["sid"]
+        search_id = data["search_id"]
         results_list = await asyncio.gather(
             *[source.search(query) for source in self.sources.values()]
         )
@@ -344,7 +345,9 @@ class Client:
             for search_result in source_result
         ]
 
-        await self.sio.emit("search-results", {"results": results, "sid": sid})
+        await self.sio.emit(
+            "search-results", {"results": results, "sid": sid, "search_id": search_id}
+        )
 
     async def handle_client_registered(self, data: dict[str, Any]) -> None:
         """
