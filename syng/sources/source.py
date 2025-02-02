@@ -128,6 +128,7 @@ class Source(ABC):
         self._index: list[str] = config["index"] if "index" in config else []
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
+        self.build_index = config.get("build_index", False)
 
     async def get_entry(
         self,
@@ -361,13 +362,16 @@ class Source(ABC):
         :rtype: Optional[dict[str, Any] | list[dict[str, Any]]
         """
 
+        if not self.build_index:
+            return None
         logger.warning(f"{self.source_name}: updating index")
         new_index = await self.update_file_list()
         logger.warning(f"{self.source_name}: done")
         if new_index is not None:
             self._index = new_index
-            chunked = zip_longest(*[iter(new_index)] * 1000, fillvalue="")
-            return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+            # chunked = zip_longest(*[iter(new_index)] * 1000, fillvalue="")
+            # return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+            return await self.get_config()
         return None
 
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
@@ -388,13 +392,18 @@ class Source(ABC):
         :return: The part of the config, that should be sended to the server.
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
-        if not self._index:
-            self._index = []
-            logger.warning(f"{self.source_name}: generating index")
-            self._index = await self.get_file_list()
-            logger.warning(f"{self.source_name}: done")
-        chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
-        return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+        packages = []
+        if self.build_index:
+            if not self._index:
+                self._index = []
+                logger.warning(f"{self.source_name}: generating index")
+                self._index = await self.get_file_list()
+                logger.warning(f"{self.source_name}: done")
+            chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
+            packages = [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+        if len(packages) == 1:
+            return first_package
+        return packages
 
     def add_to_config(self, config: dict[str, Any], running_number: int) -> None:
         """

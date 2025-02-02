@@ -15,7 +15,7 @@ except ImportError:
     PYMEDIAINFO_AVAILABLE = False
 
 from .source import Source
-from ..config import ListStrOption, ConfigOption
+from ..config import BoolOption, ListStrOption, ConfigOption
 
 
 class FileBasedSource(Source):
@@ -31,7 +31,8 @@ class FileBasedSource(Source):
             ListStrOption(),
             "List of filename extensions\n(mp3+cdg, mp4, ...)",
             ["mp3+cdg"],
-        )
+        ),
+        "build_index": ConfigOption(BoolOption(), "Build index on startup", True),
     }
 
     def __init__(self, config: dict[str, Any]):
