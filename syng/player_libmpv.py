@@ -57,6 +57,7 @@ class Player:
             "scale": "bilinear",
         }
         self.quit_callback = quit_callback
+        self.callback_audio_load: Optional[str] = None
 
     def start(self) -> None:
         self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
@@ -75,6 +76,10 @@ class Player:
             if not self.closing:
                 self.closing = True
                 self.quit_callback()
+        elif e["event"] == b"file-loaded":
+            if self.callback_audio_load is not None and self.mpv is not None:
+                self.mpv.audio_add(self.callback_audio_load)
+                self.callback_audio_load = None
 
     def update_qr(self, qr_string: str) -> None:
         qr = QRCode(box_size=self.qr_box_size, border=1)
@@ -173,7 +178,8 @@ class Player:
         loop = asyncio.get_running_loop()
         self.mpv.pause = True
         if audio:
-            self.mpv.loadfile(video, audio_file=audio)
+            self.callback_audio_load = audio
+            self.mpv.loadfile(video)
         else:
             self.mpv.loadfile(video)
         self.mpv.pause = False
