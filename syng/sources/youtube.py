@@ -193,16 +193,7 @@ class YoutubeSource(Source):
         ),
     }
 
-    # pylint: disable=too-many-instance-attributes
-    def __init__(self, config: dict[str, Any]):
-        """
-        Create the YouTube source.
-
-        :param config: The configuration for the source.
-        :type config: dict[str, Any]
-        """
-        super().__init__(config)
-
+    def apply_config(self, config: dict[str, Any]) -> None:
         self.channels: list[str] = config["channels"] if "channels" in config else []
         self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
         try:

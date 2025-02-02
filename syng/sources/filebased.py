@@ -35,10 +35,7 @@ class FileBasedSource(Source):
         "build_index": ConfigOption(BoolOption(), "Build index on startup", True),
     }
 
-    def __init__(self, config: dict[str, Any]):
-        """Initialize the file module."""
-        super().__init__(config)
-
+    def apply_config(self, config: dict[str, Any]) -> None:
         self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
         self.extra_mpv_options = {"scale": "oversample"}
 

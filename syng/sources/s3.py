@@ -57,10 +57,8 @@ class S3Source(FileBasedSource):
         ),
     }
 
-    def __init__(self, config: dict[str, Any]):
-        """Create the source."""
-        super().__init__(config)
-
+    def apply_config(self, config: dict[str, Any]) -> None:
+        super().apply_config(config)
         if (
             MINIO_AVAILABE
             and "endpoint" in config

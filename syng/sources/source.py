@@ -22,7 +22,6 @@ from typing import Type
 from abc import ABC, abstractmethod
 
 
-
 from ..log import logger
 from ..entry import Entry
 from ..result import Result
@@ -130,6 +129,7 @@ class Source(ABC):
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
         self.build_index = config.get("build_index", False)
+        self.apply_config(config)
 
     async def get_entry(
         self,
@@ -436,6 +436,19 @@ class Source(ABC):
         if running_number == 0:
             self._index = []
         self._index += config["index"]
+
+    @abstractmethod
+    def apply_config(self, config: dict[str, Any]) -> None:
+        """
+        Apply the a config to the source.
+
+        This should be implemented by each source individually.
+
+        :param config: The part of the config to apply.
+        :type config: dict[str, Any]
+        :rtype: None
+        """
+        pass
 
 
 available_sources: dict[str, Type[Source]] = {}

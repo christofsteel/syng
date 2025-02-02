@@ -25,10 +25,8 @@ class FilesSource(FileBasedSource):
         # "index_file": ("file", "Index file", os.path.join(user_cache_dir("syng"), "files-index")),
     }
 
-    def __init__(self, config: dict[str, Any]):
-        """Initialize the file module."""
-        super().__init__(config)
-
+    def apply_config(self, config: dict[str, Any]) -> None:
+        super().apply_config(config)
         self.dir = config["dir"] if "dir" in config else "."
 
     async def get_file_list(self) -> list[str]:
