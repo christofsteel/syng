@@ -13,6 +13,7 @@ class ConfigOption(Generic[T]):
     type: Option[T]
     description: str
     default: T
+    send_to_server: bool = False
 
 
 class BoolOption(Option[bool]):

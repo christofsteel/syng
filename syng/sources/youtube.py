@@ -175,7 +175,9 @@ class YoutubeSource(Source):
     source_name = "youtube"
     config_schema = Source.config_schema | {
         "enabled": ConfigOption(BoolOption(), "Enable this source", True),
-        "channels": ConfigOption(ListStrOption(), "A list channels\nto search in", []),
+        "channels": ConfigOption(
+            ListStrOption(), "A list channels\nto search in", [], send_to_server=True
+        ),
         "tmp_dir": ConfigOption(
             FolderOption(), "Folder for\ntemporary download", user_cache_dir("syng")
         ),
@@ -222,14 +224,14 @@ class YoutubeSource(Source):
             }
         )
 
-    async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
-        """
-        Return the list of channels in a dictionary with key ``channels``.
-
-        :return: see above
-        :rtype: dict[str, Any]]
-        """
-        return {"channels": self.channels}
+    # async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
+    #     """
+    #     Return the list of channels in a dictionary with key ``channels``.
+    #
+    #     :return: see above
+    #     :rtype: dict[str, Any]]
+    #     """
+    #     return {"channels": self.channels}
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
         """

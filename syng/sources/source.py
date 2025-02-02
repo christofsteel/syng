@@ -123,6 +123,7 @@ class Source(ABC):
           source for documentation.
         :type config: dict[str, Any]
         """
+        self.config: dict[str, Any] = config
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
         self._index: list[str] = config["index"] if "index" in config else []
@@ -401,6 +402,15 @@ class Source(ABC):
                 logger.warning(f"{self.source_name}: done")
             chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
             packages = [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+        first_package = {
+            key: value
+            for key, value in self.config.items()
+            if self.config_schema[key].send_to_server
+        }
+        if not packages:
+            packages = [first_package]
+        else:
+            packages[0] |= first_package
         if len(packages) == 1:
             return first_package
         return packages
