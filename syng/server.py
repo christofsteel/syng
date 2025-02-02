@@ -735,6 +735,49 @@ class Server:
 
             return key in keys
 
+    async def check_client_version(self, client_version: tuple[int, int, int], sid: str) -> bool:
+        """
+        Check if a given version is compatible with the server.
+
+        :param version: The version to check
+        :type version: tuple[int, int, int]
+        :return: True if the version is compatible, False otherwise
+        :rtype: bool
+        """
+        if client_version < SYNG_PROTOCOL_VERSION:
+            await self.sio.emit(
+                "msg",
+                {"type": "error", "msg": "Client is incompatible and outdated. Please update."},
+                room=sid,
+            )
+            await self.sio.emit(
+                "client-registered",
+                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
+                room=sid,
+            )
+            return False
+
+        if client_version > SYNG_VERSION:
+            await self.sio.emit(
+                "msg",
+                {"type": "error", "msg": "Server is outdated. Please update."},
+                room=sid,
+            )
+            await self.sio.emit(
+                "client-registered",
+                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
+                room=sid,
+            )
+            return False
+
+        if client_version < SYNG_VERSION:
+            await self.sio.emit(
+                "msg",
+                {"type": "warning", "msg": "Client is compatible but outdated. Please update."},
+                room=sid,
+            )
+        return True
+
     async def handle_register_client(self, sid: str, data: dict[str, Any]) -> None:
         """
         Handle the "register-client" message.
@@ -790,39 +833,8 @@ class Server:
             return
 
         client_version = tuple(data["version"])
-
-        if client_version < SYNG_PROTOCOL_VERSION:
-            await self.sio.emit(
-                "msg",
-                {"type": "error", "msg": "Client is incompatible and outdated. Please update."},
-                room=sid,
-            )
-            await self.sio.emit(
-                "client-registered",
-                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
-                room=sid,
-            )
+        if not await self.check_client_version(client_version, sid):
             return
-
-        if client_version > SYNG_VERSION:
-            await self.sio.emit(
-                "msg",
-                {"type": "error", "msg": "Server is outdated. Please update."},
-                room=sid,
-            )
-            await self.sio.emit(
-                "client-registered",
-                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
-                room=sid,
-            )
-            return
-
-        if client_version < SYNG_VERSION:
-            await self.sio.emit(
-                "msg",
-                {"type": "warning", "msg": "Client is compatible but outdated. Please update."},
-                room=sid,
-            )
 
         def gen_id(length: int = 4) -> str:
             client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
