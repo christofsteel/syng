@@ -83,6 +83,7 @@ Configuration is done under `sources` → `youtube` with the following settings:
   * `tmp_dir`: YouTube videos will be downloaded before playback. This sets the directory, where YouTube videos are stored.
   * `max_res`: Maximum resolution of a video.
   * `start_streaming`: `true` or `false`. If `true`, videos will be streamed directly using `mpv`, if the video is not cached beforehand. Otherwise, Syng waits for the video to be downloaded.  
+  * `seach_suffix`: A string that is appended to each search query. Default is "karaoke".
 
 ### S3
 
@@ -145,6 +146,7 @@ sources:
     start_streaming: false
     max_res: 720
     tmp_dir: ${XDG_CACHE_DIR}/syng
+    search_suffix: karaoke
 ```
 
 # Server

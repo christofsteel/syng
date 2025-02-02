@@ -22,7 +22,7 @@ from platformdirs import user_cache_dir
 from ..entry import Entry
 from ..result import Result
 from .source import Source, available_sources
-from ..config import BoolOption, ChoiceOption, FolderOption, ListStrOption, ConfigOption
+from ..config import BoolOption, ChoiceOption, FolderOption, ListStrOption, ConfigOption, StrOption
 
 
 class YouTube:
@@ -170,6 +170,8 @@ class YoutubeSource(Source):
         - ``start_streaming``: If set to ``True``, the client starts streaming
           the video, if buffering was not completed. Needs ``youtube-dl`` or
           ``yt-dlp``. Default is False.
+        - ``search_suffix``: A string that is appended to the search query.
+          Default is "karaoke".
     """
 
     source_name = "youtube"
@@ -191,6 +193,12 @@ class YoutubeSource(Source):
             "Start streaming if\ndownload is not complete",
             False,
         ),
+        "search_suffix": ConfigOption(
+            StrOption(),
+            "A string that is appended to each search query",
+            "karaoke",
+            send_to_server=True,
+        ),
     }
 
     def apply_config(self, config: dict[str, Any]) -> None:
@@ -206,6 +214,7 @@ class YoutubeSource(Source):
         self.formatstring = (
             f"bestvideo[height<={self.max_res}]+" f"bestaudio/best[height<={self.max_res}]"
         )
+        self.search_suffix = config.get("search_suffix", "karaoke")
         self.extra_mpv_options = {"ytdl-format": self.formatstring}
         self._yt_dlp = YoutubeDL(
             params={
@@ -279,8 +288,8 @@ class YoutubeSource(Source):
         Search YouTube and the configured channels for the query.
 
         The first results are the results of the configured channels. The next
-        results are the results from youtube as a whole, but the term "Karaoke"
-        is appended to the search query.
+        results are the results from youtube as a whole, a configurable suffix
+        is appended to the search query (default is "karaoke").
 
         All results are sorted by how good they match to the search query,
         respecting their original source (channel or YouTube as a whole).
@@ -338,9 +347,10 @@ class YoutubeSource(Source):
     def _yt_search(self, query: str) -> list[YouTube]:
         """Search youtube as a whole.
 
-        Adds "karaoke" to the query.
+        Adds a configurable suffix to the query. Default is "karaoke".
         """
-        return Search(f"{query} karaoke").results
+        suffix = f" {self.search_suffix}" if self.search_suffix else ""
+        return Search(f"{query}{suffix}").results
 
     def _channel_search(self, query: str, channel: str) -> list[YouTube]:
         """
