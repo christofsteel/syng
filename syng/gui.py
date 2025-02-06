@@ -27,7 +27,7 @@ except ImportError:
     pass
 
 from qasync import QEventLoop, QApplication
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -47,6 +47,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QTabBar,
     QTabWidget,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -207,6 +208,7 @@ class OptionFrame(QWidget):
         label = QLabel(description, self)
 
         self.int_options[name] = QSpinBox(self)
+        self.int_options[name].setMaximum(9999)
         self.int_options[name].setValue(value)
         self.form_layout.addRow(label, self.int_options[name])
         self.rows[name] = (label, self.int_options[name])
@@ -490,6 +492,8 @@ class SyngGui(QMainWindow):
         if self.client is not None:
             self.client.quit_callback()
 
+        self.log_label_handler.cleanup()
+
         self.destroy()
 
     def add_buttons(self, show_advanced: bool) -> None:
@@ -588,7 +592,9 @@ class SyngGui(QMainWindow):
 
         self.qr_label = QLabel(self.qr_widget)
         self.linklabel = QLabel(self.qr_widget)
-        self.notification_label = QLabel("", self.qr_widget)
+        self.notification_label = QTextEdit(self.qr_widget)
+        self.notification_label.setReadOnly(True)
+        # QLabel("", self.qr_widget)
 
         self.qr_layout.addWidget(self.qr_label)
         self.qr_layout.addWidget(self.linklabel)
@@ -640,6 +646,14 @@ class SyngGui(QMainWindow):
             self.add_source_config(source_name, config["sources"][source_name])
 
         self.update_qr()
+
+        self.logqueue: Queue[logging.LogRecord] = Queue()
+        logger.addHandler(QueueHandler(self.logqueue))
+        self.log_label_handler = LoggingLabelHandler(self)
+        self.log_label_handler.log_signal_emiter.log_signal.connect(self.print_log)
+
+        self.syng_client_logging_listener = QueueListener(self.logqueue, self.log_label_handler)
+        self.syng_client_logging_listener.start()
 
         self.setCentralWidget(self.central_widget)
 
@@ -755,25 +769,22 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Save and Start")
 
     def start_syng_client(self) -> None:
+        logger.debug("Starting client")
         if self.client is None or not self.client.is_running:
             self.save_config()
             config = self.gather_config()
-            queue: Queue[logging.LogRecord] = Queue()
-
-            self.syng_client_logging_listener = QueueListener(
-                queue, LoggingLabelHandler(self.notification_label)
-            )
-            self.syng_client_logging_listener.start()
-
-            logger.addHandler(QueueHandler(queue))
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            self.notification_label.setText("")
+            # self.notification_label.setText("")
             self.timer.start(500)
             self.set_client_button_stop()
         else:
             self.client.quit_callback()
             self.set_client_button_start()
+
+    @pyqtSlot(str)
+    def print_log(self, log: str) -> None:
+        self.notification_label.append(f"[{datetime.now().strftime('%H:%M:%S')}] {log}")
 
     def change_qr(self, data: str) -> None:
         qr = QRCode(box_size=10, border=2)
@@ -799,15 +810,23 @@ class SyngGui(QMainWindow):
 
 
 class LoggingLabelHandler(logging.Handler):
-    def __init__(self, label: QLabel):
+    class LogSignalEmiter(QObject):
+        log_signal = pyqtSignal(str)
+
+        def __init__(self, parent: Optional[QObject] = None):
+            super().__init__(parent)
+
+    def __init__(self, parent: Optional[QObject] = None):
         super().__init__()
-        self.loglines: list[str] = []
-        self.label = label
+        self.log_signal_emiter = self.LogSignalEmiter(parent)
+        self._cleanup = False
 
     def emit(self, record: logging.LogRecord) -> None:
-        self.loglines.append(self.format(record))
-        self.loglines = self.loglines[-5:]
-        self.label.setText("\n".join(self.loglines))
+        if not self._cleanup:
+            self.log_signal_emiter.log_signal.emit(self.format(record))
+
+    def cleanup(self) -> None:
+        self._cleanup = True
 
 
 def run_gui() -> None:

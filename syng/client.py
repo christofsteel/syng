@@ -208,7 +208,7 @@ class Client:
         self.skipped.append(data["uuid"])
 
         entry = Entry(**data)
-        print("Skipping: ", entry.title)
+        logger.info("Skipping: %s", entry.title)
         source = self.sources[entry.source]
 
         await source.skip_current(Entry(**data))
