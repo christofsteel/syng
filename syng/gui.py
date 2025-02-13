@@ -26,6 +26,7 @@ try:
 except ImportError:
     pass
 
+os.environ["QT_API"] =  "pyqt6"
 from qasync import QEventLoop, QApplication
 from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
