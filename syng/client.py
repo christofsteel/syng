@@ -130,6 +130,8 @@ class State:
 
 class Client:
     def __init__(self, config: dict[str, Any]):
+        config["config"] = default_config() | config["config"]
+
         self.is_running = False
         self.sio = socketio.AsyncClient(json=jsonencoder)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -584,6 +586,9 @@ def run_client(args: Namespace) -> None:
 
     if "config" not in config:
         config["config"] = {}
+
+    if "sources" not in config:
+        config["sources"] = {"youtube": {"enabled": True}}
 
     if args.room:
         config["config"] |= {"room": args.room}
