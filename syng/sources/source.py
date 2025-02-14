@@ -162,7 +162,7 @@ class Source(ABC):
             return None
 
         res: Result = Result.from_filename(ident, self.source_name)
-        return Entry(
+        entry = Entry(
             ident=ident,
             source=self.source_name,
             duration=180,
@@ -172,6 +172,9 @@ class Source(ABC):
             performer=performer,
             incomplete_data=True,
         )
+        if not await self.is_valid(entry):
+            return None
+        return entry
 
     async def search(self, query: str) -> list[Result]:
         """
