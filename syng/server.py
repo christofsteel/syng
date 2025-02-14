@@ -901,7 +901,8 @@ class Server:
                 ),
             )
 
-            await self.sio.enter_room(sid, room)
+            
+            self.sio.enter_room(sid, room)
             await self.sio.emit("client-registered", {"success": True, "room": room}, room=sid)
             await self.send_state(self.clients[room], sid)
 
@@ -1000,7 +1001,7 @@ class Server:
         if data["room"] in self.clients:
             async with self.sio.session(sid) as session:
                 session["room"] = data["room"]
-                await self.sio.enter_room(sid, session["room"])
+                self.sio.enter_room(sid, session["room"])
             state = self.clients[session["room"]]
             await self.send_state(state, sid)
             return True
