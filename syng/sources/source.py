@@ -48,9 +48,6 @@ class DLFilesEntry:
     :param complete: True if download was completed, False otherwise (Default
         is ``False``)
     :type complete: bool
-    :param failed: True if the buffering failed, False otherwise (Default is
-        ``False``)
-    :type failed: bool
     :param skip: True if the next Entry for this file should be skipped
         (Default is ``False``)
     :param buffer_task: Reference to the task, that downloads the files.
@@ -64,7 +61,6 @@ class DLFilesEntry:
     audio: Optional[str] = None
     buffering: bool = False
     complete: bool = False
-    failed: bool = False
     skip: bool = False
     buffer_task: Optional[asyncio.Task[Tuple[str, Optional[str]]]] = None
 
