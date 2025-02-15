@@ -6,6 +6,7 @@
              Scope="perUserOrMachine"
              UpgradeCode="092e7e0b-5042-47a1-9673-544d9722f8df"
              Version="2.1.0">
+        <MediaTemplate EmbedCab="yes" />
         <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
         <Icon Id="syng.ico" SourceFile="syng.ico"/>
         <Property Id="ARPPRODUCTICON" Value="syng.ico" />
@@ -28,12 +29,12 @@
                               IconIndex="0"
                               Advertise="yes" />
                 </Component>
-                <Component Id="LibraryComponent">
-                  <Directory Name="data">
+                <Directory Name="data">
+                  <Component Id="LibraryComponent" Guid="1fd60ddc-8233-4272-8a3b-33d83a868271" >
                     <Files Include="**">
                     </Files>
-                  </Directory>
-                </Component>
+                  </Component>
+                </Directory>
             </Directory>
         </StandardDirectory>
         <StandardDirectory Id="ProgramMenuFolder">
@@ -42,5 +43,6 @@
         <StandardDirectory Id="DesktopFolder"/>
         <Feature Id="syng">
             <ComponentRef Id="ProductComponent" />
+            <ComponentRef Id="LibraryComponent" />
         </Feature></Package>
 </Wix>
