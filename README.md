@@ -159,11 +159,15 @@ If you want to host your own Syng server, you can do that, but you can also use 
 
 You can install the server via pip:
 
-    pip install 'syng[server]'
+    pip install syng
 
 and then run via:
 
     syng server
+
+The server is also automatically available if you install the client. 
+
+There exists one optional dependency for the server: `alt-profanity-check`. If this package is installed, each username is checked for profanity, otherwise no such check happens.
 
 ## Docker
 
