@@ -235,6 +235,20 @@ class Server:
             room = session["room"]
         await self.send_state(state, room)
 
+    async def log_to_playback(self, state: State, msg: str, level: str = "info") -> None:
+        """
+        Log a message to the playback client.
+
+        This is used to inform the playback client of errors or other messages.
+
+        :param state: The state of the room
+        :type state: State
+        :param msg: The message to send
+        :type msg: str
+        :rtype: None
+        """
+        await self.sio.emit("msg", {"msg": msg, "type": level}, room=state.sid)
+
     async def send_state(self, state: State, sid: str) -> None:
         """
         Send the current state (queue and recent-list) to sid.
