@@ -334,6 +334,8 @@ class Client:
                 if entry.uuid not in self.skipped:
                     self.skipped = []
                     await self.player.play(video, audio, source.extra_mpv_options)
+            except ValueError as e:
+                logger.error("Error playing: %s", e)
             except Exception:  # pylint: disable=broad-except
                 print_exc()
         if self.skipped:

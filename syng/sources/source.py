@@ -255,10 +255,11 @@ class Source(ABC):
             self.downloaded_files[entry.ident].video = video
             self.downloaded_files[entry.ident].audio = audio
             self.downloaded_files[entry.ident].complete = True
+        except ValueError as exc:
+            raise exc
         except Exception:  # pylint: disable=broad-except
             print_exc()
-            logger.error("Buffering failed for %s", entry)
-            self.downloaded_files[entry.ident].failed = True
+            raise ValueError("Buffering failed for %s" % entry)
 
         self.downloaded_files[entry.ident].ready.set()
 
