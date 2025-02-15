@@ -53,6 +53,7 @@ jobs:
           mkdir work/install
           Copy-Item -Recurse -Verbose syng work/install/syng
           Copy-Item -Verbose requirements-client.txt work/install/requirements.txt
+          Copy-Item -Verbose resources/windows/syng.wxs work/install/syng.wxs
           Copy-Item -Verbose resources/icons/syng.ico work/install/
           Copy-Item -Verbose syng/static/background.png work/install/
           Copy-Item -Verbose syng/static/background20perc.png work/install/
@@ -85,8 +86,18 @@ jobs:
 
       - name: Bundle Syng (install)
         run:
-          pyinstaller  -D -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+          pyinstaller  -D --contents-directory data -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
         working-directory: ./work/install
+      
+      # build msi
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+      - name: Install WiX
+        run: dotnet tool install --global wix
+      - name: Build WiX on Windows
+        run: wix build .\syng.wxs
+        working-directory: ./work/install
+
 
       - name: Upload artifact (portable)
         uses: actions/upload-artifact@v4
@@ -97,5 +108,5 @@ jobs:
       - name: Upload artifact (install)
         uses: actions/upload-artifact@v4
         with:
-          name: Syng Version ${{ env.VERSION }}
-          path: work/install/dist
+          name: Syng Version ${{ env.VERSION }} Installer
+          path: work/install/syng.msi

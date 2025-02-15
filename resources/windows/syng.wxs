@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+    <Package Language="1033"
+             Manufacturer="Syng Rocks"
+             Name="Syng"
+             Scope="perUserOrMachine"
+             UpgradeCode="092e7e0b-5042-47a1-9673-544d9722f8df"
+             Version="2.1.0">
+        <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
+        <Icon Id="syng.ico" SourceFile="syng.ico"/>
+        <Property Id="ARPPRODUCTICON" Value="syng.ico" />
+        <StandardDirectory Id="TARGETDIR">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="syng">
+                    <Component Id="ProductComponent">
+                        <File KeyPath="yes" Source="dist\syng.exe" Name="syng.exe"></File>
+                        <Shortcut Id="startmenuShortcut"
+                                  Directory="ProgramMenuDir"
+                                  Name="syng"
+                                  WorkingDirectory='INSTALLFOLDER'
+                                  Icon="syng.ico"
+                                  IconIndex="0"
+                                  Advertise="yes" />
+                        <Shortcut Id="desktopShortcut"
+                                  Directory="DesktopFolder"
+                                  Name="syng"
+                                  WorkingDirectory='INSTALLFOLDER'
+                                  Icon="syng.ico"
+                                  IconIndex="0"
+                                  Advertise="yes" />
+                    </Component>
+                    <Directory Name="data">
+                        <Files Include="dist\data\**">
+                        </Files>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </StandardDirectory>
+        <Directory Id="ProgramMenuFolder" Name="Programs">
+            <Directory Id="ProgramMenuDir" Name="syng"/>
+        </Directory>
+        <StandardDirectory Id="DesktopFolder"/>
+        <Feature Id="syng">
+            <ComponentRef Id="ProductComponent" />
+        </Feature></Package>
+</Wix>
