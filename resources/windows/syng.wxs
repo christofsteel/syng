@@ -28,8 +28,8 @@
                               IconIndex="0"
                               Advertise="yes" />
                 </Component>
-                <Directory Name="data">
-                    <Files Include="dist\syng\data\**">
+                <Directory Name="data" SourceName="dist\syng\data" >
+                    <Files Include="**">
                     </Files>
                 </Directory>
             </Directory>
