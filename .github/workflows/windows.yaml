@@ -53,7 +53,6 @@ jobs:
           mkdir work/install
           Copy-Item -Recurse -Verbose syng work/install/syng
           Copy-Item -Verbose requirements-client.txt work/install/requirements.txt
-          Copy-Item -Verbose resources/windows/syng.wxs work/install/syng.wxs
           Copy-Item -Verbose resources/icons/syng.ico work/install/
           Copy-Item -Verbose syng/static/background.png work/install/
           Copy-Item -Verbose syng/static/background20perc.png work/install/
@@ -94,9 +93,12 @@ jobs:
         uses: microsoft/setup-msbuild@v2
       - name: Install WiX
         run: dotnet tool install --global wix
+      - name: Copy wix file to dist
+        run: 
+          Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
       - name: Build WiX on Windows
         run: wix build .\syng.wxs
-        working-directory: ./work/install
+        working-directory: ./work/install/dist
 
 
       # - name: Upload artifact (portable)

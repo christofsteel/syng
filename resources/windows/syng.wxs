@@ -12,7 +12,7 @@
         <StandardDirectory Id="ProgramFilesFolder">
             <Directory Id="INSTALLFOLDER" Name="syng">
                 <Component Id="ProductComponent">
-                    <File KeyPath="yes" Source="dist\syng\syng.exe" Name="syng.exe"></File>
+                    <File KeyPath="yes" Source="syng\syng.exe" Name="syng.exe"></File>
                     <Shortcut Id="startmenuShortcut"
                               Directory="ProgramMenuDir"
                               Name="syng"
@@ -28,7 +28,7 @@
                               IconIndex="0"
                               Advertise="yes" />
                 </Component>
-                <Directory Name="data" SourceName="dist\syng\data" >
+                <Directory Name="data">
                     <Files Include="**">
                     </Files>
                 </Directory>
