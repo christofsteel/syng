@@ -35,9 +35,9 @@
         </StandardDirectory>
         <ComponentGroup Id="DataFiles" Directory="DataDir">
           <Files Include="syng\data\**">
+            <Exclude Files="syng\syng.exe" />
+          </Files>
         </ComponentGroup>
-         <Exclude Files="syng\syng.exe" />
-        </Files>
         <StandardDirectory Id="ProgramMenuFolder">
             <Directory Id="ProgramMenuDir" Name="syng"/>
         </StandardDirectory>
