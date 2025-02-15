@@ -8,7 +8,7 @@
              Version="2.1.0">
         <MediaTemplate EmbedCab="yes" />
         <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
-        <Icon Id="syng.ico" SourceFile="syng.ico"/>
+        <Icon Id="syng.ico" SourceFile="..\syng.ico"/>
         <Property Id="ARPPRODUCTICON" Value="syng.ico" />
         <StandardDirectory Id="ProgramFilesFolder">
             <Directory Id="INSTALLFOLDER" Name="syng">
