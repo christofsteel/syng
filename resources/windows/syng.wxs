@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
     <Package Language="1033"
              Manufacturer="Syng.Rocks!"
              Name="Syng"
@@ -8,6 +8,7 @@
              Version="2.1.0">
         <MediaTemplate EmbedCab="yes" />
         <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
+        <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
         <Icon Id="syng.ico" SourceFile="..\syng.ico"/>
         <Property Id="ARPPRODUCTICON" Value="syng.ico" />
         <StandardDirectory Id="ProgramFilesFolder">
