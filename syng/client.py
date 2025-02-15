@@ -238,8 +238,20 @@ class Client:
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
 
         for pos, entry in enumerate(self.state.queue[0 : self.buffer_in_advance]):
-            logger.info("Buffering: %s", entry.title)
-            await self.sources[entry.source].buffer(entry, pos)
+            source = self.sources[entry.source]
+            if entry.incomplete_data:
+                meta_info = await source.get_missing_metadata(entry)
+                await self.sio.emit("meta-info", {"uuid": entry.uuid, "meta": meta_info})
+                entry.update(**meta_info)
+
+            if entry.ident in source.downloaded_files:
+                continue
+            logger.info("Buffering: %s (%d s)", entry.title, entry.duration)
+            try:
+                await self.sources[entry.source].buffer(entry, pos)
+            except ValueError as e:
+                logger.error("Error buffering: %s", e)
+                await self.sio.emit("skip", {"uuid": entry.uuid})
 
     async def handle_connect(self) -> None:
         """
