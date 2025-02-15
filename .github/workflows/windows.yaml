@@ -42,14 +42,22 @@ jobs:
       - name: Populate workdir
         run: |
           mkdir work
-          Copy-Item -Recurse -Verbose syng work/syng
+          mkdir work/portable
           Copy-Item -Verbose requirements-client.txt work/requirements.txt
-          Copy-Item -Verbose resources/icons/syng.ico work/
-          Copy-Item -Verbose syng/static/background.png work/
-          Copy-Item -Verbose syng/static/background20perc.png work/
-          Copy-Item -Verbose libmpv-2.dll work/
-          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/
-
+          Copy-Item -Recurse -Verbose syng work/portable/syng
+          Copy-Item -Verbose resources/icons/syng.ico work/portable/
+          Copy-Item -Verbose syng/static/background.png work/portable/
+          Copy-Item -Verbose syng/static/background20perc.png work/portable/
+          Copy-Item -Verbose libmpv-2.dll work/portable/
+          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/portable/
+          mkdir work/install
+          Copy-Item -Recurse -Verbose syng work/install/syng
+          Copy-Item -Verbose requirements-client.txt work/install/requirements.txt
+          Copy-Item -Verbose resources/icons/syng.ico work/install/
+          Copy-Item -Verbose syng/static/background.png work/install/
+          Copy-Item -Verbose syng/static/background20perc.png work/install/
+          Copy-Item -Verbose libmpv-2.dll work/install/
+          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/install/
       - uses: actions/setup-python@v5
         name: Install Python
         with:
@@ -66,14 +74,28 @@ jobs:
       - name: Install PyInstaller
         run: pip install pyinstaller
 
-      - name: Bundle Syng
-        run: |
-          pip install -r requirements.txt
-          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
-        working-directory: ./work
+      - name: Installing requirements
+        run: pip install -r requirements.txt
+        working-directory: ./work      
 
-      - name: Upload artifact
+      - name: Bundle Syng (portable)
+        run:
+          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+        working-directory: ./work/portable
+
+      - name: Bundle Syng (install)
+        run:
+          pyinstaller -n "syng-${{ env.VERSION }}" -D -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+        working-directory: ./work/install
+
+      - name: Upload artifact (portable)
         uses: actions/upload-artifact@v4
         with:
           name: Syng Version ${{ env.VERSION }}
-          path: work/dist/syng-${{ env.VERSION }}.exe
+          path: work/portable/dist/syng-${{ env.VERSION }}.exe
+
+      - name: Upload artifact (install)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Syng Version ${{ env.VERSION }}
+          path: work/install/dist
