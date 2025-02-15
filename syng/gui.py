@@ -474,7 +474,7 @@ class GeneralConfig(OptionFrame):
         )
         self.add_bool_option("show_advanced", "Show Advanced Options", config["show_advanced"])
 
-        self.simple_options = ["server", "room", "secret"]
+        self.simple_options = ["server", "room", "secret", "show_advanced"]
 
         if not config["show_advanced"]:
             for option in self.option_names.difference(self.simple_options):
