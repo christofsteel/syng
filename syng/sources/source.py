@@ -127,7 +127,7 @@ class Source(ABC):
         self._index: list[str] = config["index"] if "index" in config else []
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
-        self.build_index = config.get("build_index", False)
+        self.build_index = False
         self.apply_config(config)
 
     def is_valid(self, entry: Entry) -> bool:
