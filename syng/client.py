@@ -156,6 +156,10 @@ class Client:
         self.sio.on("client-registered", self.handle_client_registered)
         self.sio.on("request-config", self.handle_request_config)
         self.sio.on("msg", self.handle_msg)
+        self.sio.on("disconnect", self.handle_disconnect)
+
+    async def handle_disconnect(self) -> None:
+        logger.info("Disconnected from server")
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
         """
