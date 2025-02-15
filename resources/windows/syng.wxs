@@ -9,34 +9,32 @@
         <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
         <Icon Id="syng.ico" SourceFile="syng.ico"/>
         <Property Id="ARPPRODUCTICON" Value="syng.ico" />
-        <StandardDirectory Id="TARGETDIR">
-            <StandardDirectory Id="ProgramFilesFolder">
-                <Directory Id="INSTALLFOLDER" Name="syng">
-                    <Component Id="ProductComponent">
-                        <File KeyPath="yes" Source="dist\syng\syng.exe" Name="syng.exe"></File>
-                        <Shortcut Id="startmenuShortcut"
-                                  Directory="ProgramMenuDir"
-                                  Name="syng"
-                                  WorkingDirectory='INSTALLFOLDER'
-                                  Icon="syng.ico"
-                                  IconIndex="0"
-                                  Advertise="yes" />
-                        <Shortcut Id="desktopShortcut"
-                                  Directory="DesktopFolder"
-                                  Name="syng"
-                                  WorkingDirectory='INSTALLFOLDER'
-                                  Icon="syng.ico"
-                                  IconIndex="0"
-                                  Advertise="yes" />
-                    </Component>
-                    <Directory Name="data">
-                        <Files Include="dist\syng\data\**">
-                        </Files>
-                    </Directory>
+        <StandardDirectory Id="ProgramFilesFolder">
+            <Directory Id="INSTALLFOLDER" Name="syng">
+                <Component Id="ProductComponent">
+                    <File KeyPath="yes" Source="dist\syng\syng.exe" Name="syng.exe"></File>
+                    <Shortcut Id="startmenuShortcut"
+                              Directory="ProgramMenuDir"
+                              Name="syng"
+                              WorkingDirectory='INSTALLFOLDER'
+                              Icon="syng.ico"
+                              IconIndex="0"
+                              Advertise="yes" />
+                    <Shortcut Id="desktopShortcut"
+                              Directory="DesktopFolder"
+                              Name="syng"
+                              WorkingDirectory='INSTALLFOLDER'
+                              Icon="syng.ico"
+                              IconIndex="0"
+                              Advertise="yes" />
+                </Component>
+                <Directory Name="data">
+                    <Files Include="dist\syng\data\**">
+                    </Files>
                 </Directory>
-            </StandardDirectory>
+            </Directory>
         </StandardDirectory>
-        <StandardDirectory Id="ProgramMenuFolder" Name="Programs">
+        <StandardDirectory Id="ProgramMenuFolder">
             <Directory Id="ProgramMenuDir" Name="syng"/>
         </StandardDirectory>
         <StandardDirectory Id="DesktopFolder"/>
