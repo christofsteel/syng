@@ -27,6 +27,7 @@ from ..entry import Entry
 from ..result import Result
 from ..config import BoolOption, ConfigOption
 
+
 class EntryNotValid(Exception):
     """Raised when an entry is not valid for a source."""
 

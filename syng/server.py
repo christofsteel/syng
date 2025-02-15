@@ -24,9 +24,7 @@ from json.decoder import JSONDecodeError
 from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any, Callable
-from typing import AsyncGenerator
-from typing import Optional
+from typing import Any, Callable, Literal, AsyncGenerator, Optional
 
 import socketio
 from aiohttp import web
@@ -325,7 +323,9 @@ class Server:
             if entry is None:
                 await self.sio.emit(
                     "msg",
-                    {"msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"},
+                    {
+                        "msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"
+                    },
                     room=sid,
                 )
                 return None
@@ -336,7 +336,6 @@ class Server:
                 room=sid,
             )
             return None
-
 
         if "uid" not in data or (
             (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
@@ -636,7 +635,9 @@ class Server:
             source = entry.source
             source_obj = state.client.sources[source]
             if not source_obj.is_valid(entry):
-                await self.log_to_playback(state, f"Entry {entry.ident} is not valid.", level="error")
+                await self.log_to_playback(
+                    state, f"Entry {entry.ident} is not valid.", level="error"
+                )
                 await state.queue.remove(entry)
         else:
             for entry in state.waiting_room:
