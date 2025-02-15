@@ -85,7 +85,7 @@ jobs:
 
       - name: Bundle Syng (install)
         run:
-          pyinstaller -n -D -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+          pyinstaller  -D -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
         working-directory: ./work/install
 
       - name: Upload artifact (portable)
