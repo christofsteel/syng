@@ -1,0 +1,79 @@
+name: Build for windows
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build-windows:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          repository: christofsteel/syng
+
+      - name: Install 7-Zip
+        run: choco install -y 7zip
+
+      - name: Download and extract latest MPV nightly
+        run: |
+          Invoke-WebRequest -Uri https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250215/mpv-dev-x86_64-20250215-git-834f99e.7z -OutFile mpv.7z
+          7z x mpv.7z
+
+
+      - name: Download and extract FFMPEG 7.1
+        run: |
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z -OutFile ffmpeg-release-full.7z
+          7z x ffmpeg-release-full.7z
+
+      - name: Populate workdir
+        run: |
+          mkdir work
+          Copy-Item -Recurse -Verbose syng work/syng
+          Copy-Item -Verbose requirements-client.txt work/requirements.txt
+          Copy-Item -Verbose resources/icons/syng.ico work/
+          Copy-Item -Verbose syng/static/background.png work/
+          Copy-Item -Verbose syng/static/background20perc.png work/
+          Copy-Item -Verbose libmpv-2.dll work/
+          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/
+
+      - uses: actions/setup-python@v5
+        name: Install Python
+        with:
+          python-version: 3.13
+
+      - name: Install poetry
+        run: pip install poetry
+
+      - name: Extract version from Poetry
+        id: get_version
+        run: echo "VERSION=$(poetry version -s)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Bundle Syng
+        run: |
+          pip install -r requirements-client.txt
+          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        working-directory: ./work
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Syng Version ${{ env.VERSION }}
+          path: work/dist/syng-${{ env.VERSION }}.exe
