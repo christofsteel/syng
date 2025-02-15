@@ -466,6 +466,13 @@ class GeneralConfig(OptionFrame):
             ["top-left", "top-right", "bottom-left", "bottom-right"],
             config["qr_position"],
         )
+        self.add_choose_option(
+            "log_level",
+            "Log Level",
+            ["debug", "info", "warning", "error", "critical"],
+            config["log_level"],
+        )
+        self.add_bool_option("show_advanced", "Show Advanced Options", config["show_advanced"])
 
         self.simple_options = ["server", "room", "secret"]
 
@@ -658,7 +665,6 @@ class SyngGui(QMainWindow):
 
         self.syng_client_logging_listener = QueueListener(self.logqueue, self.log_label_handler)
         self.syng_client_logging_listener.start()
-        logger.setLevel(logging.DEBUG)
 
         self.setCentralWidget(self.central_widget)
 
@@ -787,8 +793,14 @@ class SyngGui(QMainWindow):
             self.client.quit_callback()
             self.set_client_button_start()
 
-    @pyqtSlot(str)
-    def print_log(self, log: str) -> None:
+    @pyqtSlot(str, int)
+    def print_log(self, log: str, level: int) -> None:
+        if level == logging.CRITICAL:
+            log_msg_box = QMessageBox(self)
+            log_msg_box.setIcon(QMessageBox.Icon.Critical)
+            log_msg_box.setWindowTitle("Critical Error")
+            log_msg_box.setText(log)
+            log_msg_box.exec()
         self.log_text.append(f"[{datetime.now().strftime('%H:%M:%S')}] {log}")
 
     def change_qr(self, data: str) -> None:
@@ -816,7 +828,7 @@ class SyngGui(QMainWindow):
 
 class LoggingLabelHandler(logging.Handler):
     class LogSignalEmiter(QObject):
-        log_signal = pyqtSignal(str)
+        log_signal = pyqtSignal(str, int)
 
         def __init__(self, parent: Optional[QObject] = None):
             super().__init__(parent)
@@ -830,7 +842,7 @@ class LoggingLabelHandler(logging.Handler):
         if not self._cleanup:  # This could race condition, but it's not a big
             # deal since it only causes a race condition,
             # when the program ends
-            self.log_signal_emiter.log_signal.emit(self.format(record))
+            self.log_signal_emiter.log_signal.emit(self.format(record), record.levelno)
 
     def cleanup(self) -> None:
         self._cleanup = True

@@ -13,6 +13,7 @@ be one of:
 """
 
 from __future__ import annotations
+import logging
 import os
 import asyncio
 import datetime
@@ -63,6 +64,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "qr_box_size": 5,
         "qr_position": "bottom-right",
         "show_advanced": False,
+        "log_level": "info",
     }
 
 
@@ -112,6 +114,8 @@ class State:
             - `bottom-right`
         * `show_advanced` (`bool`): If the advanced options should be shown in the
             gui.
+        * `log_level` (`str`): The log level of the client. One of: `debug`, `info`, `warning`,
+            `error`, `critical`. Default is `info`.
 
     :type config: dict[str, Any]:
     """
@@ -130,6 +134,7 @@ class Client:
         config["config"] = default_config() | config["config"]
 
         self.is_running = False
+        self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.skipped: list[UUID] = []
@@ -144,6 +149,19 @@ class Client:
             self.quit_callback,
         )
         self.register_handlers()
+
+    def set_log_level(self, level: str) -> None:
+        match level:
+            case "debug":
+                logger.setLevel(logging.DEBUG)
+            case "info":
+                logger.setLevel(logging.INFO)
+            case "warning":
+                logger.setLevel(logging.WARNING)
+            case "error":
+                logger.setLevel(logging.ERROR)
+            case "critical":
+                logger.setLevel(logging.CRITICAL)
 
     def register_handlers(self) -> None:
         self.sio.on("update_config", self.handle_update_config)
@@ -174,12 +192,16 @@ class Client:
 
         msg_type = data.get("type", "info")
         match msg_type:
+            case "debug":
+                logger.debug(data["msg"])
             case "info":
                 logger.info(data["msg"])
             case "warning":
                 logger.warning(data["msg"])
             case "error":
                 logger.error(data["msg"])
+            case "critical":
+                logger.critical(data["msg"])
 
     async def handle_update_config(self, data: dict[str, Any]) -> None:
         """
@@ -427,7 +449,7 @@ class Client:
                 await self.sio.emit("get-first")
         else:
             reason = data.get("reason", "Unknown")
-            logger.warning(f"Registration failed: {reason}")
+            logger.critical(f"Registration failed: {reason}")
             await self.sio.disconnect()
 
     async def handle_request_config(self, data: dict[str, Any]) -> None:
@@ -543,7 +565,7 @@ class Client:
         except asyncio.CancelledError:
             pass
         except ConnectionError:
-            logger.error("Could not connect to server")
+            logger.critical("Could not connect to server")
         finally:
             self.is_running = False
             if self.player.mpv is not None:
