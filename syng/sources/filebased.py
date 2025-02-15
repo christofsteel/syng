@@ -4,6 +4,8 @@ import asyncio
 import os
 from typing import TYPE_CHECKING, Any, Optional
 
+from syng.entry import Entry
+
 
 try:
     from pymediainfo import MediaInfo
@@ -38,6 +40,9 @@ class FileBasedSource(Source):
     def apply_config(self, config: dict[str, Any]) -> None:
         self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
         self.extra_mpv_options = {"scale": "oversample"}
+
+    def is_valid(self, entry: Entry) -> bool:
+        return entry.ident in self._index and entry.source == self.source_name
 
     def has_correct_extension(self, path: Optional[str]) -> bool:
         """

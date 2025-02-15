@@ -32,6 +32,8 @@ import socketio
 from aiohttp import web
 from profanity_check import predict
 
+from syng.sources.source import EntryNotValid
+
 from .result import Result
 
 from . import jsonencoder
@@ -314,17 +316,25 @@ class Server:
         :rtype: Optional[str]
         """
         source_obj = state.client.sources[data["source"]]
-        entry = await source_obj.get_entry(
-            data["performer"], data["ident"], artist=data["artist"], title=data["title"]
-        )
-
-        if entry is None:
+        try:
+            entry = await source_obj.get_entry(
+                data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+            )
+            if entry is None:
+                await self.sio.emit(
+                    "msg",
+                    {"msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"},
+                    room=sid,
+                )
+                return None
+        except EntryNotValid as e:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"},
+                {"msg": f"Unable to add to the waiting room: {data['ident']}. {e}"},
                 room=sid,
             )
             return None
+
 
         if "uid" not in data or (
             (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
@@ -511,17 +521,24 @@ class Server:
 
         source_obj = state.client.sources[data["source"]]
 
-        entry = await source_obj.get_entry(
-            data["performer"],
-            data["ident"],
-            artist=data.get("artist", None),
-            title=data.get("title", None),
-        )
-
-        if entry is None:
+        try:
+            entry = await source_obj.get_entry(
+                data["performer"],
+                data["ident"],
+                artist=data.get("artist", None),
+                title=data.get("title", None),
+            )
+            if entry is None:
+                await self.sio.emit(
+                    "msg",
+                    {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
+                    room=sid,
+                )
+                return None
+        except EntryNotValid as e:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
+                {"msg": f"Unable to append {data['ident']}. {e}"},
                 room=sid,
             )
             return None
@@ -564,14 +581,22 @@ class Server:
 
         source_obj = state.client.sources[data["source"]]
 
-        entry = await source_obj.get_entry(
-            data["performer"], data["ident"], artist=data["artist"], title=data["title"]
-        )
+        try:
+            entry = await source_obj.get_entry(
+                data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+            )
 
-        if entry is None:
+            if entry is None:
+                await self.sio.emit(
+                    "msg",
+                    {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
+                    room=sid,
+                )
+                return None
+        except EntryNotValid as e:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
+                {"msg": f"Unable to append {data['ident']}. {e}"},
                 room=sid,
             )
             return None
@@ -605,9 +630,17 @@ class Server:
             lambda item: item.update(**data["meta"], incomplete_data=False),
         )
 
-        for entry in state.waiting_room:
-            if entry.uuid == data["uuid"] or str(entry.uuid) == data["uuid"]:
-                entry.update(**data["meta"], incomplete_data=False)
+        entry = state.queue.find_by_uuid(data["uuid"])
+        if entry is not None:
+            source = entry.source
+            source_obj = state.client.sources[source]
+            if not source_obj.is_valid(entry):
+                await self.log_to_playback(state, f"Entry {entry.ident} is not valid.", level="error")
+                await state.queue.remove(entry)
+        else:
+            for entry in state.waiting_room:
+                if entry.uuid == data["uuid"] or str(entry.uuid) == data["uuid"]:
+                    entry.update(**data["meta"], incomplete_data=False)
 
         await self.broadcast_state(state)
 

@@ -29,6 +29,9 @@ from ..config import BoolOption, ConfigOption
 
 # logger: logging.Logger = logging.getLogger(__name__)
 
+class EntryNotValid(Exception):
+    """Raised when an entry is not valid for a source."""
+
 
 @dataclass
 class DLFilesEntry:
@@ -127,6 +130,19 @@ class Source(ABC):
         self.build_index = config.get("build_index", False)
         self.apply_config(config)
 
+    def is_valid(self, entry: Entry) -> bool:
+        """
+        Check if the entry is valid.
+
+        Each source can implement this method to check if the entry is valid.
+
+        :param entry: The entry to check
+        :type entry: Entry
+        :returns: True if the entry is valid, False otherwise.
+        :rtype: bool
+        """
+        return True
+
     async def get_entry(
         self,
         performer: str,
@@ -153,9 +169,8 @@ class Source(ABC):
         :returns: New entry for the identifier, or None, if the ident is
             invalid.
         :rtype: Optional[Entry]
+        :raises EntryNotValid: If the entry is not valid for the source.
         """
-        if ident not in self._index:
-            return None
 
         res: Result = Result.from_filename(ident, self.source_name)
         entry = Entry(
@@ -168,8 +183,8 @@ class Source(ABC):
             performer=performer,
             incomplete_data=True,
         )
-        if not await self.is_valid(entry):
-            return None
+        if not self.is_valid(entry):
+            raise EntryNotValid(f"Entry {entry} is not valid for source {self.source_name}")
         return entry
 
     async def search(self, query: str) -> list[Result]:
