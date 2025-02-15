@@ -522,11 +522,7 @@ class SyngGui(QMainWindow):
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttons_layout.addItem(spacer_item)
 
-        self.savebutton = QPushButton("Save")
-        self.savebutton.clicked.connect(self.save_config)
-        self.buttons_layout.addWidget(self.savebutton)
-
-        self.startbutton = QPushButton("Save and Start")
+        self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
@@ -772,10 +768,10 @@ class SyngGui(QMainWindow):
             self.set_client_button_stop()
 
     def set_client_button_stop(self) -> None:
-        self.startbutton.setText("Stop")
+        self.startbutton.setText("Disconnect")
 
     def set_client_button_start(self) -> None:
-        self.startbutton.setText("Save and Start")
+        self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:
         logger.debug("Starting client")
