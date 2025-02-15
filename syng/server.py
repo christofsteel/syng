@@ -28,7 +28,14 @@ from typing import Any, Callable, Literal, AsyncGenerator, Optional
 
 import socketio
 from aiohttp import web
-from profanity_check import predict
+
+try:
+    from profanity_check import predict
+except ImportError:
+    # If the profanity_check package is not installed, use a dummy function
+    def predict(strings: list[str]) -> list[Literal[0, 1]]:
+        return [0]
+
 
 from syng.sources.source import EntryNotValid
 

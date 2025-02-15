@@ -55,7 +55,6 @@ requirements-parser = "^0.11.0"
 
 [tool.poetry.extras]
 client = ["minio", "pillow", "qrcode", "pymediainfo", "pyyaml", "pyqt6", "mpv", "qasync"]
-server = ["alt-profanity-check"]
 
 [build-system]
 requires = ["poetry-core"]
