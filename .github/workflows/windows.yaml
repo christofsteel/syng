@@ -80,18 +80,18 @@ jobs:
 
       - name: Bundle Syng (portable)
         run:
-          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work/portable
 
       - name: Bundle Syng (install)
         run:
-          pyinstaller -n "syng-${{ env.VERSION }}" -D -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+          pyinstaller -n -D -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
         working-directory: ./work/install
 
       - name: Upload artifact (portable)
         uses: actions/upload-artifact@v4
         with:
-          name: Syng Version ${{ env.VERSION }}
+          name: Syng Version ${{ env.VERSION }} portable
           path: work/portable/dist/syng-${{ env.VERSION }}.exe
 
       - name: Upload artifact (install)
