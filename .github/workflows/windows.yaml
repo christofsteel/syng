@@ -97,7 +97,7 @@ jobs:
         run: 
           Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
       - name: Build WiX on Windows
-        run: wix build .\syng.wxs
+        run: wix build -ext WixToolset.UI.wixext .\syng.wxs
         working-directory: ./work/install/dist
 
 
