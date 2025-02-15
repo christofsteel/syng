@@ -111,4 +111,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Syng Version ${{ env.VERSION }} Installer
-          path: work/install/syng.msi
+          path: work/install/dist/syng.msi
