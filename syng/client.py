@@ -125,9 +125,6 @@ class State:
     config: dict[str, Any] = field(default_factory=default_config)
 
 
-# state: State = State()
-
-
 class Client:
     def __init__(self, config: dict[str, Any]):
         config["config"] = default_config() | config["config"]
@@ -215,8 +212,6 @@ class Client:
 
         await source.skip_current(Entry(**data))
         self.player.skip_current()
-        # if self.state.current_source is not None:
-        #     await self.state.current_source.skip_current(Entry(**data))
 
     async def handle_state(self, data: dict[str, Any]) -> None:
         """

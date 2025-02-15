@@ -446,7 +446,6 @@ class Server:
                 state.sid,
             )
             state.client.config = DEFAULT_CONFIG | config
-            # await self.sio.emit("update_config", config, room)
         except JSONDecodeError:
             await self.sio.emit("err", {"type": "JSON_MALFORMED"}, room=sid)
 
@@ -1310,8 +1309,6 @@ class Server:
         # The internal loop counter does not use a regular timestamp, so we need to convert between
         # regular datetime and the async loop time
         now = datetime.datetime.now()
-        # today = datetime.datetime(now.year, now.month, now.day)
-        # next_run = today + datetime.timedelta(days=1)
 
         next_run = now + datetime.timedelta(hours=1)
         offset = next_run.timestamp() - now.timestamp()

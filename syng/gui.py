@@ -73,7 +73,6 @@ from .config import (
 )
 
 
-# TODO: ScrollableFrame
 class OptionFrame(QWidget):
     def add_bool_option(self, name: str, description: str, value: bool = False) -> None:
         label = QLabel(description, self)
@@ -593,15 +592,10 @@ class SyngGui(QMainWindow):
 
         self.qr_label = QLabel(self.qr_widget)
         self.linklabel = QLabel(self.qr_widget)
-        # self.notification_label = QTextEdit(self.qr_widget)
-        # self.notification_label.setReadOnly(True)
-        # QLabel("", self.qr_widget)
 
         self.qr_layout.addWidget(self.qr_label)
         self.qr_layout.addWidget(self.linklabel)
-        # self.qr_layout.addWidget(self.notification_label)
         self.qr_layout.setAlignment(self.linklabel, Qt.AlignmentFlag.AlignCenter)
-        # self.qr_layout.setAlignment(self.notification_label, Qt.AlignmentFlag.AlignCenter)
         self.qr_layout.setAlignment(self.qr_label, Qt.AlignmentFlag.AlignCenter)
 
         self.linklabel.setOpenExternalLinks(True)
@@ -790,7 +784,6 @@ class SyngGui(QMainWindow):
             config = self.gather_config()
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            # self.notification_label.setText("")
             self.timer.start(500)
             self.set_client_button_stop()
         else:
@@ -847,7 +840,6 @@ class LoggingLabelHandler(logging.Handler):
 
 
 def run_gui() -> None:
-    # initialize cache dir
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
     base_dir = os.path.dirname(__file__)
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):

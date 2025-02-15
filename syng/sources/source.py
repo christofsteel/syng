@@ -27,8 +27,6 @@ from ..entry import Entry
 from ..result import Result
 from ..config import BoolOption, ConfigOption
 
-# logger: logging.Logger = logging.getLogger(__name__)
-
 class EntryNotValid(Exception):
     """Raised when an entry is not valid for a source."""
 
@@ -385,8 +383,6 @@ class Source(ABC):
         logger.warning(f"{self.source_name}: done")
         if new_index is not None:
             self._index = new_index
-            # chunked = zip_longest(*[iter(new_index)] * 1000, fillvalue="")
-            # return [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
             return await self.get_config()
         return None
 
