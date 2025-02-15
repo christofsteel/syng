@@ -593,15 +593,15 @@ class SyngGui(QMainWindow):
 
         self.qr_label = QLabel(self.qr_widget)
         self.linklabel = QLabel(self.qr_widget)
-        self.notification_label = QTextEdit(self.qr_widget)
-        self.notification_label.setReadOnly(True)
+        # self.notification_label = QTextEdit(self.qr_widget)
+        # self.notification_label.setReadOnly(True)
         # QLabel("", self.qr_widget)
 
         self.qr_layout.addWidget(self.qr_label)
         self.qr_layout.addWidget(self.linklabel)
-        self.qr_layout.addWidget(self.notification_label)
+        # self.qr_layout.addWidget(self.notification_label)
         self.qr_layout.setAlignment(self.linklabel, Qt.AlignmentFlag.AlignCenter)
-        self.qr_layout.setAlignment(self.notification_label, Qt.AlignmentFlag.AlignCenter)
+        # self.qr_layout.setAlignment(self.notification_label, Qt.AlignmentFlag.AlignCenter)
         self.qr_layout.setAlignment(self.qr_label, Qt.AlignmentFlag.AlignCenter)
 
         self.linklabel.setOpenExternalLinks(True)
@@ -617,6 +617,17 @@ class SyngGui(QMainWindow):
     def add_source_config(self, source_name: str, source_config: dict[str, Any]) -> None:
         self.tabs[source_name] = SourceTab(self, source_name, source_config)
         self.tabview.addTab(self.tabs[source_name], source_name)
+
+    def add_log_tab(self) -> None:
+        self.log_tab = QWidget(parent=self.central_widget)
+        self.log_layout = QVBoxLayout(self.log_tab)
+        self.log_tab.setLayout(self.log_layout)
+
+        self.log_text = QTextEdit(self.log_tab)
+        self.log_text.setReadOnly(True)
+        self.log_layout.addWidget(self.log_text)
+
+        self.tabview.addTab(self.log_tab, "Logs")
 
     def __init__(self) -> None:
         super().__init__()
@@ -646,6 +657,8 @@ class SyngGui(QMainWindow):
         for source_name in available_sources:
             self.add_source_config(source_name, config["sources"][source_name])
 
+        self.add_log_tab()
+
         self.update_qr()
 
         self.logqueue: Queue[logging.LogRecord] = Queue()
@@ -655,6 +668,7 @@ class SyngGui(QMainWindow):
 
         self.syng_client_logging_listener = QueueListener(self.logqueue, self.log_label_handler)
         self.syng_client_logging_listener.start()
+        logger.setLevel(logging.DEBUG)
 
         self.setCentralWidget(self.central_widget)
 
@@ -785,7 +799,7 @@ class SyngGui(QMainWindow):
 
     @pyqtSlot(str)
     def print_log(self, log: str) -> None:
-        self.notification_label.append(f"[{datetime.now().strftime('%H:%M:%S')}] {log}")
+        self.log_text.append(f"[{datetime.now().strftime('%H:%M:%S')}] {log}")
 
     def change_qr(self, data: str) -> None:
         qr = QRCode(box_size=10, border=2)
@@ -823,7 +837,9 @@ class LoggingLabelHandler(logging.Handler):
         self._cleanup = False
 
     def emit(self, record: logging.LogRecord) -> None:
-        if not self._cleanup:
+        if not self._cleanup:  # This could race condition, but it's not a big
+            # deal since it only causes a race condition,
+            # when the program ends
             self.log_signal_emiter.log_signal.emit(self.format(record))
 
     def cleanup(self) -> None:
