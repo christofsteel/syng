@@ -79,10 +79,10 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: ./work      
 
-      - name: Bundle Syng (portable)
-        run:
-          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
-        working-directory: ./work/portable
+      # - name: Bundle Syng (portable)
+      #   run:
+      #     pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+      #   working-directory: ./work/portable
 
       - name: Bundle Syng (install)
         run:
@@ -99,12 +99,12 @@ jobs:
         working-directory: ./work/install
 
 
-      - name: Upload artifact (portable)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Syng Version ${{ env.VERSION }} portable
-          path: work/portable/dist/syng-${{ env.VERSION }}.exe
-
+      # - name: Upload artifact (portable)
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: Syng Version ${{ env.VERSION }} portable
+      #     path: work/portable/dist/syng-${{ env.VERSION }}.exe
+      
       - name: Upload artifact (install)
         uses: actions/upload-artifact@v4
         with:
