@@ -27,10 +27,12 @@
                               Icon="syng.ico"
                               IconIndex="0"
                               Advertise="yes" />
-                <Directory Name="data">
+                </Component>
+                <Component Id="LibraryComponent">
+                  <Directory Name="data">
                     <Files Include="**">
                     </Files>
-                </Directory>
+                  </Directory>
                 </Component>
             </Directory>
         </StandardDirectory>
