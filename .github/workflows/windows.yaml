@@ -92,7 +92,9 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
       - name: Install WiX
-        run: dotnet tool install --global wix
+        run: |
+          dotnet tool install --global wix
+          dotnet add package WixToolset.UI.wixext
       - name: Copy wix file to dist
         run: 
           Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
