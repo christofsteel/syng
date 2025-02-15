@@ -84,6 +84,7 @@ Configuration is done under `sources` → `youtube` with the following settings:
   * `max_res`: Maximum resolution of a video.
   * `start_streaming`: `true` or `false`. If `true`, videos will be streamed directly using `mpv`, if the video is not cached beforehand. Otherwise, Syng waits for the video to be downloaded.  
   * `seach_suffix`: A string that is appended to each search query. Default is "karaoke".
+  * `max_duration`: Maximum length of accepted videos in seconds. Default is 1800 (30 minutes)
 
 ### S3
 
@@ -147,6 +148,7 @@ sources:
     max_res: 720
     tmp_dir: ${XDG_CACHE_DIR}/syng
     search_suffix: karaoke
+    max_duration: 1800
 ```
 
 # Server

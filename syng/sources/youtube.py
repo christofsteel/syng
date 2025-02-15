@@ -22,7 +22,15 @@ from platformdirs import user_cache_dir
 from ..entry import Entry
 from ..result import Result
 from .source import Source, available_sources
-from ..config import BoolOption, ChoiceOption, FolderOption, ListStrOption, ConfigOption, StrOption
+from ..config import (
+    BoolOption,
+    ChoiceOption,
+    FolderOption,
+    ListStrOption,
+    ConfigOption,
+    StrOption,
+    IntOption,
+)
 
 
 class YouTube:
@@ -172,6 +180,7 @@ class YoutubeSource(Source):
           ``yt-dlp``. Default is False.
         - ``search_suffix``: A string that is appended to the search query.
           Default is "karaoke".
+        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this. Default is 1800.
     """
 
     source_name = "youtube"
@@ -195,8 +204,14 @@ class YoutubeSource(Source):
         ),
         "search_suffix": ConfigOption(
             StrOption(),
-            "A string that is appended to each search query",
+            "A string that is appended\nto each search query",
             "karaoke",
+            send_to_server=True,
+        ),
+        "max_duration": ConfigOption(
+            IntOption(),
+            "The maximum duration\nof a video in seconds\nA value of 0 disables this",
+            1800,
             send_to_server=True,
         ),
     }
@@ -223,15 +238,7 @@ class YoutubeSource(Source):
                 "quiet": True,
             }
         )
-
-    # async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
-    #     """
-    #     Return the list of channels in a dictionary with key ``channels``.
-    #
-    #     :return: see above
-    #     :rtype: dict[str, Any]]
-    #     """
-    #     return {"channels": self.channels}
+        self.max_duration: int = config.get("max_duration", 1800)
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
         """
@@ -244,6 +251,13 @@ class YoutubeSource(Source):
         :type entry: Entry
         :rtype: None
         """
+
+        if entry.incomplete_data:
+            meta_info = await self.get_missing_metadata(entry)
+            entry.update(**meta_info)
+
+        if self.max_duration > 0 and entry.duration > self.max_duration:
+            raise ValueError(f"Video {entry.ident} too long.")
 
         if self.start_streaming and not self.downloaded_files[entry.ident].complete:
             return (entry.ident, None)
@@ -342,7 +356,21 @@ class YoutubeSource(Source):
                 duration=str(result.length),
             )
             for result in results
+            if self.max_duration == 0 or result.length <= self.max_duration
         ]
+
+    def is_valid(self, entry: Entry) -> bool:
+        """
+        Check if the entry is valid.
+
+        An entry is valid, if the video is not too long.
+
+        :param entry: The entry to check.
+        :type entry: Entry
+        :return: True if the entry is valid, False otherwise.
+        :rtype: bool
+        """
+        return self.max_duration == 0 or entry.duration <= self.max_duration
 
     def _yt_search(self, query: str) -> list[YouTube]:
         """Search youtube as a whole.
@@ -395,6 +423,11 @@ class YoutubeSource(Source):
         :return: The location of the video file and ``None``.
         :rtype: Tuple[str, Optional[str]]
         """
+
+        if self.max_duration > 0 and entry.duration > self.max_duration:
+            raise ValueError(
+                f"Video {entry.ident} too long: {entry.duration} > {self.max_duration}"
+            )
 
         if pos == 0 and self.start_streaming:
             return entry.ident, None
