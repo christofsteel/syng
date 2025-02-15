@@ -29,20 +29,21 @@
                               IconIndex="0"
                               Advertise="yes" />
                 </Component>
-                <Directory Name="data">
-                  <Component Id="LibraryComponent" Guid="1fd60ddc-8233-4272-8a3b-33d83a868271" >
-                    <Files Include="**">
-                    </Files>
-                  </Component>
+                <Directory Id="DataDir" Name="data">
                 </Directory>
             </Directory>
         </StandardDirectory>
+        <ComponentGroup Id="DataFiles" Directory="DataDir">
+          <Files Include="syng\data\**">
+        </ComponentGroup>
+         <Exclude Files="syng\syng.exe" />
+        </Files>
         <StandardDirectory Id="ProgramMenuFolder">
             <Directory Id="ProgramMenuDir" Name="syng"/>
         </StandardDirectory>
         <StandardDirectory Id="DesktopFolder"/>
         <Feature Id="syng">
             <ComponentRef Id="ProductComponent" />
-            <ComponentRef Id="LibraryComponent" />
+            <ComponentGroupRef Id="DataFiles" />
         </Feature></Package>
 </Wix>
