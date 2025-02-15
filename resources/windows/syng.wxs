@@ -27,11 +27,11 @@
                               Icon="syng.ico"
                               IconIndex="0"
                               Advertise="yes" />
-                </Component>
                 <Directory Name="data">
                     <Files Include="**">
                     </Files>
                 </Directory>
+                </Component>
             </Directory>
         </StandardDirectory>
         <StandardDirectory Id="ProgramMenuFolder">
