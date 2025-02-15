@@ -34,11 +34,11 @@
                         </Files>
                     </Directory>
                 </Directory>
-            </Directory>
+            </StandardDirectory>
         </StandardDirectory>
         <StandardDirectory Id="ProgramMenuFolder" Name="Programs">
             <Directory Id="ProgramMenuDir" Name="syng"/>
-        </Directory>
+        </StandardDirectory>
         <StandardDirectory Id="DesktopFolder"/>
         <Feature Id="syng">
             <ComponentRef Id="ProductComponent" />
