@@ -94,7 +94,7 @@ jobs:
       - name: Install WiX
         run: |
           dotnet tool install --global wix
-          wix extension add WixToolset.UI.wixext
+          wix extension add WixToolset.UI.wixext/5.0.2
       - name: Copy wix file to dist
         run: 
           Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
