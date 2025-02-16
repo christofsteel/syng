@@ -93,8 +93,8 @@ jobs:
         uses: microsoft/setup-msbuild@v2
       - name: Install WiX
         run: |
-          dotnet tool install --global wix
-          wix extension add WixToolset.UI.wixext/5.0.2
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.UI.wixext/5.0.2
       - name: Copy wix file to dist
         run: | 
           Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
