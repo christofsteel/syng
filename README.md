@@ -151,6 +151,18 @@ sources:
     max_duration: 1800
 ```
 
+# Web client
+
+The web client consists of three columns on desktop and three tabs on mobile:
+
+- **Search:** Users can search for karaoke songs and get the results here. You can also directly add a YouTube video by using its link. Search results for YouTube videos have a second button to preview the song.
+- **Queue:** Shows the current queue. The current song is highlighted at the top and each item is equipped with an ETA. If you are on an admin connection, you can drag and drop to change the order of the queue and delete items from the queue.
+- **Recent:** This shows all previously played songs.
+
+When connecting to the web client, you can give yourself a name with which your songs are queued. You can change your name by changing it in the footer. If no name is selected, a name is queried each time a song is added.
+
+In the advanced options, you can add the admin password, that corresponds with the admin password on the playback client, to elevate this connection to an admin connection.
+
 # Server
 
 If you want to host your own Syng server, you can do that, but you can also use the publicly available Syng instance at https://syng.rocks.
