@@ -2,21 +2,14 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
     <Package Language="1033"
              Manufacturer="Syng.Rocks!"
-             Name="Syng"
+             Name="Syng.Rocks! Karaoke Player"
              Scope="perUserOrMachine"
              UpgradeCode="092e7e0b-5042-47a1-9673-544d9722f8df"
              ProductCode="*"
              Version="2.1.0">
         <MediaTemplate EmbedCab="yes" />
         <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
-        <Property Id="INSTALLDESKTOPSHORTCUT" Value="0"/>
-        <UI>
-            <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
-            <ui:WixUIDialog Id="ExitDialog">
-                <Control Id="DesktopShortcutCheckbox" Type="CheckBox" X="15" Y="180" Width="320" Height="17"
-                         Property="INSTALLDESKTOPSHORTCUT" CheckBoxValue="1" Text="Create a desktop shortcut"/>
-            </ui:WixUIDialog
-        </UI>
+        <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
         <WixVariable Id="WixUILicenseRtf" Value="agpl-3.0.rtf" />
         <Icon Id="syng.ico" SourceFile="..\syng.ico"/>
         <Property Id="ARPPRODUCTICON" Value="syng.ico" />
@@ -26,16 +19,23 @@
                     <File KeyPath="yes" Source="syng\syng.exe" Name="syng.exe"></File>
                     <Shortcut Id="startmenuShortcut"
                               Directory="ProgramMenuDir"
-                              Name="Syng Karaoke Player"
+                              Name="Syng.Rocks! Karaoke Player"
                               WorkingDirectory='INSTALLFOLDER'
                               Icon="syng.ico"
                               IconIndex="0"
                               Advertise="yes" />
                     <Shortcut Id="UninstallProduct"
-                            Name="Uninstall Syng"
+                            Name="Uninstall Syng.Rocks! Karaoke Player"
                             Target="[SystemFolder]msiexec.exe"
                             Arguments="/x [ProductCode]"
                             Description="Uninstalls Syng" />
+                    <Shortcut Id="desktopShortcut"
+                              Directory="DesktopFolder"
+                              Name="Syng.Rocks! Karaoke Player"
+                              WorkingDirectory='INSTALLFOLDER'
+                              Icon="syng.ico"
+                              IconIndex="0"
+                              Advertise="yes" />
                 </Component>
                 <Directory Id="DataDir" Name="data">
                 </Directory>
@@ -46,17 +46,6 @@
             <Exclude Files="syng\syng.exe" />
           </Files>
         </ComponentGroup>
-        <Component Id="DesktopShortcut">
-                    <Shortcut Id="desktopShortcut"
-                              Directory="DesktopFolder"
-                              Name="Syng Karaoke Player"
-                              WorkingDirectory='INSTALLFOLDER'
-                              Icon="syng.ico"
-                              IconIndex="0"
-                              Advertise="yes" />
-                    <RegistryValue Root="HKCU" Key="Software\rocks.syng.Syng" Name="Installed" Type="integer" Value="1" KeyPath="yes"/>
-                    <Condition><![CDATA[INSTALLDESKTOPSHORTCUT=1]]></Condition>         
-        </Component>
         <StandardDirectory Id="ProgramMenuFolder">
             <Directory Id="ProgramMenuDir" Name="syng"/>
         </StandardDirectory>
@@ -64,7 +53,5 @@
         <Feature Id="syng">
             <ComponentRef Id="ProductComponent" />
             <ComponentGroupRef Id="DataFiles" />
-            <Condition Level="1"><![CDATA[INSTALLDESKTOPSHORTCUT=1]]></Condition>
-            <ComponentRef Id="DesktopShortcut"/>
         </Feature></Package>
 </Wix>
