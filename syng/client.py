@@ -33,7 +33,7 @@ from uuid import UUID
 from qrcode.main import QRCode
 
 import socketio
-from socketio.exceptions import ConnectionError
+from socketio.exceptions import ConnectionError, BadNamespaceError
 import engineio
 from yaml import load, Loader
 
@@ -375,7 +375,10 @@ class Client:
             self.skipped.remove(entry.uuid)
             await self.sio.emit("get-first")
         else:
-            await self.sio.emit("pop-then-get-next")
+            try:
+                await self.sio.emit("pop-then-get-next")
+            except BadNamespaceError:
+                pass
 
     async def handle_search(self, data: dict[str, Any]) -> None:
         """
@@ -520,6 +523,9 @@ class Client:
             self.player.mpv.terminate()
 
     def quit_callback(self) -> None:
+        if self.is_quitting:
+            return
+        self.is_quitting = True
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.sio.disconnect(), self.loop)
 
