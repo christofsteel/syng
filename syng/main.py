@@ -41,6 +41,7 @@ import traceback
 
 import platformdirs
 
+gui_exception = ""
 try:
     from syng.gui import run_gui
 
@@ -118,12 +119,17 @@ def main() -> None:
     elif args.action == "server":
         run_server(args)
     elif args.action == "gui":
-        run_gui()
-    else:
-        try:
-            run_gui()
-        except NameError:
+        if not GUI_AVAILABLE:
+            print("GUI module is not available.")
             print(gui_exception)
+        else:
+            run_gui()
+    else:
+        if not GUI_AVAILABLE:
+            print("GUI module is not available.")
+            print(gui_exception)
+        else:
+            run_gui()
 
 
 if __name__ == "__main__":
