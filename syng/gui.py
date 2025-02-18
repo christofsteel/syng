@@ -11,7 +11,7 @@ from datetime import datetime
 import os
 from functools import partial
 import random
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 import secrets
 import string
 import signal
@@ -28,7 +28,15 @@ except ImportError:
 
 os.environ["QT_API"] = "pyqt6"
 from qasync import QEventLoop, QApplication
-from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import (
+    QAbstractListModel,
+    QModelIndex,
+    QObject,
+    QTimer,
+    Qt,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -40,6 +48,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLayout,
     QLineEdit,
+    QListView,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -59,6 +68,7 @@ import platformdirs
 from . import resources  # noqa
 from .client import Client, default_config
 from .log import logger
+from .entry import Entry
 
 from .sources import available_sources
 from .config import (
@@ -71,6 +81,28 @@ from .config import (
     PasswordOption,
     StrOption,
 )
+
+
+class QueueModel(QAbstractListModel):
+    def __init__(self, queue: list[Entry]) -> None:
+        super().__init__()
+        self.queue = queue
+
+    def update(self, queue: list[Entry]) -> None:
+        self.queue = queue
+        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, 0))
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+        if role == Qt.ItemDataRole.DisplayRole:
+            entry = self.queue[index.row()]
+            return f"{entry.title} - {entry.artist} [{entry.album}]\n{entry.performer}"
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return len(self.queue)
+
+
+class QueueView(QListView):
+    pass
 
 
 class OptionFrame(QWidget):
@@ -497,6 +529,8 @@ class GeneralConfig(OptionFrame):
 class SyngGui(QMainWindow):
     def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
         if self.client is not None:
+            if self.client.player is not None and self.client.player.mpv is not None:
+                self.client.player.mpv.terminate()
             self.client.quit_callback()
 
         self.log_label_handler.cleanup()
@@ -529,10 +563,22 @@ class SyngGui(QMainWindow):
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttons_layout.addItem(spacer_item)
 
+        if os.getenv("SYNG_DEBUG", "0") == "1":
+            self.print_queue_button = QPushButton("Print Queue")
+            self.print_queue_button.clicked.connect(self.debug_print_queue)
+            self.buttons_layout.addWidget(self.print_queue_button)
+
         self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
+
+    def debug_print_queue(self) -> None:
+        if self.client is not None:
+            print([entry.title for entry in self.client.state.queue])
+            model = cast(Optional[QueueModel], self.queue_list_view.model())
+            if model is not None:
+                print(model.queue)
 
     def toggle_advanced(self, state: bool) -> None:
         self.resetbutton.setVisible(state)
@@ -626,6 +672,16 @@ class SyngGui(QMainWindow):
 
         self.tabview.addTab(self.log_tab, "Logs")
 
+    def add_queue_tab(self) -> None:
+        self.queue_tab = QWidget(parent=self.central_widget)
+        self.queue_layout = QVBoxLayout(self.queue_tab)
+        self.queue_tab.setLayout(self.queue_layout)
+
+        self.queue_list_view: QueueView = QueueView(self.queue_tab)
+        self.queue_layout.addWidget(self.queue_list_view)
+
+        self.tabview.addTab(self.queue_tab, "Queue")
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Syng")
@@ -654,6 +710,7 @@ class SyngGui(QMainWindow):
         for source_name in available_sources:
             self.add_source_config(source_name, config["sources"][source_name])
 
+        self.add_queue_tab()
         self.add_log_tab()
 
         self.update_qr()
@@ -786,6 +843,9 @@ class SyngGui(QMainWindow):
             config = self.gather_config()
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
+            model = QueueModel(self.client.state.queue)
+            self.queue_list_view.setModel(model)
+            self.client.add_queue_callback(model.update)
             self.timer.start(500)
             self.set_client_button_stop()
         else:

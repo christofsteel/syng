@@ -13,6 +13,7 @@ be one of:
 """
 
 from __future__ import annotations
+from collections.abc import Callable
 import logging
 import os
 import asyncio
@@ -134,6 +135,7 @@ class Client:
         config["config"] = default_config() | config["config"]
 
         self.is_running = False
+        self.is_quitting = False
         self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -149,6 +151,10 @@ class Client:
             self.quit_callback,
         )
         self.register_handlers()
+        self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
+
+    def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
+        self.queue_callbacks.append(callback)
 
     def set_log_level(self, level: str) -> None:
         match level:
@@ -254,7 +260,9 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
-        self.state.queue = [Entry(**entry) for entry in data["queue"]]
+        self.state.queue.clear()
+        self.state.queue.extend([Entry(**entry) for entry in data["queue"]])
+        # self.state.queue = [Entry(**entry) for entry in data["queue"]]
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
 
@@ -273,6 +281,8 @@ class Client:
             except ValueError as e:
                 logger.error("Error buffering: %s", e)
                 await self.sio.emit("skip", {"uuid": entry.uuid})
+        for callback in self.queue_callbacks:
+            callback(self.state.queue)
 
     async def handle_connect(self) -> None:
         """
