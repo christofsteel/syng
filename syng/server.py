@@ -24,7 +24,7 @@ from json.decoder import JSONDecodeError
 from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any, Callable, Literal, AsyncGenerator, Optional
+from typing import Any, Callable, Literal, AsyncGenerator, Optional, cast
 
 import socketio
 from aiohttp import web
@@ -239,9 +239,13 @@ class Server:
             return web.FileResponse(os.path.join(self.app["root_folder"], "favicon.ico"))
         return web.FileResponse(os.path.join(self.app["root_folder"], "index.html"))
 
-    async def broadcast_state(self, state: State) -> None:
-        async with self.sio.session(state.sid) as session:
-            room = session["room"]
+    async def broadcast_state(
+        self, state: State, /, sid: Optional[str] = None, room: Optional[str] = None
+    ) -> None:
+        if room is None:
+            sid = state.sid if sid is None else sid
+            async with self.sio.session(sid) as session:
+                room = cast(str, session["room"])
         await self.send_state(state, room)
 
     async def log_to_playback(self, state: State, msg: str, level: str = "info") -> None:
@@ -354,7 +358,7 @@ class Server:
         entry.uid = data["uid"]
 
         state.waiting_room.append(entry)
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
         await self.sio.emit(
             "get-meta-info",
             entry,
@@ -404,7 +408,7 @@ class Server:
                 return
 
         state.queue.append(entry)
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=report_to)
 
         await self.sio.emit(
             "get-meta-info",
@@ -651,7 +655,7 @@ class Server:
                 if entry.uuid == data["uuid"] or str(entry.uuid) == data["uuid"]:
                     entry.update(**data["meta"], incomplete_data=False)
 
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
     @playback
     @with_state
@@ -765,11 +769,11 @@ class Server:
         :rtype: None
         """
         await self.discard_first(state)
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
         current = await state.queue.peek()
         current.started_at = datetime.datetime.now().timestamp()
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
         await self.sio.emit("play", current, room=sid)
 
@@ -1098,7 +1102,7 @@ class Server:
         """
         old_entry = await self.discard_first(state)
         await self.sio.emit("skip-current", old_entry, room=state.sid)
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
     @admin
     @with_state
@@ -1116,7 +1120,7 @@ class Server:
         :rtype: None
         """
         await state.queue.move_to(data["uuid"], data["target"])
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
     @admin
     @with_state
@@ -1134,7 +1138,7 @@ class Server:
         :rtype: None
         """
         await state.queue.move_up(data["uuid"])
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
     @admin
     @with_state
@@ -1171,7 +1175,7 @@ class Server:
                 state.waiting_room[first_entry_index],
             )
             del state.waiting_room[first_entry_index]
-        await self.broadcast_state(state)
+        await self.broadcast_state(state, sid=sid)
 
     async def handle_disconnect(self, sid: str) -> None:
         """
