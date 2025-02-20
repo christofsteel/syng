@@ -445,10 +445,12 @@ class Client:
         if data["success"]:
             self.player.start()
 
-            logger.info("Registered")
+            logger.info("Connected to room: %s", data["room"])
             qr_string = f"{self.state.config['server']}/{data['room']}"
             self.player.update_qr(qr_string)
             # this is borked on windows
+
+            await self.handle_state(data)
             if os.name != "nt":
                 print(f"Join here: {self.state.config['server']}/{data['room']}")
                 qr = QRCode(box_size=20, border=2)
