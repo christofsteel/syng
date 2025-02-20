@@ -938,7 +938,17 @@ class Server:
                     config=DEFAULT_CONFIG | data["config"],
                 )
                 await self.sio.enter_room(sid, room)
-                await self.sio.emit("client-registered", {"success": True, "room": room}, room=sid)
+                await self.sio.emit(
+                    "client-registered",
+                    {
+                        "success": True,
+                        "room": room,
+                        "queue": self.clients[room].queue,
+                        "recent": self.clients[room].recent,
+                        "waiting_room": self.clients[room].waiting_room,
+                    },
+                    room=sid,
+                )
                 await self.send_state(self.clients[room], sid)
             else:
                 logger.warning("Got wrong secret for %s", room)
