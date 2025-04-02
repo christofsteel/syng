@@ -1,0 +1,36 @@
+name: Check
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install and poetry and all dependencies
+        run: |
+          pip install poetry --quiet
+          poetry install --all-extras
+      - name: Run mypy
+        run: poetry run mypy syng --strict
+
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install ruff
+        run: pip install ruff --quiet
+      - name: Run ruff
+        run: ruff check syng 
