@@ -51,6 +51,8 @@ This installs both the playback client (`syng client`) and a configuration GUI (
 
 **Note:** When installing via PyPI, you need to have [mpv](https://mpv.io/) installed on the playback client, and the `mpv` binary must be in your `PATH`.
 
+The Syng client is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-client)
+
 ### Windows
 
 Windows support is experimental, but you can download the current version from [Releases](https://github.com/christofsteel/syng/releases). No installation necessary, you can just run the `exe`.
@@ -186,6 +188,10 @@ There exists one optional dependency for the server: `alt-profanity-check`. If t
 Alternatively you can run the server using docker. It listens on port 8080 and reads a key file at `/app/keys.txt` when configured as private or restricted.
 
     docker run --rm -v /path/to/your/keys.txt:/app/keys.txt -p 8080:8080 ghcr.io/christofsteel/syng -H 0.0.0.0
+
+## Arch Linux
+
+The Syng server is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-server)
 
 ## Configuration
 
