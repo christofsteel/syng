@@ -824,7 +824,7 @@ class SyngGui(QMainWindow):
             self.timer.stop()
             return
 
-        if not self.client.is_running:
+        if not self.client.connection_state.is_connected():
             self.client = None
             self.set_client_button_start()
         else:
@@ -837,7 +837,7 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:
-        if self.client is None or not self.client.is_running:
+        if self.client is None or not self.client.connection_state.is_connected():
             logger.debug("Starting client")
             self.save_config()
             config = self.gather_config()

@@ -61,7 +61,7 @@ class Player:
 
     def start(self) -> None:
         self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
-        self.mpv.title = "Syng - Player"
+        self.mpv.title = "Syng.Rocks! - Player"
         self.mpv.keep_open = "yes"
         self.mpv.play(
             f"{self.base_dir}/background.png",
@@ -199,4 +199,3 @@ class Player:
         self.mpv.play(
             f"{self.base_dir}/background.png",
         )
-        # self.mpv.playlist_next()

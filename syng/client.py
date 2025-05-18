@@ -14,6 +14,7 @@ be one of:
 
 from __future__ import annotations
 from collections.abc import Callable
+from functools import partial
 import logging
 import os
 import asyncio
@@ -44,6 +45,29 @@ from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
 from .sources import configure_sources, Source
 from .log import logger
+
+
+class ConnectionState:
+    __is_connected__ = False
+    __mpv_running__ = False
+
+    def is_connected(self) -> bool:
+        return self.__is_connected__
+
+    def is_mpv_running(self) -> bool:
+        return self.__mpv_running__
+
+    def set_disconnected(self) -> None:
+        self.__is_connected__ = False
+
+    def set_connected(self) -> None:
+        self.__is_connected__ = True
+
+    def set_mpv_running(self) -> None:
+        self.__mpv_running__ = True
+
+    def set_mpv_terminated(self) -> None:
+        self.__mpv_running__ = False
 
 
 def default_config() -> dict[str, Optional[int | str]]:
@@ -134,8 +158,7 @@ class Client:
     def __init__(self, config: dict[str, Any]):
         config["config"] = default_config() | config["config"]
 
-        self.is_running = False
-        self.is_quitting = False
+        self.connection_state = ConnectionState()
         self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -150,6 +173,8 @@ class Client:
             QRPosition.from_string(config["config"]["qr_position"]),
             self.quit_callback,
         )
+        self.connection_state.set_mpv_running()
+        logger.info(f"MPV: {self.connection_state.is_mpv_running()} ")
         self.register_handlers()
         self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
 
@@ -183,7 +208,18 @@ class Client:
         self.sio.on("disconnect", self.handle_disconnect)
 
     async def handle_disconnect(self) -> None:
-        logger.info("Disconnected from server")
+        self.connection_state.set_disconnected()
+        await self.ensure_disconnect()
+
+    async def ensure_disconnect(self) -> None:
+        logger.info("Disconnecting from server")
+        logger.info(f"Connection: {self.connection_state.is_connected()}")
+        logger.info(f"MPV: {self.connection_state.is_mpv_running()}")
+        if self.connection_state.is_connected():
+            await self.sio.disconnect()
+        if self.connection_state.is_mpv_running():
+            if self.player.mpv is not None:
+                self.player.mpv.terminate()
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
         """
@@ -262,7 +298,6 @@ class Client:
         """
         self.state.queue.clear()
         self.state.queue.extend([Entry(**entry) for entry in data["queue"]])
-        # self.state.queue = [Entry(**entry) for entry in data["queue"]]
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
 
@@ -521,25 +556,40 @@ class Client:
             elif updated_config is not None:
                 await self.sio.emit("config", {"source": data["source"], "config": updated_config})
 
-    def signal_handler(self) -> None:
+    def signal_handler(self, loop: asyncio.AbstractEventLoop) -> None:
         """
         Signal handler for the client.
 
         This function is called when the client receives a signal to terminate. It
         will disconnect from the server and kill the current player.
 
+        :param loop: The asyncio event loop
+        :type loop: asyncio.AbstractEventLoop
         :rtype: None
         """
         engineio.async_client.async_signal_handler()
-        if self.player.mpv is not None:
-            self.player.mpv.terminate()
+        asyncio.ensure_future(self.ensure_disconnect(), loop=loop)
 
     def quit_callback(self) -> None:
-        if self.is_quitting:
-            return
-        self.is_quitting = True
+        """
+        Callback function for the player, terminating the player and disconnecting
+
+        :rtype: None
+        """
+        self.connection_state.set_mpv_terminated()
         if self.loop is not None:
-            asyncio.run_coroutine_threadsafe(self.sio.disconnect(), self.loop)
+            asyncio.run_coroutine_threadsafe(self.ensure_disconnect(), self.loop)
+            asyncio.run_coroutine_threadsafe(self.kill_mpv(), self.loop)
+
+    async def kill_mpv(self) -> None:
+        """
+        Kill the mpv process. Needs to be called in a thread, because of mpv...
+        See https://github.com/jaseg/python-mpv/issues/114#issuecomment-1214305952
+
+        :rtype: None
+        """
+        if self.player.mpv is not None:
+            self.player.mpv.terminate()
 
     async def start_client(self, config: dict[str, Any]) -> None:
         """
@@ -576,18 +626,17 @@ class Client:
 
             # this is not supported under windows
             if os.name != "nt":
-                asyncio.get_event_loop().add_signal_handler(signal.SIGINT, self.signal_handler)
+                loop = asyncio.get_event_loop()
+                loop.add_signal_handler(signal.SIGINT, partial(self.signal_handler, loop))
 
-            self.is_running = True
+            self.connection_state.set_connected()
             await self.sio.wait()
         except asyncio.CancelledError:
             pass
         except ConnectionError:
             logger.critical("Could not connect to server")
         finally:
-            self.is_running = False
-            if self.player.mpv is not None:
-                self.player.mpv.terminate()
+            await self.ensure_disconnect()
 
 
 def create_async_and_start_client(
