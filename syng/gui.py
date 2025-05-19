@@ -504,9 +504,9 @@ class GeneralConfig(OptionFrame):
             ["debug", "info", "warning", "error", "critical"],
             config["log_level"],
         )
-        self.add_bool_option("show_advanced", "Show Advanced Options", config["show_advanced"])
+        # self.add_bool_option("show_advanced", "Show Advanced Options", config["show_advanced"])
 
-        self.simple_options = ["server", "room", "secret", "show_advanced"]
+        self.simple_options = ["server", "room", "secret"]
 
         if not config["show_advanced"]:
             for option in self.option_names.difference(self.simple_options):
