@@ -160,7 +160,7 @@ class Client:
 
         self.connection_state = ConnectionState()
         self.set_log_level(config["config"]["log_level"])
-        self.sio = socketio.AsyncClient(json=jsonencoder)
+        self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.skipped: list[UUID] = []
         self.sources = configure_sources(config["sources"])
