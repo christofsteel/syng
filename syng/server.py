@@ -684,6 +684,33 @@ class Server:
 
     @admin
     @with_state
+    async def handle_queue_to_waiting_room(
+        self, state: State, sid: str, data: dict[str, Any]
+    ) -> None:
+        """
+        Handle the "queue-to-waiting" message.
+
+        If on an admin-connection, removes a song from the queue and appends it to
+        the waiting room. If the performer has only one entry in the queue, it is
+        put back into the queue immediately.
+
+        :param sid: The session id of the requesting client
+        :type sid: str
+        :rtype: None
+        """
+
+        entry = state.queue.find_by_uuid(data["uuid"])
+        if entry is not None:
+            performer_entries = list(state.queue.find_all_by_name(entry.performer))
+            print(performer_entries)
+            if len(performer_entries) == 1:
+                return
+            await state.queue.remove(entry)
+            state.waiting_room.append(entry)
+            await self.broadcast_state(state, sid=sid)
+
+    @admin
+    @with_state
     async def handle_waiting_room_to_queue(
         self, state: State, sid: str, data: dict[str, Any]
     ) -> None:

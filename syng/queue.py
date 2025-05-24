@@ -120,6 +120,20 @@ class Queue:
                 return item
         return None
 
+    def find_all_by_name(self, name: str) -> Iterable[Entry]:
+        """
+        Find all entries by their performer and return them as an iterable.
+
+        :param name: The name of the performer to search for.
+        :type name: str
+        :returns: The entries with the performer.
+        :rtype: Iterable[Entry]
+        """
+
+        for item in self._queue:
+            if item.shares_performer(name):
+                yield item
+
     def find_by_uuid(self, uuid: UUID | str) -> Optional[Entry]:
         """
         Find an entry by its uuid and return it.
