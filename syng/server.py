@@ -208,6 +208,7 @@ class Server:
         self.sio.on("meta-info", self.handle_meta_info)
         self.sio.on("get-first", self.handle_get_first)
         self.sio.on("waiting-room-to-queue", self.handle_waiting_room_to_queue)
+        self.sio.on("queue-to-waiting-room", self.handle_queue_to_waiting_room)
         self.sio.on("pop-then-get-next", self.handle_pop_then_get_next)
         self.sio.on("register-client", self.handle_register_client)
         self.sio.on("sources", self.handle_sources)
