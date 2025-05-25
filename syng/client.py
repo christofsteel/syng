@@ -155,6 +155,7 @@ class State:
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
     config: dict[str, Any] = field(default_factory=default_config)
+    old_config: dict[str, Any] = field(default_factory=default_config)
 
 
 class Client:
@@ -293,6 +294,23 @@ class Client:
         :rtype: None
         """
         self.state.config = default_config() | data
+
+    async def send_update_config(self) -> None:
+        """
+        Send the current configuration to the server.
+
+        This is used to update the server with the current configuration of the
+        client. This is done by sending a "update_config" message to the server.
+
+        :rtype: None
+        """
+
+        changes = dict()
+        for key, value in self.state.config.items():
+            if key in default_config() and default_config()[key] != value:
+                changes[key] = value
+
+        await self.sio.emit("update_config", self.state.config)
 
     async def handle_skip_current(self, data: dict[str, Any]) -> None:
         """
@@ -602,7 +620,7 @@ class Client:
 
     async def kill_mpv(self) -> None:
         """
-        Kill the mpv process. Needs to be called in a thread, because of mpv...
+        Kill the mpv process. Needs to be called in a seperate thread, because of mpv...
         See https://github.com/jaseg/python-mpv/issues/114#issuecomment-1214305952
 
         :rtype: None

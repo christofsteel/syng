@@ -509,7 +509,6 @@ class GeneralConfig(OptionFrame):
             ["debug", "info", "warning", "error", "critical"],
             config["log_level"],
         )
-        # self.add_bool_option("show_advanced", "Show Advanced Options", config["show_advanced"])
 
         self.simple_options = ["server", "room", "secret"]
 
@@ -575,6 +574,10 @@ class SyngGui(QMainWindow):
             )
             self.buttons_layout.addWidget(self.print_background_tasks_button)
 
+        self.update_config_button = QPushButton("Update Config")
+        self.update_config_button.clicked.connect(self.update_config)
+        self.update_config_button.setVisible(False)
+        self.buttons_layout.addWidget(self.update_config_button)
         self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
@@ -897,9 +900,16 @@ class SyngGui(QMainWindow):
             self.set_client_button_stop()
 
     def set_client_button_stop(self) -> None:
+        self.update_config_button.setVisible(True)
+        self.general_config.string_options["server"].setEnabled(False)
+        self.general_config.string_options["room"].setEnabled(False)
+
         self.startbutton.setText("Disconnect")
 
     def set_client_button_start(self) -> None:
+        self.general_config.string_options["server"].setEnabled(True)
+        self.general_config.string_options["room"].setEnabled(True)
+        self.update_config_button.setVisible(False)
         self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:

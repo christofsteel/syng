@@ -119,7 +119,7 @@ class Queue:
 
     def find_by_name(self, name: str) -> Optional[Entry]:
         """
-        Find an entry by its performer and return it.
+        Find the first entry by its performer and return it.
 
         :param name: The name of the performer to search for.
         :type name: str
