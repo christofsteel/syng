@@ -11,7 +11,13 @@ class _session_context_manager:
     async def __aenter__(self) -> dict[str, Any]: ...
     async def __aexit__(self, *args: list[Any]) -> None: ...
 
+class Manager:
+    rooms: dict[str, set[str]]
+    def get_namespaces(self) -> list[str]: ...
+    def get_participants(self, namespace: str, room: str) -> list[tuple[str, str]]: ...
+
 class AsyncServer:
+    manager: Manager
     def __init__(
         self,
         cors_allowed_origins: str,

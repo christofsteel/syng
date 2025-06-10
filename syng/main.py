@@ -111,6 +111,7 @@ def main() -> None:
         server_parser.add_argument("--private", "-P", action="store_true", default=False)
         server_parser.add_argument("--restricted", "-R", action="store_true", default=False)
         server_parser.add_argument("--admin-password", "-A", default=None)
+        server_parser.add_argument("--admin-port", "-a", type=int, default=None)
 
     args = parser.parse_args()
 

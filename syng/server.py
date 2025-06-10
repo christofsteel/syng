@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import hashlib
+import logging
 import os
 import random
 import string
@@ -194,6 +195,9 @@ class Server:
             cors_allowed_origins="*", logger=True, engineio_logger=False, json=jsonencoder
         )
         self.app = web.Application()
+        self.runner = web.AppRunner(self.app)
+        self.admin_app = web.Application()
+        self.admin_runner = web.AppRunner(self.admin_app)
         self.clients: dict[str, State] = {}
         self.sio.attach(self.app)
         self.register_handlers()
@@ -239,6 +243,68 @@ class Server:
         if request.path.endswith("/favicon.ico"):
             return web.FileResponse(os.path.join(self.app["root_folder"], "favicon.ico"))
         return web.FileResponse(os.path.join(self.app["root_folder"], "index.html"))
+
+    async def get_number_connections(self) -> int:
+        """
+        Get the number of connections to the server.
+
+        :return: The number of connections
+        :rtype: int
+        """
+        num = 0
+        for namespace in self.sio.manager.get_namespaces():
+            for room in self.sio.manager.rooms[namespace]:
+                for participant in self.sio.manager.get_participants(namespace, room):
+                    num += 1
+        return num
+
+    async def get_clients(self, room: str) -> list[dict[str, Any]]:
+        """
+        Get the number of clients in a room.
+
+        :param room: The room to get the number of clients for
+        :type room: str
+        :return: The number of clients in the room
+        :rtype: int
+        """
+        clients = []
+        for sid, client_id in self.sio.manager.get_participants("/", room):
+            client: dict[str, Any] = {}
+            client["sid"] = sid
+            if sid == self.clients[room].sid:
+                client["type"] = "playback"
+            else:
+                client["type"] = "web"
+            client["admin"] = False
+            async with self.sio.session(sid) as session:
+                if "admin" in session:
+                    client["admin"] = session["admin"]
+            clients.append(client)
+        return clients
+
+    async def admin_handler(self, request: Any) -> Any:
+        """
+        Handle the admin request.
+        """
+
+        rooms = [
+            {
+                "room": room,
+                "sid": state.sid,
+                "last_seen": state.last_seen.isoformat(),
+                "queue": state.queue.to_list(),
+                "waiting_room": state.waiting_room,
+                "clients": await self.get_clients(room),
+            }
+            for room, state in self.clients.items()
+        ]
+        info_dict = {
+            "version": SYNG_VERSION,
+            "protocol_version": SYNG_PROTOCOL_VERSION,
+            "connections": await self.get_number_connections(),
+            "rooms": rooms,
+        }
+        return web.json_response(info_dict, dumps=jsonencoder.dumps)
 
     async def broadcast_state(
         self, state: State, /, sid: Optional[str] = None, room: Optional[str] = None
@@ -1398,6 +1464,33 @@ class Server:
         iapp["repeated_cleanup"].cancel()
         await iapp["repeated_cleanup"]
 
+    async def run_apps(self, host: str, port: int, admin_port: Optional[int]) -> None:
+        """
+        Run the main and admin apps.
+
+        This is used to run the main app and the admin app in parallel.
+
+        :param host: The host to bind to
+        :type host: str
+        :param port: The port to bind to
+        :type port: int
+        :param admin_port: The port for the admin interface, or None if not used
+        :type admin_port: Optional[int]
+        :rtype: None
+        """
+        if admin_port:
+            logger.info("Starting admin interface on port %d", admin_port)
+            await self.admin_runner.setup()
+            admin_site = web.TCPSite(self.admin_runner, host, admin_port)
+            await admin_site.start()
+        logger.info("Starting main server on port %d", port)
+        await self.runner.setup()
+        site = web.TCPSite(self.runner, host, port)
+        await site.start()
+
+        while True:
+            await asyncio.sleep(3600)
+
     def run(self, args: Namespace) -> None:
         """
         Run the server.
@@ -1409,11 +1502,14 @@ class Server:
             - `registration_keyfile`, the file containing the registration keys
             - `private`, if the server is private
             - `restricted`, if the server is restricted
+            - `admin_port`, the port for the admin interface
 
         :param args: The command line arguments
         :type args: Namespace
         :rtype: None
         """
+        logger.setLevel(logging.INFO)
+
         self.app["type"] = (
             "private" if args.private else "restricted" if args.restricted else "public"
         )
@@ -1429,12 +1525,25 @@ class Server:
         self.app.router.add_route("*", "/", self.root_handler)
         self.app.router.add_route("*", "/{room}", self.root_handler)
         self.app.router.add_route("*", "/{room}/", self.root_handler)
+        self.admin_app.router.add_route("*", "/", self.admin_handler)
 
         self.app.cleanup_ctx.append(self.background_tasks)
         if args.admin_password:
             self.sio.instrument(auth={"username": "admin", "password": args.admin_password})
 
-        web.run_app(self.app, host=args.host, port=args.port)
+        try:
+            asyncio.run(
+                self.run_apps(
+                    args.host,
+                    args.port,
+                    args.admin_port,
+                )
+            )
+        except KeyboardInterrupt:
+            logger.info("Shutting down server...")
+            asyncio.run(self.runner.cleanup())
+            asyncio.run(self.admin_runner.cleanup())
+            logger.info("Server shut down.")
 
 
 def run_server(args: Namespace) -> None:
