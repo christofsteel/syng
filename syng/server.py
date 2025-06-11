@@ -220,6 +220,7 @@ class Server:
         self.sio.on("config", self.handle_config)
         self.sio.on("register-web", self.handle_register_web)
         self.sio.on("register-admin", self.handle_register_admin)
+        self.sio.on("remove-room", self.handle_remove_room)
         self.sio.on("skip-current", self.handle_skip_current)
         self.sio.on("move-to", self.handle_move_to)
         self.sio.on("move-up", self.handle_move_up)
@@ -931,6 +932,36 @@ class Server:
                 room=sid,
             )
         return True
+
+    @admin
+    @with_state
+    async def handle_remove_room(self, state: State, sid: str, data: dict[str, Any]) -> None:
+        """
+        Handle the "remove-room" message.
+
+        This will remove the room from the server, and delete all associated data.
+        This is only available on an admin connection.
+
+        :param sid: The session id of the client sending this request
+        :type sid: str
+        :rtype: None
+        """
+        async with self.sio.session(sid) as session:
+            room = cast(str, session["room"])
+        if room not in self.clients:
+            await self.sio.emit(
+                "msg",
+                {"type": "error", "msg": f"Room {room} does not exist."},
+                room=sid,
+            )
+            return
+
+        await self.sio.emit("room-removed", {"room": room}, room=sid)
+        for client, _ in self.sio.manager.get_participants("/", room):
+            await self.sio.leave_room(client, room)
+            await self.sio.disconnect(client)
+        del self.clients[room]
+        logger.info("Removed room %s", room)
 
     async def handle_register_client(self, sid: str, data: dict[str, Any]) -> None:
         """

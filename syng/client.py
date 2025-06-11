@@ -206,6 +206,7 @@ class Client:
         self.sio.on("request-config", self.handle_request_config)
         self.sio.on("msg", self.handle_msg)
         self.sio.on("disconnect", self.handle_disconnect)
+        self.sio.on("room-removed", self.handle_room_removed)
 
     async def handle_disconnect(self) -> None:
         self.connection_state.set_disconnected()
@@ -590,6 +591,28 @@ class Client:
         """
         if self.player.mpv is not None:
             self.player.mpv.terminate()
+
+    async def remove_room(self) -> None:
+        """
+        Remove the room from the server.
+        """
+
+        if self.state.config["room"] is not None:
+            logger.info("Removing room %s from server", self.state.config["room"])
+            await self.sio.emit("remove-room", {"room": self.state.config["room"]})
+
+    async def handle_room_removed(self, data: dict[str, Any]) -> None:
+        """
+        Handle the "room-removed" message.
+
+        This is called when the server removes the room, that this client is
+        connected to. It will disconnect from the server and terminate the player.
+
+        :param data: A dictionary with the `room` entry.
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+        logger.info("Room removed: %s", data["room"])
 
     async def start_client(self, config: dict[str, Any]) -> None:
         """
