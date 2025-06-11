@@ -1454,14 +1454,13 @@ class Server:
         logger.info("Start Cleanup")
         to_remove: list[str] = []
         for sid, state in self.clients.items():
-            logger.info("Client %s, last seen: %s", sid, str(state.last_seen))
+            logger.debug("Client %s, last seen: %s", sid, str(state.last_seen))
             if state.last_seen + datetime.timedelta(hours=4) < datetime.datetime.now():
                 logger.info("No activity for 4 hours, removing %s", sid)
                 to_remove.append(sid)
         for sid in to_remove:
             await self.sio.disconnect(sid)
             del self.clients[sid]
-        logger.info("End Cleanup")
 
         # The internal loop counter does not use a regular timestamp, so we need to convert between
         # regular datetime and the async loop time
@@ -1471,7 +1470,7 @@ class Server:
         offset = next_run.timestamp() - now.timestamp()
         loop_next = asyncio.get_event_loop().time() + offset
 
-        logger.info("Next Cleanup at %s", str(next))
+        logger.info("End cleanup, next cleanup at %s", str(next_run))
         asyncio.get_event_loop().call_at(loop_next, lambda: asyncio.create_task(self.cleanup()))
 
     async def background_tasks(
@@ -1511,10 +1510,12 @@ class Server:
         """
         if admin_port:
             logger.info("Starting admin interface on port %d", admin_port)
+            print(f"==== Admin Interface on {host}:{admin_port} ====")
             await self.admin_runner.setup()
             admin_site = web.TCPSite(self.admin_runner, host, admin_port)
             await admin_site.start()
         logger.info("Starting main server on port %d", port)
+        print(f"==== Server on {host}:{port} ====")
         await self.runner.setup()
         site = web.TCPSite(self.runner, host, port)
         await site.start()
@@ -1539,8 +1540,6 @@ class Server:
         :type args: Namespace
         :rtype: None
         """
-        logger.setLevel(logging.INFO)
-
         self.app["type"] = (
             "private" if args.private else "restricted" if args.restricted else "public"
         )
@@ -1571,6 +1570,8 @@ class Server:
                 )
             )
         except KeyboardInterrupt:
+            pass
+        finally:
             logger.info("Shutting down server...")
             asyncio.run(self.runner.cleanup())
             asyncio.run(self.admin_runner.cleanup())
@@ -1585,5 +1586,8 @@ def run_server(args: Namespace) -> None:
     :type args: Namespace
     :rtype: None
     """
+    loglevel = getattr(logging, args.log_level.upper(), logging.WARNING)
+    logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logger.setLevel(loglevel)
     server = Server()
     server.run(args)

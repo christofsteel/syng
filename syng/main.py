@@ -112,6 +112,12 @@ def main() -> None:
         server_parser.add_argument("--restricted", "-R", action="store_true", default=False)
         server_parser.add_argument("--admin-password", "-A", default=None)
         server_parser.add_argument("--admin-port", "-a", type=int, default=None)
+        server_parser.add_argument(
+            "--log-level",
+            "-l",
+            default="INFO",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "FATAL"],
+        )
 
     args = parser.parse_args()
 
