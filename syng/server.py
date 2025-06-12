@@ -92,7 +92,7 @@ def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
     async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
         async with self.sio.session(sid) as session:
             room = session["room"]
-            if not room in self.clients or not self.is_admin(self.clients[room], sid):
+            if room not in self.clients or not self.is_admin(self.clients[room], sid):
                 await self.sio.emit("err", {"type": "NO_ADMIN"}, sid)
                 return
         return await handler(self, sid, *args, **kwargs)
