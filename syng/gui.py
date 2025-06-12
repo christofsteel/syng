@@ -771,7 +771,7 @@ class SyngGui(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer == QMessageBox.StandardButton.Yes:
-            self.update_config(self.complete_config({"config": {}, "sources": {}}))
+            self.set_config(self.complete_config({"config": {}, "sources": {}}))
 
     def load_config(self, filename: str) -> dict[str, Any]:
         try:
@@ -783,7 +783,14 @@ class SyngGui(QMainWindow):
 
         return self.complete_config(loaded_config)
 
-    def update_config(self, config: dict[str, Any]) -> None:
+    def update_config(self) -> None:
+        if self.client is None:
+            return
+
+        new_config = self.gather_config()
+        old_config = self.client.config
+
+    def set_config(self, config: dict[str, Any]) -> None:
         self.general_config.load_config(config["config"])
         for source_name, source_config in config["sources"].items():
             self.tabs[source_name].load_config(source_config)
@@ -812,7 +819,7 @@ class SyngGui(QMainWindow):
 
         if filename:
             config = self.load_config(filename)
-            self.update_config(config)
+            self.set_config(config)
 
     def export_config(self) -> None:
         filename = QFileDialog.getSaveFileName(self, "Save File", "", "YAML Files (*.yaml)")[0]
@@ -934,7 +941,7 @@ def run_gui() -> None:
         app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
     else:
         app.setWindowIcon(QIcon(":/icons/syng.ico"))
-    app.setApplicationName("Syng")
+    app.setApplicationName("Syng.Rocks!")
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
     window.show()
