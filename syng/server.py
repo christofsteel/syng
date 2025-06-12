@@ -92,7 +92,7 @@ def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
     async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
         async with self.sio.session(sid) as session:
             room = session["room"]
-            if ("admin" not in session or not session["admin"]) and self.clients[room].sid != sid:
+            if not room in self.clients or not self.is_admin(self.clients[room], sid):
                 await self.sio.emit("err", {"type": "NO_ADMIN"}, sid)
                 return
         return await handler(self, sid, *args, **kwargs)
@@ -228,6 +228,22 @@ class Server:
         self.sio.on("disconnect", self.handle_disconnect)
         self.sio.on("search", self.handle_search)
         self.sio.on("search-results", self.handle_search_results)
+
+    async def is_admin(self, state: State, sid: str) -> bool:
+        """
+        Check if a given sid is an admin in a room.
+
+        :param room: The room to check
+        :type room: str
+        :param sid: The session id to check
+        :type sid: str
+        :return: True if the sid is an admin in the room, False otherwise
+        :rtype: bool
+        """
+        if state.sid == sid:
+            return True
+        async with self.sio.session(sid) as session:
+            return "admin" in session and session["admin"]
 
     async def root_handler(self, request: Any) -> Any:
         """
@@ -462,7 +478,9 @@ class Server:
             start_time,
         )
 
-        if state.client.config["last_song"]:
+        if (report_to is None or not await self.is_admin(state, report_to)) and state.client.config[
+            "last_song"
+        ]:
             if state.client.config["last_song"] < start_time:
                 if report_to is not None:
                     await self.sio.emit(
