@@ -28,6 +28,7 @@ from dataclasses import field
 from typing import Any, Callable, Literal, AsyncGenerator, Optional, cast
 
 import socketio
+from socketio.exceptions import ConnectionRefusedError
 from aiohttp import web
 
 try:
@@ -92,7 +93,7 @@ def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
     async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
         async with self.sio.session(sid) as session:
             room = session["room"]
-            if room not in self.clients or not self.is_admin(self.clients[room], sid):
+            if room not in self.clients or not await self.is_admin(self.clients[room], sid):
                 await self.sio.emit("err", {"type": "NO_ADMIN"}, sid)
                 return
         return await handler(self, sid, *args, **kwargs)
@@ -226,6 +227,7 @@ class Server:
         self.sio.on("move-up", self.handle_move_up)
         self.sio.on("skip", self.handle_skip)
         self.sio.on("disconnect", self.handle_disconnect)
+        self.sio.on("connect", self.handle_connect)
         self.sio.on("search", self.handle_search)
         self.sio.on("search-results", self.handle_search_results)
 
@@ -928,7 +930,7 @@ class Server:
                 {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
                 room=sid,
             )
-            return False
+            raise ConnectionRefusedError("Client is incompatible and outdated. Please update.")
 
         if client_version > SYNG_VERSION:
             await self.sio.emit(
@@ -936,12 +938,7 @@ class Server:
                 {"type": "error", "msg": "Server is outdated. Please update."},
                 room=sid,
             )
-            await self.sio.emit(
-                "client-registered",
-                {"success": False, "room": None, "reason": "PROTOCOL_VERSION"},
-                room=sid,
-            )
-            return False
+            raise ConnectionRefusedError("Server is outdated. Please update.")
 
         if client_version < SYNG_VERSION:
             await self.sio.emit(
@@ -983,6 +980,8 @@ class Server:
 
     async def handle_register_client(self, sid: str, data: dict[str, Any]) -> None:
         """
+        THIS IS DEPRECATED, REGISTRATION IS NOW DONE VIA THE CONNECT EVENT.
+
         Handle the "register-client" message.
 
         The data dictionary should have the following keys:
@@ -1206,8 +1205,189 @@ class Server:
         """
         state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
 
+    async def handle_connect(
+        self, sid: str, environ: dict[str, Any], auth: None | dict[str, Any] = None
+    ) -> None:
+        """
+        Handle the "connect" message.
+
+        This is called, when a client connects to the server. It will register the
+        client and send the initial state of the room to the client.
+
+        :param sid: The session id of the requesting client.
+        :type sid: str
+        :param data: A dictionary with the keys described in
+            :py:func:`handle_register_client`.
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+        logger.debug("Client %s connected", sid)
+        logger.debug("Data: %s", auth)
+        if auth is None or "type" not in auth:
+            logger.warning("Client %s connected without auth data", sid)
+            raise ConnectionRefusedError("No authentication data provided. Please register first.")
+
+        match auth["type"]:
+            case "playback":
+                await self.register_playback_client(sid, auth)
+            case "web":
+                await self.register_web_client(sid, auth)
+
+    async def register_web_client(self, sid: str, auth: dict[str, Any]) -> None:
+        if auth["room"] in self.clients:
+            logger.info("Client %s registered for room %s", sid, auth["room"])
+            async with self.sio.session(sid) as session:
+                session["room"] = auth["room"]
+                await self.sio.enter_room(sid, session["room"])
+            state = self.clients[session["room"]]
+            await self.send_state(state, sid)
+            is_admin = False
+            if "secret" in auth:
+                is_admin = auth["secret"] == state.client.config["secret"]
+                async with self.sio.session(sid) as session:
+                    session["admin"] = is_admin
+            await self.sio.emit("admin", is_admin, room=sid)
+        else:
+            logger.warning(
+                "Client %s tried to register for non-existing room %s", sid, auth["room"]
+            )
+            raise ConnectionRefusedError(
+                f"Room {auth['room']} does not exist. Please register first."
+            )
+
+    async def register_playback_client(self, sid: str, data: dict[str, Any]) -> None:
+        """
+        Register a new playback client and create a new room if necessary.
+
+        The data dictionary should have the following keys:
+            - `room` (Optional), the requested room
+            - `config`, an dictionary of initial configurations
+            - `queue`, a list of initial entries for the queue. The entries are
+                        encoded as a dictionary.
+            - `recent`, a list of initial entries for the recent list. The entries
+                        are encoded as a dictionary.
+            - `secret`, the secret of the room
+            - `version`, the version of the client as a triple of integers
+            - `key`, a registration key given out by the server administrator
+
+        This will register a new playback client to a specific room. If there
+        already exists a playback client registered for this room, this
+        playback client will be replaced if and only if, the new playback
+        client has the same secret.
+
+        If registration is restricted, abort, if the given key is not in the
+        registration keyfile.
+
+        If no room is provided, a fresh room id is generated.
+
+        If the client provides a new room, or a new room id was generated, the
+        server will create a new :py:class:`State` object and associate it with
+        the room id. The state will be initialized with a queue and recent
+        list, an initial config as well as no sources (yet).
+
+        In any case, the client will be notified of the success or failure, along
+        with its assigned room key via a "client-registered" message. This will be
+        handled by the :py:func:`syng.client.handle_client_registered` function.
+
+        If it was successfully registerd, the client will be added to its assigend
+        or requested room.
+
+        Afterwards all clients in the room will be send the current state.
+
+        :param sid: The session id of the requesting playback client.
+        :type sid: str
+        :param data: A dictionary with the keys described above
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+        if "version" not in data:
+            pass
+            # TODO: Fallback to old registration method
+
+            # await self.sio.emit(
+            #     "client-registered",
+            #     {"success": False, "room": None, "reason": "NO_VERSION"},
+            #     room=sid,
+            # )
+            return
+
+        client_version = tuple(data["version"])
+        if not await self.check_client_version(client_version, sid):
+            return
+
+        def gen_id(length: int = 4) -> str:
+            client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
+            if client_id in self.clients:
+                client_id = gen_id(length + 1)
+            return client_id
+
+        if "key" in data["config"]:
+            data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
+
+        if self.app["type"] == "private" and (
+            "key" not in data["config"] or not self.check_registration(data["config"]["key"])
+        ):
+            await self.sio.emit(
+                "client-registered",
+                {
+                    "success": False,
+                    "room": None,
+                    "reason": "PRIVATE",
+                },
+                room=sid,
+            )
+            raise ConnectionRefusedError(
+                "Private server, registration key not provided or invalid."
+            )
+
+        room: str = (
+            data["config"]["room"]
+            if "room" in data["config"] and data["config"]["room"]
+            else gen_id()
+        )
+        async with self.sio.session(sid) as session:
+            session["room"] = room
+
+        if room in self.clients:
+            old_state: State = self.clients[room]
+            if data["config"]["secret"] == old_state.client.config["secret"]:
+                logger.info("Got new client connection for %s", room)
+                old_state.sid = sid
+                old_state.client = Client(
+                    sources=old_state.client.sources,
+                    sources_prio=old_state.client.sources_prio,
+                    config=DEFAULT_CONFIG | data["config"],
+                )
+                await self.sio.enter_room(sid, room)
+                await self.send_state(self.clients[room], sid)
+            else:
+                logger.warning("Got wrong secret for %s", room)
+                raise ConnectionRefusedError(f"Wrong secret for room {room}.")
+        else:
+            logger.info("Registerd new client %s", room)
+            initial_entries = [Entry(**entry) for entry in data["queue"]]
+            initial_waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
+            initial_recent = [Entry(**entry) for entry in data["recent"]]
+
+            self.clients[room] = State(
+                queue=Queue(initial_entries),
+                waiting_room=initial_waiting_room,
+                recent=initial_recent,
+                sid=sid,
+                client=Client(
+                    sources={},
+                    sources_prio=[],
+                    config=DEFAULT_CONFIG | data["config"],
+                ),
+            )
+
+            await self.sio.enter_room(sid, room)
+            await self.send_state(self.clients[room], sid)
+
     async def handle_register_web(self, sid: str, data: dict[str, Any]) -> bool:
         """
+        THIS IS DEPRECATED, REGISTRATION IS NOW DONE VIA THE CONNECT EVENT.
+
         Handle a "register-web" message.
 
         Adds a web client to a requested room and sends it the initial state of the
@@ -1232,6 +1412,8 @@ class Server:
     @with_state
     async def handle_register_admin(self, state: State, sid: str, data: dict[str, Any]) -> bool:
         """
+        THIS IS DEPRECATED, REGISTRATION IS NOW DONE VIA THE CONNECT EVENT.
+
         Handle a "register-admin" message.
 
         If the client provides the correct secret for its room, the connection is

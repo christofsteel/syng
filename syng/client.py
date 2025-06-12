@@ -202,17 +202,51 @@ class Client:
         self.sio.on("get-meta-info", self.handle_get_meta_info)
         self.sio.on("play", self.handle_play)
         self.sio.on("search", self.handle_search)
-        self.sio.on("client-registered", self.handle_client_registered)
         self.sio.on("request-config", self.handle_request_config)
         self.sio.on("msg", self.handle_msg)
         self.sio.on("disconnect", self.handle_disconnect)
         self.sio.on("room-removed", self.handle_room_removed)
+        self.sio.on("*", self.handle_unknown_message)
+        self.sio.on("connect_error", self.handle_connect_error)
+
+    async def handle_connect_error(self, data: dict[str, Any]) -> None:
+        """
+        Handle the "connect_error" message.
+
+        This function is called when the client fails to connect to the server.
+        It will log the error and disconnect from the server.
+
+        :param data: A dictionary with the error message.
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+        logger.critical("Connection error: %s", data["message"])
+        await self.ensure_disconnect()
+
+    async def handle_unknown_message(self, event: str, data: dict[str, Any]) -> None:
+        """
+        Handle unknown messages.
+
+        This function is called when the client receives a message, that is not
+        handled by any of the other handlers. It will log the event and data.
+
+        :param event: The name of the event
+        :type event: str
+        :param data: The data of the event
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+        logger.warning(f"Unknown message: {event} with data: {data}")
 
     async def handle_disconnect(self) -> None:
         self.connection_state.set_disconnected()
         await self.ensure_disconnect()
 
     async def ensure_disconnect(self) -> None:
+        """
+        Ensure that the client is disconnected from the server and the player is
+        terminated.
+        """
         logger.info("Disconnecting from server")
         logger.info(f"Connection: {self.connection_state.is_connected()}")
         logger.info(f"MPV: {self.connection_state.is_mpv_running()}")
@@ -324,29 +358,40 @@ class Client:
         """
         Handle the "connect" message.
 
-        Called when the client successfully connects or reconnects to the server.
-        Sends a `register-client` message to the server with the initial state and
-        configuration of the client, consiting of the currently saved
-        :py:attr:`State.queue` and :py:attr:`State.recent` field of the global
-        :py:class:`State`, as well a room code the client wants to connect to, a
-        secret to secure the access to the room and a config dictionary.
+        This is called when the client successfully connects to the server
+        and starts the player.
 
-        If the room code is `None`, the server will issue a room code.
+        Start listing all configured :py:class:`syng.sources.source.Source` to the
+        server via a "sources" message. This message will be handled by the
+        :py:func:`syng.server.handle_sources` function and may request additional
+        configuration for each source.
 
-        This message will be handled by the
-        :py:func:`syng.server.handle_register_client` function of the server.
+        If there is no song playing, start requesting the first song of the queue
+        with a "get-first" message. This will be handled on the server by the
+        :py:func:`syng.server.handle_get_first` function.
 
         :rtype: None
         """
-        logger.info("Connected to server")
-        data = {
-            "queue": self.state.queue,
-            "waiting_room": self.state.waiting_room,
-            "recent": self.state.recent,
-            "config": self.state.config,
-            "version": SYNG_VERSION,
-        }
-        await self.sio.emit("register-client", data)
+        logger.info("Connected to server: %s", self.state.config["server"])
+        self.player.start()
+        room = self.state.config["room"]
+        server = self.state.config["server"]
+
+        logger.info("Connected to room: %s", room)
+        qr_string = f"{server}/{room}"
+        self.player.update_qr(qr_string)
+        # this is borked on windows
+
+        if os.name != "nt":
+            print(f"Join here: {server}/{room}")
+            qr = QRCode(box_size=20, border=2)
+            qr.add_data(qr_string)
+            qr.make()
+            qr.print_ascii()
+
+        await self.sio.emit("sources", {"sources": list(self.sources.keys())})
+        if self.state.current_source is None:  # A possible race condition can occur here
+            await self.sio.emit("get-first")
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
         """
@@ -457,52 +502,6 @@ class Client:
             "search-results", {"results": results, "sid": sid, "search_id": search_id}
         )
 
-    async def handle_client_registered(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "client-registered" message.
-
-        If the registration was successfull (`data["success"]` == `True`), store
-        the room code in the global :py:class:`State` and print out a link to join
-        the webclient.
-
-        Start listing all configured :py:class:`syng.sources.source.Source` to the
-        server via a "sources" message. This message will be handled by the
-        :py:func:`syng.server.handle_sources` function and may request additional
-        configuration for each source.
-
-        If there is no song playing, start requesting the first song of the queue
-        with a "get-first" message. This will be handled on the server by the
-        :py:func:`syng.server.handle_get_first` function.
-
-        :param data: A dictionary containing a `success` and a `room` entry.
-        :type data: dict[str, Any]
-        :rtype: None
-        """
-        if data["success"]:
-            self.player.start()
-
-            logger.info("Connected to room: %s", data["room"])
-            qr_string = f"{self.state.config['server']}/{data['room']}"
-            self.player.update_qr(qr_string)
-            # this is borked on windows
-
-            await self.handle_state(data)
-            if os.name != "nt":
-                print(f"Join here: {self.state.config['server']}/{data['room']}")
-                qr = QRCode(box_size=20, border=2)
-                qr.add_data(qr_string)
-                qr.make()
-                qr.print_ascii()
-
-            self.state.config["room"] = data["room"]
-            await self.sio.emit("sources", {"sources": list(self.sources.keys())})
-            if self.state.current_source is None:  # A possible race condition can occur here
-                await self.sio.emit("get-first")
-        else:
-            reason = data.get("reason", "Unknown")
-            logger.critical(f"Registration failed: {reason}")
-            await self.sio.disconnect()
-
     async def handle_request_config(self, data: dict[str, Any]) -> None:
         """
         Handle the "request-config" message.
@@ -606,7 +605,7 @@ class Client:
         Handle the "room-removed" message.
 
         This is called when the server removes the room, that this client is
-        connected to. It will disconnect from the server and terminate the player.
+        connected to. We simply log this event.
 
         :param data: A dictionary with the `room` entry.
         :type data: dict[str, Any]
@@ -645,7 +644,15 @@ class Client:
             self.state.config["key"] = ""
 
         try:
-            await self.sio.connect(self.state.config["server"])
+            data = {
+                "type": "playback",
+                "queue": self.state.queue,
+                "waiting_room": self.state.waiting_room,
+                "recent": self.state.recent,
+                "config": self.state.config,
+                "version": SYNG_VERSION,
+            }
+            await self.sio.connect(self.state.config["server"], auth=data)
 
             # this is not supported under windows
             if os.name != "nt":
@@ -656,8 +663,8 @@ class Client:
             await self.sio.wait()
         except asyncio.CancelledError:
             pass
-        except ConnectionError:
-            logger.critical("Could not connect to server")
+        except ConnectionError as e:
+            logger.warning("Could not connect to server: %s", e.args[0])
         finally:
             await self.ensure_disconnect()
 
