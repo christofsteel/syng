@@ -230,6 +230,7 @@ class Server:
         self.sio.on("connect", self.handle_connect)
         self.sio.on("search", self.handle_search)
         self.sio.on("search-results", self.handle_search_results)
+        self.sio.on("import-queue", self.handle_import_queue)
 
     async def is_admin(self, state: State, sid: str) -> bool:
         """
@@ -962,6 +963,35 @@ class Server:
                 room=sid,
             )
         return True
+
+    @admin
+    @with_state
+    async def handle_import_queue(self, state: State, sid: str, data: dict[str, Any]) -> None:
+        """
+        Handle the "import-queue" message.
+
+        This will add entries to the queue and waiting room from the client.
+
+        The data dictionary should have the following keys:
+            - `queue`, a list of entries to import into the queue
+            - `waiting_room`, a list of entries to import into the waiting room
+
+        :param sid: The session id of the client sending this request
+        :type sid: str
+        :param data: A dictionary with the keys described above
+        :type data: dict[str, Any]
+        :rtype: None
+        """
+
+        queue_entries = [Entry(**entry) for entry in data.get("queue", [])]
+        waiting_room_entries = [Entry(**entry) for entry in data.get("waiting_room", [])]
+        recent_entries = [Entry(**entry) for entry in data.get("recent", [])]
+
+        state.queue.extend(queue_entries)
+        state.waiting_room.extend(waiting_room_entries)
+        state.recent.extend(recent_entries)
+
+        await self.broadcast_state(state, sid=sid)
 
     @admin
     @with_state

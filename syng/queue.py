@@ -31,6 +31,17 @@ class Queue:
         self.num_of_entries_sem = asyncio.Semaphore(len(self._queue))
         self.readlock = asyncio.Lock()
 
+    def extend(self, entries: Iterable[Entry]) -> None:
+        """
+        Extend the queue with a list of entries and increase the semaphore.
+
+        :param entries: The entries to add
+        :type entries: Iterable[Entry]
+        :rtype: None
+        """
+        for entry in entries:
+            self.append(entry)
+
     def append(self, entry: Entry) -> None:
         """
         Append an entry to the queue, increase the semaphore.

@@ -34,10 +34,20 @@ class SyngEncoder(json.JSONEncoder):
 
 
 def dumps(obj: Any, **kw: Any) -> str:
-    """Wrap around ``json.dump`` with the :py:class:`SyngEncoder`."""
+    """Wrap around ``json.dumps`` with the :py:class:`SyngEncoder`."""
     return json.dumps(obj, cls=SyngEncoder, **kw)
+
+
+def dump(obj: Any, fp: Any, **kw: Any) -> None:
+    """Forward everything to ``json.dump``."""
+    json.dump(obj, fp, cls=SyngEncoder, **kw)
 
 
 def loads(string: str, **kw: Any) -> Any:
     """Forward everything to ``json.loads``."""
     return json.loads(string, **kw)
+
+
+def load(fp: Any, **kw: Any) -> Any:
+    """Forward everything to ``json.load``."""
+    return json.load(fp, **kw)

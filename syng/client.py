@@ -45,6 +45,7 @@ from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
 from .sources import configure_sources, Source
 from .log import logger
+from . import jsonencoder
 
 
 class ConnectionState:
@@ -616,6 +617,43 @@ class Client:
         if self.state.config["room"] is not None:
             logger.info("Removing room %s from server", self.state.config["room"])
             await self.sio.emit("remove-room", {"room": self.state.config["room"]})
+
+    def export_queue(self, filename: str) -> None:
+        """
+        Export the current queue to a file.
+
+        :param filename: The name of the file to export the queue to.
+        :type filename: str
+        :rtype: None
+        """
+        with open(filename, "w", encoding="utf8") as file:
+            jsonencoder.dump(
+                {
+                    "queue": self.state.queue,
+                    "waiting_room": self.state.waiting_room,
+                    "recent": self.state.recent,
+                },
+                file,
+                indent=2,
+                ensure_ascii=False,
+            )
+
+    async def import_queue(self, filename: str) -> None:
+        """
+        Import a queue from a file.
+
+        :param filename: The name of the file to import the queue from.
+        :type filename: str
+        :rtype: None
+        """
+        with open(filename, "r", encoding="utf8") as file:
+            data = jsonencoder.load(file)
+            queue = [Entry(**entry) for entry in data["queue"]]
+            waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
+            recent = [Entry(**entry) for entry in data["recent"]]
+            await self.sio.emit(
+                "import-queue", {"queue": queue, "waiting_room": waiting_room, "recent": recent}
+            )
 
     async def handle_room_removed(self, data: dict[str, Any]) -> None:
         """
