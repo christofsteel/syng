@@ -346,8 +346,14 @@ class Client:
             if entry.ident in source.downloaded_files:
                 continue
             logger.info("Buffering: %s (%d s)", entry.title, entry.duration)
+            started = datetime.datetime.now()
             try:
                 await self.sources[entry.source].buffer(entry, pos)
+                logger.info(
+                    "Buffered %s in %d seconds",
+                    entry.title,
+                    (datetime.datetime.now() - started).seconds,
+                )
             except ValueError as e:
                 logger.error("Error buffering: %s", e)
                 await self.sio.emit("skip", {"uuid": entry.uuid})
@@ -450,6 +456,14 @@ class Client:
             f"Playing: {entry.artist} - {entry.title} [{entry.album}] "
             f"({entry.source}) for {entry.performer}"
         )
+        logger.info(
+            "Playing: %s - %s [%s] (%s) for %s",
+            entry.artist,
+            entry.title,
+            entry.album,
+            entry.source,
+            entry.performer,
+        )
         if entry.uuid not in self.skipped:
             try:
                 if self.state.config["preview_duration"] > 0:
@@ -486,6 +500,7 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
+        logger.debug("Handling search: %s (%s)", data["query"], data["search_id"])
         query = data["query"]
         sid = data["sid"]
         search_id = data["search_id"]
@@ -498,6 +513,7 @@ class Client:
             for source_result in results_list
             for search_result in source_result
         ]
+        logger.debug("Search results: %d results", len(results))
 
         await self.sio.emit(
             "search-results", {"results": results, "sid": sid, "search_id": search_id}

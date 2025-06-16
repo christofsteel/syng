@@ -642,6 +642,7 @@ class Server:
             )
             return None
 
+        logger.debug(f"Appending {entry} to queue in room {state.sid}")
         entry.uid = data["uid"] if "uid" in data else None
 
         await self.append_to_queue(state, entry, sid)
@@ -1351,7 +1352,7 @@ class Server:
         if room in self.clients:
             old_state: State = self.clients[room]
             if data["config"]["secret"] == old_state.client.config["secret"]:
-                logger.info("Got new client connection for %s", room)
+                logger.info("Got new playback client connection for %s", room)
                 old_state.sid = sid
                 old_state.client = Client(
                     sources=old_state.client.sources,
@@ -1364,7 +1365,7 @@ class Server:
                 logger.warning("Got wrong secret for %s", room)
                 raise ConnectionRefusedError(f"Wrong secret for room {room}.")
         else:
-            logger.info("Registerd new client %s", room)
+            logger.info("Registerd new playback client %s", room)
             initial_entries = [Entry(**entry) for entry in data["queue"]]
             initial_waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
             initial_recent = [Entry(**entry) for entry in data["recent"]]
