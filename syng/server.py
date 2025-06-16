@@ -1027,17 +1027,17 @@ class Server:
         :rtype: None
         """
 
-        if "version" not in data:
-            await self.sio.emit(
-                "client-registered",
-                {"success": False, "room": None, "reason": "NO_VERSION"},
-                room=sid,
-            )
-            return
-
-        client_version = tuple(data["version"])
-        if not await self.check_client_version(client_version, sid):
-            return
+        # if "version" not in data:
+        #     await self.sio.emit(
+        #         "client-registered",
+        #         {"success": False, "room": None, "reason": "NO_VERSION"},
+        #         room=sid,
+        #     )
+        #     return
+        #
+        # client_version = tuple(data["version"])
+        # if not await self.check_client_version(client_version, sid):
+        #     return
 
         def gen_id(length: int = 4) -> str:
             client_id = "".join([random.choice(string.ascii_letters) for _ in range(length)])
@@ -1223,10 +1223,12 @@ class Server:
         :rtype: None
         """
         logger.debug("Client %s connected", sid)
-        logger.debug("Data: %s", auth)
         if auth is None or "type" not in auth:
-            logger.warning("Client %s connected without auth data", sid)
-            raise ConnectionRefusedError("No authentication data provided. Please register first.")
+            logger.warning(
+                "Client %s connected without auth data, fall back to old registration", sid
+            )
+            return
+            # raise ConnectionRefusedError("No authentication data provided. Please register first.")
 
         match auth["type"]:
             case "playback":
