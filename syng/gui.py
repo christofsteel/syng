@@ -712,7 +712,7 @@ class SyngGui(QMainWindow):
         for source_name in available_sources:
             self.add_source_config(source_name, config["sources"][source_name])
 
-        self.add_queue_tab()
+        # self.add_queue_tab()
         self.add_log_tab()
 
         self.update_qr()
