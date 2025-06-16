@@ -45,7 +45,6 @@ from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
 from .sources import configure_sources, Source
 from .log import logger
-from . import jsonencoder
 
 
 class ConnectionState:
