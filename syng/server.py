@@ -263,7 +263,7 @@ class Server:
             return web.FileResponse(os.path.join(self.app["root_folder"], "favicon.ico"))
         return web.FileResponse(os.path.join(self.app["root_folder"], "index.html"))
 
-    async def get_number_connections(self) -> int:
+    def get_number_connections(self) -> int:
         """
         Get the number of connections to the server.
 
@@ -276,6 +276,22 @@ class Server:
                 for participant in self.sio.manager.get_participants(namespace, room):
                     num += 1
         return num
+
+    def get_connections(self) -> dict[str, dict[str, list[tuple[str, str]]]]:
+        """
+        Get all connections to the server.
+
+        :return: A dictionary mapping namespaces to rooms and participants.
+        :rtype: dict[str, dict[str, list[tuple[str, str]]]]
+        """
+        connections: dict[str, dict[str, list[tuple[str, str]]]] = {}
+        for namespace in self.sio.manager.get_namespaces():
+            connections[namespace] = {}
+            for room in self.sio.manager.rooms[namespace]:
+                connections[namespace][room] = []
+                for participant in self.sio.manager.get_participants(namespace, room):
+                    connections[namespace][room].append(participant)
+        return connections
 
     async def get_clients(self, room: str) -> list[dict[str, Any]]:
         """
@@ -294,10 +310,7 @@ class Server:
                 client["type"] = "playback"
             else:
                 client["type"] = "web"
-            client["admin"] = False
-            async with self.sio.session(sid) as session:
-                if "admin" in session:
-                    client["admin"] = session["admin"]
+            client["admin"] = await self.is_admin(self.clients[room], sid)
             clients.append(client)
         return clients
 
@@ -320,7 +333,8 @@ class Server:
         info_dict = {
             "version": SYNG_VERSION,
             "protocol_version": SYNG_PROTOCOL_VERSION,
-            "connections": await self.get_number_connections(),
+            "num_connections": self.get_number_connections(),
+            "connections": self.get_connections(),
             "rooms": rooms,
         }
         return web.json_response(info_dict, dumps=jsonencoder.dumps)
