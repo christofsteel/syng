@@ -174,7 +174,7 @@ class Client:
             self.quit_callback,
         )
         self.connection_state.set_mpv_running()
-        logger.info(f"MPV: {self.connection_state.is_mpv_running()} ")
+        logger.debug(f"MPV running: {self.connection_state.is_mpv_running()} ")
         self.register_handlers()
         self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
 
@@ -248,8 +248,8 @@ class Client:
         terminated.
         """
         logger.info("Disconnecting from server")
-        logger.info(f"Connection: {self.connection_state.is_connected()}")
-        logger.info(f"MPV: {self.connection_state.is_mpv_running()}")
+        logger.debug(f"Connection: {self.connection_state.is_connected()}")
+        logger.debug(f"MPV running: {self.connection_state.is_mpv_running()}")
         if self.connection_state.is_connected():
             await self.sio.disconnect()
         if self.connection_state.is_mpv_running():
