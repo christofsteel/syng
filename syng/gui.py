@@ -564,9 +564,6 @@ class SyngGui(QMainWindow):
         self.buttons_layout.addItem(spacer_item)
 
         if os.getenv("SYNG_DEBUG", "0") == "1":
-            self.remove_room_button = QPushButton("Remove Room")
-            self.remove_room_button.clicked.connect(self.remove_room)
-            self.buttons_layout.addWidget(self.remove_room_button)
             self.print_background_tasks_button = QPushButton("Print Background Tasks")
             self.print_background_tasks_button.clicked.connect(
                 lambda: print(asyncio.all_tasks(self.loop))
@@ -578,9 +575,50 @@ class SyngGui(QMainWindow):
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
 
+    def export_queue(self) -> None:
+        if self.client is not None:
+            filename = QFileDialog.getSaveFileName(self, "Export Queue", "", "JSON Files (*.json)")[
+                0
+            ]
+            if filename:
+                self.client.export_queue(filename)
+        else:
+            QMessageBox.warning(
+                self,
+                "No Client Running",
+                "You need to start the client before you can export the queue.",
+            )
+
+    def import_queue(self) -> None:
+        if self.client is not None:
+            filename = QFileDialog.getOpenFileName(self, "Import Queue", "", "JSON Files (*.json)")[
+                0
+            ]
+            if filename:
+                asyncio.create_task(self.client.import_queue(filename))
+        else:
+            QMessageBox.warning(
+                self,
+                "No Client Running",
+                "You need to start the client before you can import a queue.",
+            )
+
     def remove_room(self) -> None:
         if self.client is not None:
-            asyncio.create_task(self.client.remove_room())
+            answer = QMessageBox.question(
+                self,
+                "Remove Room",
+                "Are you sure you want to remove the room on the server? This will disconnect all clients and clear the queue.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer == QMessageBox.StandardButton.Yes:
+                asyncio.create_task(self.client.remove_room())
+        else:
+            QMessageBox.warning(
+                self,
+                "No Client Running",
+                "You need to start the client before you can remove a room.",
+            )
 
     def toggle_advanced(self, state: bool) -> None:
         self.resetbutton.setVisible(state)
@@ -684,6 +722,26 @@ class SyngGui(QMainWindow):
 
         self.tabview.addTab(self.queue_tab, "Queue")
 
+    def add_admin_tab(self) -> None:
+        self.admin_tab = QWidget(parent=self.central_widget)
+        self.admin_layout = QVBoxLayout(self.admin_tab)
+        self.admin_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        self.admin_tab.setLayout(self.admin_layout)
+
+        self.remove_room_button = QPushButton("Remove Room", self.admin_tab)
+        self.remove_room_button.clicked.connect(self.remove_room)
+        self.admin_layout.addWidget(self.remove_room_button)
+
+        self.export_queue_button = QPushButton("Export Queue", self.admin_tab)
+        self.export_queue_button.clicked.connect(self.export_queue)
+        self.admin_layout.addWidget(self.export_queue_button)
+
+        self.import_queue_button = QPushButton("Import Queue", self.admin_tab)
+        self.import_queue_button.clicked.connect(self.import_queue)
+        self.admin_layout.addWidget(self.import_queue_button)
+
+        self.tabview.addTab(self.admin_tab, "Admin")
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Syng")
@@ -713,6 +771,7 @@ class SyngGui(QMainWindow):
             self.add_source_config(source_name, config["sources"][source_name])
 
         # self.add_queue_tab()
+        self.add_admin_tab()
         self.add_log_tab()
 
         self.update_qr()
