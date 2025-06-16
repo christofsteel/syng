@@ -11,7 +11,7 @@ from datetime import datetime
 import os
 from functools import partial
 import random
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional
 import secrets
 import string
 import signal
@@ -564,21 +564,23 @@ class SyngGui(QMainWindow):
         self.buttons_layout.addItem(spacer_item)
 
         if os.getenv("SYNG_DEBUG", "0") == "1":
-            self.print_queue_button = QPushButton("Print Queue")
-            self.print_queue_button.clicked.connect(self.debug_print_queue)
-            self.buttons_layout.addWidget(self.print_queue_button)
+            self.remove_room_button = QPushButton("Remove Room")
+            self.remove_room_button.clicked.connect(self.remove_room)
+            self.buttons_layout.addWidget(self.remove_room_button)
+            self.print_background_tasks_button = QPushButton("Print Background Tasks")
+            self.print_background_tasks_button.clicked.connect(
+                lambda: print(asyncio.all_tasks(self.loop))
+            )
+            self.buttons_layout.addWidget(self.print_background_tasks_button)
 
         self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
 
-    def debug_print_queue(self) -> None:
+    def remove_room(self) -> None:
         if self.client is not None:
-            print([entry.title for entry in self.client.state.queue])
-            model = cast(Optional[QueueModel], self.queue_list_view.model())
-            if model is not None:
-                print(model.queue)
+            asyncio.create_task(self.client.remove_room())
 
     def toggle_advanced(self, state: bool) -> None:
         self.resetbutton.setVisible(state)
