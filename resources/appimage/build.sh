@@ -16,6 +16,13 @@ if [ ! -x /app/linuxdeploy-x86_64.AppImage ]; then
 else
   echo "linuxdeploy AppImage already exists."
 fi
+if [ ! -x /app/linuxdeploy-plugin-qt-x86_64.AppImage ]; then
+  echo "Downloading linuxdeploy-plugin-qt AppImage..."
+  wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
+  chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
+else
+  echo "linuxdeploy-plugin-qt AppImage already exists."
+fi
 if [ ! -d /app/syng ]; then
   echo "Cloning Syng repository..."
   git clone https://github.com/christofsteel/syng.git /app/syng
