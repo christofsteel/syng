@@ -158,5 +158,5 @@ rm -rf /app/AppDir/usr/lib/python3.13/site-packages/PyQt6/Qt6/qml/
 #   ln -s "$relative_path" /app/AppDir/usr/lib/$(basename $file)
 # done
 
-echo "Creating AppImage..."
-/app/linuxdeploy-x86_64.AppImage --plugin qt --appdir /app/AppDir --output appimage
+# echo "Creating AppImage..."
+# /app/linuxdeploy-x86_64.AppImage --plugin qt --appdir /app/AppDir --output appimage
