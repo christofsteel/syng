@@ -35,7 +35,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/christofsteel/syng-appimage-builder:main 
-          options: -v v "${{ github.workspace }}"/app:/app
+          options: -v "${{ github.workspace }}"/app:/app
           run: |
             /app/build.sh 
             export APPIMAGE_EXTRACT_AND_RUN=1
