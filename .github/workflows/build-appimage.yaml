@@ -28,13 +28,13 @@ jobs:
       - name: Preparing Build dir
         run: |
           mkdir -p app/bin
-          cp syng/resources/appimage/build.sh app/build.sh
-          cp syng/resources/appimage/bin/* app/bin/
+          cp "${{ github.workspace }}/syng/resources/appimage/build.sh" app/build.sh
+          cp "${{ github.workspace }}/syng/resources/appimage/bin/*"" app/bin/
       - name: Building AppDir
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/christofsteel/syng-appimage-builder:main 
-          options: -v v ${{ github.workspace }}/app:/app
+          options: -v v "${{ github.workspace }}"/app:/app
           run: |
             /app/build.sh 
             export APPIMAGE_EXTRACT_AND_RUN=1
@@ -43,4 +43,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Syng Version ${{ env.VERSION }} AppImage
-          path: app/Syng-x86_64.AppImage
+          path: "${{ github.workspace }}/app/Syng-x86_64.AppImage"
