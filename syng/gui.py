@@ -904,9 +904,9 @@ class SyngGui(QMainWindow):
             config = self.gather_config()
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            model = QueueModel(self.client.state.queue)
-            self.queue_list_view.setModel(model)
-            self.client.add_queue_callback(model.update)
+            # model = QueueModel(self.client.state.queue)
+            # self.queue_list_view.setModel(model)
+            # self.client.add_queue_callback(model.update)
             self.timer.start(500)
             self.set_client_button_stop()
         else:
