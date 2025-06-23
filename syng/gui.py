@@ -483,6 +483,11 @@ class GeneralConfig(OptionFrame):
         self.add_int_option(
             "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
         )
+        self.add_int_option(
+            "next_up_time",
+            "Time remaining before Next Up Box is shown",
+            int(config["next_up_time"]),
+        )
         self.add_string_option(
             "key", "Key for server (if necessary)", config["key"], is_password=True
         )

@@ -2,7 +2,7 @@ import asyncio
 from enum import Enum
 import locale
 import sys
-from typing import Callable, Iterable, Optional, cast
+from typing import Any, Callable, Iterable, Optional, cast
 from qrcode.main import QRCode
 import mpv
 import os
@@ -34,13 +34,12 @@ class QRPosition(Enum):
 class Player:
     def __init__(
         self,
-        qr_string: str,
-        qr_box_size: int,
-        qr_position: QRPosition,
+        config: dict[str, Any],
         quit_callback: Callable[[], None],
         queue: Optional[list[Entry]] = None,
     ) -> None:
         locale.setlocale(locale.LC_ALL, "C")
+        qr_string = f"{config['server']}/{config['room']}"
 
         self.queue = queue if queue is not None else []
         self.base_dir = f"{os.path.dirname(__file__)}/static"
@@ -49,8 +48,9 @@ class Player:
         self.closing = False
         self.mpv: Optional[mpv.MPV] = None
         self.qr_overlay: Optional[mpv.ImageOverlay] = None
-        self.qr_box_size = qr_box_size
-        self.qr_position = qr_position
+        self.qr_box_size = 1 if config["qr_box_size"] < 1 else config["qr_box_size"]
+        self.qr_position = QRPosition.from_string(config["qr_position"])
+        self.next_up_time = config.get("next_up_time", 20)
         self.update_qr(
             qr_string,
         )
@@ -91,7 +91,7 @@ class Player:
         if self.mpv is None:
             print("MPV is not initialized", file=sys.stderr)
             return
-        hidden = value is None or value > 30
+        hidden = value is None or value > self.next_up_time
 
         if len(self.queue) < 2:
             return

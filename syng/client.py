@@ -81,13 +81,14 @@ def default_config() -> dict[str, Optional[int | str]]:
         "server": "https://syng.rocks",
         "room": "",
         "preview_duration": 3,
+        "next_up_position": "top",
         "secret": None,
         "last_song": None,
         "waiting_room_policy": None,
         "key": None,
         "buffer_in_advance": 2,
-        "qr_box_size": 5,
-        "qr_position": "bottom-right",
+        "qr_box_size": 7,
+        "qr_position": "top-right",
         "show_advanced": False,
         "log_level": "info",
     }
@@ -121,6 +122,8 @@ class State:
         * `preview_duration` (`Optional[int]`): The duration in seconds the
             playback client shows a preview for the next song. This is accounted for
             in the calculation of the ETA for songs later in the queue.
+        * `next_up_position` (`str`): The position of the "next up" box on the screen.
+            Possible values are: top or bottom.
         * `last_song` (`Optional[datetime.datetime]`): A timestamp, defining the end of
             the queue.
         * `waiting_room_policy` (Optional[str]): One of:
@@ -168,9 +171,7 @@ class Client:
         self.currentLock = asyncio.Semaphore(0)
         self.buffer_in_advance = config["config"]["buffer_in_advance"]
         self.player = Player(
-            f"{config['config']['server']}/{config['config']['room']}",
-            1 if config["config"]["qr_box_size"] < 1 else config["config"]["qr_box_size"],
-            QRPosition.from_string(config["config"]["qr_position"]),
+            config["config"],
             self.quit_callback,
             self.state.queue,
         )
