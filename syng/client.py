@@ -172,6 +172,7 @@ class Client:
             1 if config["config"]["qr_box_size"] < 1 else config["config"]["qr_box_size"],
             QRPosition.from_string(config["config"]["qr_position"]),
             self.quit_callback,
+            self.state.queue,
         )
         self.connection_state.set_mpv_running()
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()} ")

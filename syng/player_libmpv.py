@@ -38,9 +38,11 @@ class Player:
         qr_box_size: int,
         qr_position: QRPosition,
         quit_callback: Callable[[], None],
+        queue: Optional[list[Entry]] = None,
     ) -> None:
         locale.setlocale(locale.LC_ALL, "C")
 
+        self.queue = queue if queue is not None else []
         self.base_dir = f"{os.path.dirname(__file__)}/static"
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             self.base_dir = getattr(sys, "_MEIPASS")
@@ -60,7 +62,21 @@ class Player:
         self.callback_audio_load: Optional[str] = None
 
     def start(self) -> None:
-        self.mpv = mpv.MPV(ytdl=True, input_default_bindings=True, input_vo_keyboard=True, osc=True)
+        self.mpv = mpv.MPV(
+            ytdl=True,
+            input_default_bindings=True,
+            input_vo_keyboard=True,
+            osc=True,
+            osd_border_style="background-box",
+            osd_back_color="#30008000",
+            osd_color="#50FFFFFF",
+            osd_outline_color="#50000000",
+            osd_shadow_offset=10,
+            osd_align_x="center",
+            osd_align_y="top",
+        )
+        self.next_up_overlay_id = self.mpv.allocate_overlay_id()
+        self.next_up_y_pos = -120
         self.mpv.title = "Syng.Rocks! - Player"
         self.mpv.keep_open = "yes"
         self.mpv.play(
@@ -68,7 +84,34 @@ class Player:
         )
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
+        self.mpv.observe_property("playtime-remaining", self.playtime_remaining_handler)
         self.mpv.register_event_callback(self.event_callback)
+
+    def playtime_remaining_handler(self, attribute: str, value: float) -> None:
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+        hidden = value is None or value > 30
+
+        if len(self.queue) < 2:
+            return
+        if not hidden:
+            if self.next_up_y_pos < 0:
+                self.next_up_y_pos += 5
+        else:
+            self.next_up_y_pos = -120
+        entry = self.queue[1]
+
+        self.mpv.command(
+            "osd_overlay",
+            id=self.next_up_overlay_id,
+            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry.artist} - {entry.title} ({entry.performer})",
+            res_x=1920,
+            res_y=1080,
+            z=0,
+            hidden=hidden,
+            format="ass-events",
+        )
 
     def event_callback(self, event: mpv.MpvEvent) -> None:
         e = event.as_dict()
