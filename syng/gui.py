@@ -744,7 +744,7 @@ class SyngGui(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Syng")
+        self.setWindowTitle("Syng.Rocks!")
 
         if os.name != "nt":
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
@@ -985,7 +985,7 @@ def run_gui() -> None:
         app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
     else:
         app.setWindowIcon(QIcon(":/icons/syng.ico"))
-    app.setApplicationName("Syng")
+    app.setApplicationName("Syng.Rocks!")
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
     window.show()
