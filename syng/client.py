@@ -39,7 +39,7 @@ from socketio.exceptions import ConnectionError, BadNamespaceError
 import engineio
 from yaml import load, Loader
 
-from syng.player_libmpv import Player, QRPosition
+from syng.player_libmpv import Player
 
 from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
