@@ -28,8 +28,8 @@ jobs:
       - name: Preparing Build dir
         run: |
           mkdir -p app/bin
-          cp "${{ github.workspace }}/syng/resources/appimage/build.sh" app/build.sh
-          cp "${{ github.workspace }}/syng/resources/appimage/bin/*"" app/bin/
+          cp "${{ github.workspace }}/resources/appimage/build.sh" app/build.sh
+          cp "${{ github.workspace }}/resources/appimage/bin/*"" app/bin/
       - name: Building AppDir
         uses: addnab/docker-run-action@v3
         with:
