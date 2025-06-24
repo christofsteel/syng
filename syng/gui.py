@@ -574,10 +574,6 @@ class SyngGui(QMainWindow):
             )
             self.buttons_layout.addWidget(self.print_background_tasks_button)
 
-        self.update_config_button = QPushButton("Update Config")
-        self.update_config_button.clicked.connect(self.update_config)
-        self.update_config_button.setVisible(False)
-        self.buttons_layout.addWidget(self.update_config_button)
         self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
@@ -739,14 +735,26 @@ class SyngGui(QMainWindow):
         self.remove_room_button = QPushButton("Remove Room", self.admin_tab)
         self.remove_room_button.clicked.connect(self.remove_room)
         self.admin_layout.addWidget(self.remove_room_button)
+        self.remove_room_button.setDisabled(True)
 
         self.export_queue_button = QPushButton("Export Queue", self.admin_tab)
         self.export_queue_button.clicked.connect(self.export_queue)
         self.admin_layout.addWidget(self.export_queue_button)
+        self.export_queue_button.setDisabled(True)
 
         self.import_queue_button = QPushButton("Import Queue", self.admin_tab)
         self.import_queue_button.clicked.connect(self.import_queue)
         self.admin_layout.addWidget(self.import_queue_button)
+        self.import_queue_button.setDisabled(True)
+
+        self.update_config_button = QPushButton("Update Config")
+        self.update_config_button.clicked.connect(self.update_config)
+        self.admin_layout.addWidget(self.update_config_button)
+        self.update_config_button.setDisabled(True)
+
+        self.clear_cache_button = QPushButton("Clear Cache", self.admin_tab)
+        self.clear_cache_button.clicked.connect(self.clear_cache)
+        self.admin_layout.addWidget(self.clear_cache_button)
 
         self.tabview.addTab(self.admin_tab, "Admin")
 
@@ -900,16 +908,23 @@ class SyngGui(QMainWindow):
             self.set_client_button_stop()
 
     def set_client_button_stop(self) -> None:
-        self.update_config_button.setVisible(True)
         self.general_config.string_options["server"].setEnabled(False)
         self.general_config.string_options["room"].setEnabled(False)
+        self.update_config_button.setDisabled(False)
+        self.remove_room_button.setDisabled(False)
+        self.export_queue_button.setDisabled(False)
+        self.import_queue_button.setDisabled(False)
 
         self.startbutton.setText("Disconnect")
 
     def set_client_button_start(self) -> None:
         self.general_config.string_options["server"].setEnabled(True)
         self.general_config.string_options["room"].setEnabled(True)
-        self.update_config_button.setVisible(False)
+        self.update_config_button.setDisabled(True)
+        self.remove_room_button.setDisabled(True)
+        self.export_queue_button.setDisabled(True)
+        self.import_queue_button.setDisabled(True)
+
         self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:
