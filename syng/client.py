@@ -162,6 +162,7 @@ class Client:
     def __init__(self, config: dict[str, Any]):
         config["config"] = default_config() | config["config"]
 
+        self.connection_event = asyncio.Event()
         self.connection_state = ConnectionState()
         self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
@@ -351,6 +352,7 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
+        await self.connection_event.wait()
         self.state.queue.clear()
         self.state.queue.extend([Entry(**entry) for entry in data["queue"]])
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
@@ -418,6 +420,8 @@ class Client:
         await self.sio.emit("sources", {"sources": list(self.sources.keys())})
         if self.state.current_source is None:  # A possible race condition can occur here
             await self.sio.emit("get-first")
+        self.connection_event.set()
+        self.connection_state.set_connected()
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
         """
@@ -558,6 +562,7 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
+        await self.connection_event.wait()
         if data["source"] in self.sources:
             config: dict[str, Any] | list[dict[str, Any]] = await self.sources[
                 data["source"]
@@ -574,6 +579,7 @@ class Client:
                             "total": num_chunks,
                         },
                     )
+                    await asyncio.sleep(0.1)  # Avoiding qasync errors
             else:
                 await self.sio.emit("config", {"source": data["source"], "config": config})
 
@@ -733,7 +739,6 @@ class Client:
                 loop = asyncio.get_event_loop()
                 loop.add_signal_handler(signal.SIGINT, partial(self.signal_handler, loop))
 
-            self.connection_state.set_connected()
             await self.sio.wait()
         except asyncio.CancelledError:
             pass

@@ -540,6 +540,7 @@ class SyngGui(QMainWindow):
         self.log_label_handler.cleanup()
 
         self.destroy()
+        sys.exit(0)
 
     def add_buttons(self, show_advanced: bool) -> None:
         self.buttons_layout = QHBoxLayout()
