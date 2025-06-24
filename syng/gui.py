@@ -607,6 +607,27 @@ class SyngGui(QMainWindow):
                 "You need to start the client before you can import a queue.",
             )
 
+    def clear_cache(self) -> None:
+        """
+        Clear the cache directory of the client.
+        """
+
+        cache_dir = platformdirs.user_cache_dir("syng")
+        if os.path.exists(cache_dir):
+            answer = QMessageBox.question(
+                self,
+                "Clear Cache",
+                f"Are you sure you want to clear the cache directory at {cache_dir}?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer == QMessageBox.StandardButton.Yes:
+                for root, dirs, files in os.walk(cache_dir, topdown=False):
+                    for name in files:
+                        os.remove(os.path.join(root, name))
+                    for name in dirs:
+                        os.rmdir(os.path.join(root, name))
+                QMessageBox.information(self, "Cache Cleared", "The cache has been cleared.")
+
     def remove_room(self) -> None:
         if self.client is not None:
             answer = QMessageBox.question(
