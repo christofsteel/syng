@@ -91,6 +91,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "qr_position": "top-right",
         "show_advanced": False,
         "log_level": "info",
+        "next_up_time": 20,
     }
 
 
