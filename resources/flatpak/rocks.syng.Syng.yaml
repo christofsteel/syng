@@ -1,9 +1,9 @@
 id: rocks.syng.Syng
 runtime: org.kde.Platform
-runtime-version: '6.7'
+runtime-version: '6.9'
 sdk: org.kde.Sdk
 base: com.riverbankcomputing.PyQt.BaseApp
-base-version: '6.7'
+base-version: '6.9'
 cleanup-commands:
   - /app/cleanup-BaseApp.sh
 build-options:
@@ -73,13 +73,7 @@ modules:
       - type: git
         url: https://github.com/LuaJIT/LuaJIT.git
         disable-shallow-clone: true
-        commit: f5fd22203eadf57ccbaa4a298010d23974b22fc0
-        x-checker-data:
-          type: json
-          url: https://api.github.com/repos/LuaJIT/LuaJIT/commits
-          commit-query: first( .[].sha )
-          version-query: first( .[].sha )
-          timestamp-query: first( .[].commit.committer.date )
+        commit: fe71d0fb54ceadfb5b5f3b6baf29e486d97f6059
       - type: shell
         commands:
           - sed -i 's|/usr/local|/app|' ./Makefile
@@ -94,8 +88,8 @@ modules:
       - install yt-dlp /app/bin
     sources:
       - type: archive
-        url: https://github.com/yt-dlp/yt-dlp/releases/download/2024.09.27/yt-dlp.tar.gz
-        sha256: ffce6ebd742373eff6dac89b23f706ec7513a0367160eb8b5a550cd706cd883f
+        url: https://github.com/yt-dlp/yt-dlp/releases/download/2025.06.30/yt-dlp.tar.gz
+        sha256: 606f3e3e431839998d1f377de615a9792e77e5968ad929c2c6ba1a17774bbf1b
         x-checker-data:
           type: json
           url: https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest
@@ -131,31 +125,11 @@ modules:
     sources:
       - type: git
         url: https://github.com/libass/libass.git
-        tag: 0.17.3
-        commit: e46aedea0a0d17da4c4ef49d84b94a7994664ab5
+        tag: 0.17.4
+        commit: bbb3c7f1570a4a021e52683f3fbdf74fe492ae84
         x-checker-data:
           type: git
           tag-pattern: ^(\d\.\d{1,3}\.\d{1,2})$
-
-  - name: libaacs
-    config-opts:
-      - --disable-static
-      - --disable-bdjava-jar
-    cleanup:
-      - /include
-      - /lib/pkgconfig
-    sources:
-      - sha256: a88aa0ebe4c98a77f7aeffd92ab3ef64ac548c6b822e8248a8b926725bea0a39
-        type: archive
-        url: https://download.videolan.org/pub/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
-        mirror-urls:
-          - https://videolan.mirror.ba/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
-          - https://videolan.c3sl.ufpr.br/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
-        x-checker-data:
-          type: html
-          url: https://www.videolan.org/developers/libaacs.html
-          version-pattern: Latest release is <b>libaacs (\d\.\d+\.?\d*)</b>
-          url-template: https://download.videolan.org/pub/videolan/libaacs/$version/libaacs-$version.tar.bz2
 
   - name: zimg
     config-opts:
@@ -176,28 +150,6 @@ modules:
           version-query: .tag_name | sub("^release-"; "")
           timestamp-query: .published_at
 
-  - name: mujs
-    buildsystem: autotools
-    no-autogen: true
-    make-args:
-      - release
-    make-install-args:
-      - prefix=/app
-      - install-shared
-    cleanup:
-      - /bin
-      - /include
-      - /lib/pkgconfig
-    sources:
-      - type: git
-        url: https://github.com/ccxvii/mujs.git
-        tag: 1.3.5
-        commit: 0df0707f2f10187127e36acfbc3ba9b9ca5b5cf0
-        x-checker-data:
-          type: git
-          url: https://api.github.com/repos/ccxvii/mujs/tags
-          tag-pattern: ^([\d.]+)$
-
   - name: nv-codec-headers
     cleanup:
       - '*'
@@ -207,8 +159,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/FFmpeg/nv-codec-headers.git
-        tag: n12.2.72.0
-        commit: c69278340ab1d5559c7d7bf0edf615dc33ddbba7
+        tag: n13.0.19.0
+        commit: e844e5b26f46bb77479f063029595293aa8f812d
         x-checker-data:
           type: git
           tag-pattern: ^n([\d.]+)$
@@ -224,16 +176,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/jpsdr/x264
-        commit: c24e06c2e184345ceb33eb20a15d1024d9fd3497
-        # Every commit to the master branch is considered a release
-        # https://code.videolan.org/videolan/x264/-/issues/35
-        x-checker-data:
-          type: json
-          url: https://code.videolan.org/api/v4/projects/536/repository/commits
-          commit-query: first( .[].id )
-          version-query: first( .[].id )
-          timestamp-query: first( .[].committed_date )
-
+        commit: da14df5535fd46776fb1c9da3130973295c87aca
   - name: x265
     buildsystem: cmake
     subdir: source
@@ -249,16 +192,13 @@ modules:
         url: https://bitbucket.org/multicoreware/x265_git.git
         tag: '4.0'
         commit: 6318f223684118a2c71f67f3f4633a9e35046b00
-        x-checker-data:
-          type: git
-          tag-pattern: ^([\d.]+)$
 
   - name: vulkan-headers
     buildsystem: cmake-ninja
     sources:
       - type: archive
-        url: https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.3.286.tar.gz
-        sha256: a82a6982efe5e603e23505ca19b469e8f3d876fc677c46b7bfb6177f517bf8fe
+        url: https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.4.306.tar.gz
+        sha256: 18f4b4de873d071ddd7b73ea48e2ec4e7c6133e2ebb6b4236ca2345acd056994
 
   - name: ffmpeg
     cleanup:
@@ -292,8 +232,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/FFmpeg/FFmpeg.git
-        commit: b08d7969c550a804a59511c7b83f2dd8cc0499b8
-        tag: n7.1
+        commit: db69d06eeeab4f46da15030a80d539efb4503ca8
+        tag: n7.1.1
         x-checker-data:
           type: git
           tag-pattern: ^n([\d.]{3,7})$
@@ -311,62 +251,11 @@ modules:
         url: https://github.com/haasn/libplacebo.git
         tag: v7.349.0
         commit: 1fd3c7bde7b943fe8985c893310b5269a09b46c5
-        x-checker-data:
-          type: git
-          tag-pattern: ^v([\d.]+)$
-    modules:
-      - name: shaderc
-        buildsystem: cmake-ninja
-        builddir: true
-        config-opts:
-          - -DSHADERC_SKIP_COPYRIGHT_CHECK=ON
-          - -DSHADERC_SKIP_EXAMPLES=ON
-          - -DSHADERC_SKIP_TESTS=ON
-          - -DSPIRV_SKIP_EXECUTABLES=ON
-          - -DENABLE_GLSLANG_BINARIES=OFF
-        cleanup:
-          - /bin
-          - /include
-          - /lib/cmake
-          - /lib/pkgconfig
-        sources:
-          - type: git
-            url: https://github.com/google/shaderc.git
-            #tag: v2023.7
-            commit: 40bced4e1e205ecf44630d2dfa357655b6dabd04
-            #x-checker-data:
-            #  type: git
-            #  tag-pattern: ^v(\d{4}\.\d{1,2})$
-          - type: git
-            url: https://github.com/KhronosGroup/SPIRV-Tools.git
-            tag: v2024.1
-            commit: 04896c462d9f3f504c99a4698605b6524af813c1
-            dest: third_party/spirv-tools
-            #x-checker-data:
-            #  type: git
-            #  tag-pattern: ^v(\d{4}\.\d{1})$
-          - type: git
-            url: https://github.com/KhronosGroup/SPIRV-Headers.git
-            #tag: sdk-1.3.250.1
-            commit: 4f7b471f1a66b6d06462cd4ba57628cc0cd087d7
-            dest: third_party/spirv-headers
-            #x-checker-data:
-            #  type: git
-            #  tag-pattern: ^sdk-([\d.]+)$
-          - type: git
-            url: https://github.com/KhronosGroup/glslang.git
-            tag: 15.0.0
-            commit: 46ef757e048e760b46601e6e77ae0cb72c97bd2f
-            dest: third_party/glslang
-            x-checker-data:
-              type: git
-              tag-pattern: ^(\d{1,2}\.\d{1,2}\.\d{1,4})$
-
   - name: mpv
     buildsystem: meson
     config-opts:
       - -Dbuild-date=false
-      - -Dlibmpv=false
+      - -Dlibmpv=true
       - -Dmanpage-build=disabled
       - -Dlibarchive=enabled
       - -Dsdl2=enabled
@@ -378,15 +267,43 @@ modules:
     sources:
       - type: git
         url: https://github.com/mpv-player/mpv.git
-        tag: v0.39.0
-        commit: a0fba7be57f3822d967b04f0f6b6d6341e7516e7
+        tag: v0.40.0
+        commit: e48ac7ce08462f5e33af6ef9deeac6fa87eef01e
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$
+  - name: libzen
+    subdir: Project/GNU/Library
+    config-opts:
+      - --enable-shared
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://mediaarea.net/download/source/libzen/0.4.41/libzen_0.4.41.tar.xz
+        sha256: 933bad3b7ecd29dc6bdc88a83645c83dfd098c15b0b90d6177a37fa1536704e8
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+      - /lib/*.la
+  - name: libmediainfo
+    subdir: Project/GNU/Library
+    config-opts:
+      - --enable-shared
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://mediaarea.net/download/source/libmediainfo/24.06/libmediainfo_24.06.tar.xz
+        sha256: 0683f28a2475dc2417205ba528debccc407da4d9fa6516eb4b75b3ff7244e96e
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+      - /lib/*.la
+  - python3-poetry-core.yaml
   - python3-expandvars.yaml
   - python3-cffi.yaml
   - python3-requirements-client.yaml
-  - python3-poetry-core.yaml
   - name: syng
     buildsystem: simple
     build-commands:
@@ -403,5 +320,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/christofsteel/syng.git
-        commit: dd84ff361bbd10efd14147d8dd0453438f4e32ff
-
+        commit: 63eff81740c2cd4a3fb886d0f98a1d1eb3972e81

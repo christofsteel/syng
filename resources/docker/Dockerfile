@@ -3,6 +3,7 @@ RUN useradd -m -d /app syng
 USER syng
 ENV PATH="/app/.local/bin:${PATH}"
 WORKDIR /app/
+RUN pip install --user alt-profanity-check
 RUN pip install --user "syng[server]@git+https://github.com/christofsteel/syng.git"
 RUN touch /app/keys.txt
 EXPOSE 8080

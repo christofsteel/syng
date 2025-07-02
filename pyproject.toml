@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "syng"
-version = "2.1.0"
+version = "2.2.0"
 description = "Easily host karaoke events"
 authors = ["Christoph Stahl <christoph.stahl@tu-dortmund.de>"]
 license = "AGPL-3.0-or-later"
@@ -29,7 +29,7 @@ keywords = ["karaoke", "youtube", "web", "audio", "video", "player", "qt"]
 syng = "syng.main:main"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 python-socketio = "^5.10.0"
 aiohttp = "^3.9.1"
 # yarl = "<1.14.0"
