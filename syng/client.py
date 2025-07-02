@@ -81,7 +81,6 @@ def default_config() -> dict[str, Optional[int | str]]:
         "server": "https://syng.rocks",
         "room": "",
         "preview_duration": 3,
-        "next_up_position": "top",
         "secret": None,
         "last_song": None,
         "waiting_room_policy": None,
