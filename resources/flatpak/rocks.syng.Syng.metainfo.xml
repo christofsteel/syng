@@ -19,33 +19,46 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng.png</image>
-      <caption>Syng configuration window</caption>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/b963d09aee58531ab7ea61ddf04ee169fba57a63/resources/screenshots/syng.png</image>
+      <caption>Configuration window</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_advanced.png</image>
-      <caption>Syng configuration window (Advanced settings)</caption>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/b963d09aee58531ab7ea61ddf04ee169fba57a63/resources/screenshots/syng_advanced.png</image>
+      <caption>Configuration window (Advanced settings)</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_player_next_up.png</image>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/b963d09aee58531ab7ea61ddf04ee169fba57a63/resources/screenshots/syng_player_next_up.png</image>
       <caption>Next up screen</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_player_song.png</image>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/b963d09aee58531ab7ea61ddf04ee169fba57a63/resources/screenshots/syng_player_song.png</image>
       <caption>Player playing a song</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_mobile_search.png</image>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/b963d09aee58531ab7ea61ddf04ee169fba57a63/resources/screenshots/syng_mobile_search.png</image>
       <caption>Web Interface on Mobile</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/94e0d9c0b77579ed256bf74412a20da314dd7166/resources/screenshots/syng_web2.png</image>
-      <caption>Syng web interface</caption>
+      <image>https://raw.githubusercontent.com/christofsteel/syng/b963d09aee58531ab7ea61ddf04ee169fba57a63/resources/screenshots/syng_web2.png</image>
+      <caption>Web interface</caption>
     </screenshot>
   </screenshots>
 
 
   <releases>
+    <release version="2.2.0" date="2025-07-02">
+      <description>
+        <p>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Better graceful termination</li>
+          <li>Next-up pop up</li>
+          <li>Admin and logs panel in the client</li>
+          <li>Better error reporting</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.1.0" date="2024-11-21">
       <description>
         <p>
