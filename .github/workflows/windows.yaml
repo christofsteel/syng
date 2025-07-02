@@ -30,7 +30,7 @@ jobs:
 
       - name: Download and extract latest MPV nightly
         run: |
-          Invoke-WebRequest -Uri https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250215/mpv-dev-x86_64-20250215-git-834f99e.7z -OutFile mpv.7z
+          Invoke-WebRequest -Uri https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250702/mpv-dev-x86_64-20250702-git-a043624.7z -OutFile mpv.7z
           7z x mpv.7z
 
 
@@ -49,15 +49,15 @@ jobs:
           Copy-Item -Verbose syng/static/background.png work/portable/
           Copy-Item -Verbose syng/static/background20perc.png work/portable/
           Copy-Item -Verbose libmpv-2.dll work/portable/
-          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/portable/
-          mkdir work/install
-          Copy-Item -Recurse -Verbose syng work/install/syng
-          Copy-Item -Verbose requirements-client.txt work/install/requirements.txt
-          Copy-Item -Verbose resources/icons/syng.ico work/install/
-          Copy-Item -Verbose syng/static/background.png work/install/
-          Copy-Item -Verbose syng/static/background20perc.png work/install/
-          Copy-Item -Verbose libmpv-2.dll work/install/
-          Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/install/
+          Copy-Item -Verbose ffmpeg-7.1.1-full_build/bin/ffmpeg.exe work/portable/
+          # mkdir work/install
+          # Copy-Item -Recurse -Verbose syng work/install/syng
+          # Copy-Item -Verbose requirements-client.txt work/install/requirements.txt
+          # Copy-Item -Verbose resources/icons/syng.ico work/install/
+          # Copy-Item -Verbose syng/static/background.png work/install/
+          # Copy-Item -Verbose syng/static/background20perc.png work/install/
+          # Copy-Item -Verbose libmpv-2.dll work/install/
+          # Copy-Item -Verbose ffmpeg-7.1-full_build/bin/ffmpeg.exe work/install/
       - uses: actions/setup-python@v5
         name: Install Python
         with:
@@ -78,30 +78,30 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: ./work      
 
-      # - name: Bundle Syng (portable)
-      #   run:
-      #     pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
-      #   working-directory: ./work/portable
-
-      - name: Bundle Syng (install)
+      - name: Bundle Syng (portable)
         run:
-          pyinstaller  -D --contents-directory data -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
-        working-directory: ./work/install
-      
-      # build msi
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
-      - name: Install WiX
-        run: |
-          dotnet tool install --global wix --version 5.0.2
-          wix extension add -g WixToolset.UI.wixext/5.0.2
-      - name: Copy wix file to dist
-        run: | 
-          Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
-          Copy-Item -Verbose resources/windows/agpl-3.0.rtf work/install/dist/agpl-3.0.rtf
-      - name: Build WiX on Windows
-        run: wix build -ext WixToolset.UI.wixext .\syng.wxs
-        working-directory: ./work/install/dist
+          pyinstaller -n "syng-${{ env.VERSION }}" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        working-directory: ./work/portable
+
+      # - name: Bundle Syng (install)
+      #   run:
+      #     pyinstaller  -D --contents-directory data -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' -n syng syng/main.py
+      #   working-directory: ./work/install
+      # 
+      # # build msi
+      # - name: Add msbuild to PATH
+      #   uses: microsoft/setup-msbuild@v2
+      # - name: Install WiX
+      #   run: |
+      #     dotnet tool install --global wix --version 5.0.2
+      #     wix extension add -g WixToolset.UI.wixext/5.0.2
+      # - name: Copy wix file to dist
+      #   run: | 
+      #     Copy-Item -Verbose resources/windows/syng.wxs work/install/dist/syng.wxs
+      #     Copy-Item -Verbose resources/windows/agpl-3.0.rtf work/install/dist/agpl-3.0.rtf
+      # - name: Build WiX on Windows
+      #   run: wix build -ext WixToolset.UI.wixext .\syng.wxs
+      #   working-directory: ./work/install/dist
 
 
       # - name: Upload artifact (portable)
@@ -113,5 +113,5 @@ jobs:
       - name: Upload artifact (install)
         uses: actions/upload-artifact@v4
         with:
-          name: Syng Version ${{ env.VERSION }} Installer
-          path: work/install/dist/syng.msi
+          name: Syng Version ${{ env.VERSION }}
+          path: work/install/portable/syng-${{ env.VERSION }}.exe
