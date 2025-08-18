@@ -1447,7 +1447,7 @@ class Server:
         :return: True, if the room exist, False otherwise
         :rtype: bool
         """
-        if data["room"] in self.clients:
+        if "room" in data and data["room"] in self.clients:
             async with self.sio.session(sid) as session:
                 session["room"] = data["room"]
                 await self.sio.enter_room(sid, session["room"])
