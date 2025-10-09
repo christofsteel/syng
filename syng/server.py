@@ -26,10 +26,17 @@ from argparse import Namespace
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any, Callable, Literal, AsyncGenerator, Optional, cast
+import resource
+import gc
 
 import socketio
 from socketio.exceptions import ConnectionRefusedError
 from aiohttp import web
+from guppy import hpy
+import objsize
+import psutil
+
+hp = hpy()
 
 try:
     from profanity_check import predict
@@ -315,10 +322,18 @@ class Server:
             clients.append(client)
         return clients
 
+    async def admin_heap_handler(self, request: Any) -> Any:
+        return web.Response(text=str(hp.heap()))
+
     async def admin_handler(self, request: Any) -> Any:
         """
         Handle the admin request.
         """
+
+        # total_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        total_memory = memory_info.rss  # Resident Set Size (RSS) in bytes
 
         rooms = [
             {
@@ -337,6 +352,9 @@ class Server:
             "num_connections": self.get_number_connections(),
             "connections": self.get_connections(),
             "rooms": rooms,
+            "tasks_len": len(asyncio.all_tasks()),
+            "tasks": [str(task) for task in asyncio.all_tasks()],
+            "total_memory": total_memory,
         }
         return web.json_response(info_dict, dumps=jsonencoder.dumps)
 
@@ -1020,8 +1038,7 @@ class Server:
         for client, _ in self.sio.manager.get_participants("/", room):
             await self.sio.leave_room(client, room)
             await self.sio.disconnect(client)
-        del self.clients[room]
-        logger.info("Removed room %s", room)
+        self.remove_room(room)
 
     async def handle_register_client(self, sid: str, data: dict[str, Any]) -> None:
         """
@@ -1689,6 +1706,32 @@ class Server:
             room=sid,
         )
 
+    def remove_room(self, room: str) -> None:
+        """
+        Remove a room from the server.
+
+        This will remove the room from the server, and delete all associated data.
+        This is only available on an admin connection.
+
+        :param room: The room to remove
+        :type room: str
+        :rtype: None
+        """
+        if room in self.clients:
+            for name, source in self.clients[room].client.sources.items():
+                logger.info("Removing source %s from room %s", name, room)
+                logger.info("Size of source %s: %d", name, len(source._index))
+                osize = objsize.get_deep_size(source)
+                logger.info("Deep size of source %s: %d", name, osize)
+                del source._index[:]
+                del source._index
+                osize = objsize.get_deep_size(source)
+                logger.info("New Deep size of source %s: %d", name, osize)
+                del source
+            del self.clients[room]
+            gc.collect()
+            logger.info("Removed room %s", room)
+
     async def cleanup(self) -> None:
         """
         Clean up the unused playback clients
@@ -1707,7 +1750,7 @@ class Server:
                 to_remove.append(sid)
         for sid in to_remove:
             await self.sio.disconnect(sid)
-            del self.clients[sid]
+            self.remove_room(sid)
 
         # The internal loop counter does not use a regular timestamp, so we need to convert between
         # regular datetime and the async loop time
@@ -1803,6 +1846,7 @@ class Server:
         self.app.router.add_route("*", "/{room}", self.root_handler)
         self.app.router.add_route("*", "/{room}/", self.root_handler)
         self.admin_app.router.add_route("*", "/", self.admin_handler)
+        self.admin_app.router.add_route("*", "/heap", self.admin_heap_handler)
 
         self.app.cleanup_ctx.append(self.background_tasks)
         if args.admin_password:
@@ -1833,6 +1877,7 @@ def run_server(args: Namespace) -> None:
     :type args: Namespace
     :rtype: None
     """
+    hp.setrelheap()
     loglevel = getattr(logging, args.log_level.upper(), logging.WARNING)
     logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     logger.setLevel(loglevel)

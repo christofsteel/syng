@@ -44,6 +44,9 @@ alt-profanity-check = {version = "^1.4.1", optional = true}
 pyqt6 = {version=">=6.7.1", optional = true}
 mpv = {version = "^1.0.7", optional = true}
 qasync = {version = "^0.27.1", optional = true}
+guppy3 = "^3.1.5"
+objsize = "^0.7.1"
+psutil = "^7.0.0"
 
 [tool.poetry.group.dev.dependencies]
 types-pyyaml = "^6.0.12.12"

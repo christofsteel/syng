@@ -129,6 +129,14 @@ class Source(ABC):
         self.build_index = False
         self.apply_config(config)
 
+    def __del__(self) -> None:
+        """
+        Cleanup the source.
+        """
+
+        logger.debug(f"Cleaning up source {self.source_name}")
+        del self._index
+
     def is_valid(self, entry: Entry) -> bool:
         """
         Check if the entry is valid.
