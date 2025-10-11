@@ -131,6 +131,9 @@ class Client:
     In case a new playback client connects to a room, these values can be
     overwritten.
 
+    :param authorized: If true, the client has provided a valid key and is
+        allowed to search in restricted mode and register in private mode.
+    :type authorized: bool
     :param sources: A dictionary mapping the name of the used sources to their
         instances.
     :type sources: Source
@@ -150,6 +153,7 @@ class Client:
     :type config: dict[str, Any]:
     """
 
+    authorized: bool
     sources: dict[str, Source]
     sources_prio: list[str]
     config: dict[str, Any]
@@ -323,6 +327,7 @@ class Server:
         rooms = [
             {
                 "room": room,
+                "authorized": state.client.authorized,
                 "sid": state.sid,
                 "last_seen": state.last_seen.isoformat(),
                 "queue": state.queue.to_list(),
@@ -920,11 +925,27 @@ class Server:
         :return: True if the key is in the registration keyfile, False otherwise
         :rtype: bool
         """
+        if "registration-keyfile" not in self.app or self.app["registration-keyfile"] is None:
+            return False
         with open(self.app["registration-keyfile"], encoding="utf8") as f:
             raw_keys = f.readlines()
             keys = [key[:64] for key in raw_keys]
 
             return key in keys
+
+    def is_restricted(self, client: Client) -> bool:
+        """
+        Check if a room is restricted.
+
+        A room is restricted, if the server is in restricted mode and does not
+        have a valid key
+
+        :param room: The room to check
+        :type room: str
+        :return: True if the room is restricted, False otherwise
+        :rtype: bool
+        """
+        return "restricted" in self.app and self.app["restricted"] and not client.authorized
 
     async def check_client_version(self, client_version: tuple[int, int, int], sid: str) -> bool:
         """
@@ -1092,9 +1113,9 @@ class Server:
         if "key" in data["config"]:
             data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
 
-        if self.app["type"] == "private" and (
-            "key" not in data["config"] or not self.check_registration(data["config"]["key"])
-        ):
+        is_authorized = "key" in data["config"] and self.check_registration(data["config"]["key"])
+
+        if self.app["type"] == "private" and not is_authorized:
             await self.sio.emit(
                 "client-registered",
                 {
@@ -1120,6 +1141,7 @@ class Server:
                 logger.info("Got new client connection for %s", room)
                 old_state.sid = sid
                 old_state.client = Client(
+                    authorized=is_authorized,
                     sources=old_state.client.sources,
                     sources_prio=old_state.client.sources_prio,
                     config=DEFAULT_CONFIG | data["config"],
@@ -1152,6 +1174,7 @@ class Server:
                 recent=initial_recent,
                 sid=sid,
                 client=Client(
+                    authorized=is_authorized,
                     sources={},
                     sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
@@ -1218,6 +1241,8 @@ class Server:
         to the source, otherwise a source will be created with the given
         configuration.
 
+        If an index is provided on a restricted session, it will be ignored.
+
         :param sid: The session id of the playback client
         :type sid: str
         :param data: A dictionary with a "source" (str) and a
@@ -1225,10 +1250,18 @@ class Server:
             depends on the source.
         :rtype: None
         """
+        if "config" not in data or "source" not in data:
+            return
+        if self.is_restricted(state.client):
+            data["config"]["index"] = []
         if data["source"] not in state.client.sources:
             state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
         else:
-            state.client.sources[data["source"]].add_to_config(data["config"], data["number"])
+            if "index" not in data["config"] or "number" not in data:
+                return
+            state.client.sources[data["source"]].add_to_index(
+                data["config"]["index"], data["number"]
+            )
 
     @playback
     @with_state
@@ -1371,9 +1404,9 @@ class Server:
         if "key" in data["config"]:
             data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
 
-        if self.app["type"] == "private" and (
-            "key" not in data["config"] or not self.check_registration(data["config"]["key"])
-        ):
+        is_authorized = "key" in data["config"] and self.check_registration(data["config"]["key"])
+
+        if self.app["type"] == "private" and not is_authorized:
             await self.sio.emit(
                 "client-registered",
                 {
@@ -1401,6 +1434,7 @@ class Server:
                 logger.info("Got new playback client connection for %s", room)
                 old_state.sid = sid
                 old_state.client = Client(
+                    authorized=is_authorized,
                     sources=old_state.client.sources,
                     sources_prio=old_state.client.sources_prio,
                     config=DEFAULT_CONFIG | data["config"],
@@ -1422,6 +1456,7 @@ class Server:
                 recent=initial_recent,
                 sid=sid,
                 client=Client(
+                    authorized=is_authorized,
                     sources={},
                     sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
@@ -1607,16 +1642,12 @@ class Server:
         """
         query = data["query"]
         search_id = uuid.uuid4()
-        if (
-            self.app["type"] != "restricted"
-            or "key" in state.client.config
-            and self.check_registration(state.client.config["key"])
-        ):
-            asyncio.create_task(self.search_and_emit(search_id, query, state, sid))
-        else:
+        if self.is_restricted(state.client):
             await self.sio.emit(
                 "search", {"query": query, "sid": sid, "search_id": search_id}, room=state.sid
             )
+        else:
+            asyncio.create_task(self.search_and_emit(search_id, query, state, sid))
         return str(search_id)
 
     async def search_and_emit(

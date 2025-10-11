@@ -427,7 +427,7 @@ class Source(ABC):
             return first_package
         return packages
 
-    def add_to_config(self, config: dict[str, Any], running_number: int) -> None:
+    def add_to_index(self, index: list[str], running_number: int) -> None:
         """
         Add the config to the own config.
 
@@ -445,9 +445,10 @@ class Source(ABC):
         :type running_number: int
         :rtype: None
         """
+
         if running_number == 0:
             self._index = []
-        self._index += config["index"]
+        self._index += index
 
     @abstractmethod
     def apply_config(self, config: dict[str, Any]) -> None:
