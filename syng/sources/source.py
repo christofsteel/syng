@@ -109,6 +109,20 @@ class Source(ABC):
         "enabled": ConfigOption(BoolOption(), "Enable this source", False)
     }
 
+    def prune_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        """
+        Prune a config to only contain valid keys.
+
+        This removes all keys from the config, that are not in the
+        :py:attr:`Source.config_schema`.
+
+        :param config: The config to prune
+        :type config: dict[str, Any]
+        :return: The pruned config
+        :rtype: dict[str, Any]
+        """
+        return {key: value for key, value in config.items() if key in self.config_schema}
+
     def __init__(self, config: dict[str, Any]):
         """
         Create and initialize a new source.
@@ -120,7 +134,7 @@ class Source(ABC):
           source for documentation.
         :type config: dict[str, Any]
         """
-        self.config: dict[str, Any] = config
+        self.config: dict[str, Any] = self.prune_config(config)
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
         self._index: list[str] = config["index"] if "index" in config else []
