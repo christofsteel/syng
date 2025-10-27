@@ -41,7 +41,7 @@ qrcode = { version = "^7.4.2", optional = true }
 pymediainfo = { version = "^6.1.0", optional = true }
 pyyaml = { version = "^6.0.1", optional = true }
 alt-profanity-check = {version = "^1.4.1", optional = true}
-pyqt6 = {version=">=6.7.1", optional = true}
+pyqt6 = {version=">=6.7.1,<6.10", optional = true}
 mpv = {version = "^1.0.7", optional = true}
 qasync = {version = "^0.27.1", optional = true}
 
