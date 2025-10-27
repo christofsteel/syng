@@ -1170,6 +1170,6 @@ yarl==1.22.0 ; python_version >= "3.10" and python_version < "4.0" \
     --hash=sha256:f6d2cb59377d99718913ad9a151030d6f83ef420a2b8f521d94609ecc106ee82 \
     --hash=sha256:f87ac53513d22240c7d59203f25cc3beac1e574c6cd681bbfd321987b69f95fd \
     --hash=sha256:ff86011bd159a9d2dfc89c34cfd8aff12875980e3bd6a39ff097887520e60249
-yt-dlp[default]==2025.10.14 ; python_version >= "3.10" and python_version < "4.0" \
-    --hash=sha256:0b9da17eda1bbf48e2315130043d7993fd4ca1c5a35571f8231da1a910c9c115 \
-    --hash=sha256:b18436aa9bb6f04354fd78d31ad9eeaae8c81b6a859f07072b25c18cd6c25844
+yt-dlp[default]==2025.10.22 ; python_version >= "3.10" and python_version < "4.0" \
+    --hash=sha256:9c803a9598859f91d0d5bd3337f1506ecb40bbe97f6efbe93bc4461fed344fb2 \
+    --hash=sha256:db2d48133222b1d9508c6de757859c24b5cefb9568cf68ccad85dac20b07f77b
