@@ -4,7 +4,9 @@ import sys
 import logging
 from logging.handlers import QueueListener
 from logging.handlers import QueueHandler
+import packaging.version
 
+import aiohttp
 from queue import Queue
 from collections.abc import Callable
 from datetime import datetime
@@ -65,7 +67,7 @@ from yaml import dump, load, Loader, Dumper
 from qrcode.main import QRCode
 import platformdirs
 
-from . import resources  # noqa
+from . import __version__, resources  # noqa
 from .client import Client, default_config
 from .log import logger
 from .entry import Entry
@@ -778,7 +780,42 @@ class SyngGui(QMainWindow):
         self.clear_cache_button.clicked.connect(self.clear_cache)
         self.admin_layout.addWidget(self.clear_cache_button)
 
+        self.version_label = QLabel(
+            "",
+            self.admin_tab,
+        )
+        self.admin_layout.addWidget(self.version_label)
+
         self.tabview.addTab(self.admin_tab, "Admin")
+
+    def update_version_label(
+        self,
+        running_version: Optional[packaging.version.Version],
+        current_version: Optional[packaging.version.Version],
+    ) -> None:
+        label_string = f"<i>Running version: {running_version}</i><br />Current version on pypi: {current_version}"
+        if current_version is not None and running_version is not None:
+            if current_version > running_version:
+                label_string += '<br /><span style="color:red;">A new version is available! Please update syng.</span>'
+            else:
+                label_string += '<br /><span style="color:green;">You are running the latest version.</span><br />Visit <a href="https://site.syng.rocks/">syng.rocks</a> for more information.'
+        self.version_label.setText(label_string)
+
+    async def get_pypi_version(self) -> None:
+        print("search")
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://pypi.org/pypi/syng/json") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    versions = filter(
+                        lambda v: not v.is_prerelease,
+                        map(packaging.version.parse, data["releases"].keys()),
+                    )
+                    self.update_version_label(
+                        running_version=packaging.version.parse(__version__),
+                        current_version=max(versions),
+                    )
+        return None
 
     def __init__(self) -> None:
         super().__init__()
@@ -788,6 +825,10 @@ class SyngGui(QMainWindow):
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
         self.loop = asyncio.get_event_loop()
+
+        self.pypi_version: Optional[str] = None
+        asyncio.run_coroutine_threadsafe(self.get_pypi_version(), self.loop)
+
         self.client: Optional[Client] = None
         self.syng_client_logging_listener: Optional[QueueListener] = None
 
