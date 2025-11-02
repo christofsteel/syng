@@ -28,7 +28,7 @@ dependencies = [
   "aiohttp>=3.9.1",
   "platformdirs>=4.0.0",
   "yt-dlp[default]>=2025.10.22",
-  "qrcode>=8.2"
+  "qrcode>=8.2",
 ]
 
 [project.optional-dependencies]
@@ -64,6 +64,7 @@ types-pillow = "^10.1.0.2"
 mypy = "^1.10.0"
 pylint = "^3.2.7"
 requirements-parser = "^0.11.0"
+ruff = "^0.14.3"
 
 
 [build-system]

@@ -1,5 +1,4 @@
 from importlib.metadata import version, PackageNotFoundError
-from itertools import takewhile
 from packaging.version import Version
 
 try:
