@@ -1,57 +1,52 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
-    <Package Language="1033"
-             Manufacturer="Syng.Rocks!"
-             Name="Syng.Rocks! Karaoke Player"
-             Scope="perUserOrMachine"
-             UpgradeCode="092e7e0b-5042-47a1-9673-544d9722f8df"
-             ProductCode="*"
-             Version="2.1.0">
-        <MediaTemplate EmbedCab="yes" />
-        <MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
-        <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
-        <WixVariable Id="WixUILicenseRtf" Value="agpl-3.0.rtf" />
-        <Icon Id="syng.ico" SourceFile="..\syng.ico"/>
-        <Property Id="ARPPRODUCTICON" Value="syng.ico" />
-        <StandardDirectory Id="ProgramFilesFolder">
-            <Directory Id="INSTALLFOLDER" Name="syng">
-                <Component Id="ProductComponent">
-                    <File KeyPath="yes" Source="syng\syng.exe" Name="syng.exe"></File>
-                    <Shortcut Id="startmenuShortcut"
-                              Directory="ProgramMenuDir"
-                              Name="Syng.Rocks! Karaoke Player"
-                              WorkingDirectory='INSTALLFOLDER'
-                              Icon="syng.ico"
-                              IconIndex="0"
-                              Advertise="yes" />
-                    <Shortcut Id="UninstallProduct"
-                            Name="Uninstall Syng.Rocks! Karaoke Player"
-                            Target="[SystemFolder]msiexec.exe"
-                            Arguments="/x [ProductCode]"
-                            Description="Uninstalls Syng" />
-                    <Shortcut Id="desktopShortcut"
-                              Directory="DesktopFolder"
-                              Name="Syng.Rocks! Karaoke Player"
-                              WorkingDirectory='INSTALLFOLDER'
-                              Icon="syng.ico"
-                              IconIndex="0"
-                              Advertise="yes" />
-                </Component>
-                <Directory Id="DataDir" Name="data">
-                </Directory>
-            </Directory>
-        </StandardDirectory>
-        <ComponentGroup Id="DataFiles" Directory="DataDir">
-          <Files Include="syng\data\**">
-            <Exclude Files="syng\syng.exe" />
-          </Files>
-        </ComponentGroup>
-        <StandardDirectory Id="ProgramMenuFolder">
-            <Directory Id="ProgramMenuDir" Name="syng"/>
-        </StandardDirectory>
-        <StandardDirectory Id="DesktopFolder"/>
-        <Feature Id="syng">
-            <ComponentRef Id="ProductComponent" />
-            <ComponentGroupRef Id="DataFiles" />
-        </Feature></Package>
+<?xml version='1.0' encoding='utf-8'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <Product Name='Syng.Rocks! Player' Manufacturer='Syng.Rocks!'
+    Id='*'
+    UpgradeCode='2B495AE5-6540-43E1-ACDF-D6FD650CDEF8'
+    Language='1033' Version='$(var.SyngVersion)'>
+    <Package Id='*' Keywords='Installer' Description="Syng.Rocks! Player Installer"
+      Manufacturer='Syng.Rocks!'
+      InstallerVersion='100' Languages='1033' Compressed='yes' 
+      Platform='x64'/>
+    <MajorUpgrade
+      AllowSameVersionUpgrades='yes'
+      DowngradeErrorMessage="A later version of Syng.Rocks! Player is already installed. Setup will now exit." />
+    <Media Id='1' Cabinet='syngrocks.cab' EmbedCab='yes' />
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='ProgramFiles64Folder' Name='PFiles'>
+        <Directory Id='INSTALLFOLDER' Name='Syng.Rocks! Player'>
+          <Component Id='MainExecutable' Guid='6DFE86DD-57D4-4286-910F-0A78C0938438'>
+            <File Id='SyngRocksExe' Source='dist\syng\syng.exe' KeyPath='yes' />
+            <Shortcut Id='StartMenuShortcut' Directory='ProgramMenuDir'
+              Name='Syng.Rocks! Player' WorkingDirectory='INSTALLFOLDER'
+              Icon='SyngRocksIcon.ico' IconIndex='0' Advertise='yes' />
+            <Shortcut Id='DesktopShortcut' Directory='DesktopFolder'
+              Name='Syng.Rocks! Player' WorkingDirectory='INSTALLFOLDER'
+              Icon='SyngRocksIcon.ico' IconIndex='0' Advertise='yes' />
+          </Component>
+        </Directory>
+      </Directory>
+      <Directory Id='ProgramMenuFolder' Name='Programs'>
+        <Directory Id='ProgramMenuDir' Name='Syng.Rocks! Player'>
+          <Component Id="ProgramMenuDir" Guid="723FEAD2-95B9-446E-B2E9-3F397A2D9063">
+            <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
+            <RegistryValue Root="HKCU" Key="Software\Syng.Rocks!\Syng.Rocks! Player"
+              Name="installed" Type="integer" Value="1" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+      <Directory Id='DesktopFolder' Name='Desktop' />
+    </Directory>
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <UIRef Id="WixUI_InstallDir" />
+    <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
+    <WixVariable Id="WixUILicenseRtf" Value="agpl-3.0.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+    <Feature Id='Complete' Level='1'>
+      <ComponentRef Id='MainExecutable' />
+      <ComponentRef Id='ProgramMenuDir' />
+      <ComponentGroupRef Id='InternalGroup' />
+    </Feature>
+    <Icon Id='SyngRocksIcon.ico' SourceFile='dist\syng\_internal\syng.ico' />
+  </Product>
 </Wix>
