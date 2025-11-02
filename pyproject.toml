@@ -52,7 +52,7 @@ repository = "https://git.k-fortytwo.de/christofsteel/syng"
 "Bug Tracker" = "https://github.com/christofsteel/syng/issues"
 
 [project.scripts]
-syng = "syng.main:syng"
+syng = "syng.main:main"
 
 
 [tool.poetry]
