@@ -27,14 +27,15 @@ dependencies = [
   "python-socketio>=5.14.3",
   "aiohttp>=3.9.1",
   "platformdirs>=4.0.0",
-  "yt-dlp[default]>=2025.10.22",
+  "yt-dlp[default]>=2025.11.12",
   "qrcode>=8.2",
+  "packaging (>=25.0,<26.0)",
 ]
 
 [project.optional-dependencies]
   client = [
     "minio>=7.2.0",
-    "pillow>=12.0.0",
+    "pillow>=11.0.0,<12.0.0",
     "qrcode>=8.2",
     "pymediainfo>=6.1.0",
     "pyyaml>=6.0.1",
