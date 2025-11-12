@@ -1,0 +1,10 @@
+# Generated with flatpak-pip-generator --yaml pdm-backend
+name: python3-pdm-backend
+buildsystem: simple
+build-commands:
+- pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+  --prefix=${FLATPAK_DEST} "pdm-backend" --no-build-isolation
+sources:
+- type: file
+  url: https://files.pythonhosted.org/packages/82/62/091e98e492bd415e02d6a82e307a96b20b64b489540318041a0cd3db9e6d/pdm_backend-2.4.6-py3-none-any.whl
+  sha256: 4427c235d9ee84afd23a376a0961e5b9ad7e1db09039127b71b2053d19185784
