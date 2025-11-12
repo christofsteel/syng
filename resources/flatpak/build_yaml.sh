@@ -3,6 +3,8 @@
 ./flatpak-pip-generator --build-only --yaml poetry-core
 ./flatpak-pip-generator --build-only --yaml expandvars
 ./flatpak-pip-generator --yaml cffi
+./flatpak-pip-generator --yaml pdm-backend
+./flatpak-pip-generator --yaml pybind11
 
 AWK_PROG='
     BEGIN { inside_block = 0 }

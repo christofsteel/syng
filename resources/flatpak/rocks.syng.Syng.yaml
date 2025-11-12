@@ -58,9 +58,6 @@ modules:
         url: https://gitlab.freedesktop.org/xorg/lib/libxpresent.git
         tag: libXpresent-1.0.1
         commit: 37507b5f44332accfb1064ee69a4f6a833994747
-        x-checker-data:
-          type: git
-          tag-pattern: ^libXpresent-([\d.]+)$
 
   - name: luajit
     no-autogen: true
@@ -73,10 +70,23 @@ modules:
       - type: git
         url: https://github.com/LuaJIT/LuaJIT.git
         disable-shallow-clone: true
-        commit: fe71d0fb54ceadfb5b5f3b6baf29e486d97f6059
+        commit: 2090842410e0ba6f81fad310a77bf5432488249a
       - type: shell
         commands:
           - sed -i 's|/usr/local|/app|' ./Makefile
+
+  - name: yt-dlp-ejs
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app yt_dlp_ejs*.whl
+    sources:
+      - type: file
+        url: https://github.com/yt-dlp/ejs/releases/download/0.3.1/yt_dlp_ejs-0.3.1-py3-none-any.whl
+        sha256: a6e3548874db7c774388931752bb46c7f4642c044b2a189e56968f3d5ecab622  
+        x-checker-data:
+          type: pypi
+          name: yt-dlp-ejs
+          packagetype: bdist_wheel              
 
   - name: yt-dlp
     no-autogen: true
@@ -88,33 +98,13 @@ modules:
       - install yt-dlp /app/bin
     sources:
       - type: archive
-        url: https://github.com/yt-dlp/yt-dlp/releases/download/2025.06.30/yt-dlp.tar.gz
-        sha256: 606f3e3e431839998d1f377de615a9792e77e5968ad929c2c6ba1a17774bbf1b
+        url: https://github.com/yt-dlp/yt-dlp/releases/download/2025.11.12/yt-dlp.tar.gz
+        sha256: 561ead2e2991f11789d3cd9f9b5a2eee2641a587e2cfc1ee9631c7c1d851c0ec
         x-checker-data:
           type: json
           url: https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest
           version-query: .tag_name
           url-query: .assets[] | select(.name=="yt-dlp.tar.gz") | .browser_download_url
-
-  - name: uchardet
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -DBUILD_STATIC=0
-    cleanup:
-      - /bin
-      - /include
-      - /lib/pkgconfig
-      - /share/man
-    sources:
-      - type: archive
-        url: https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
-        sha256: e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0
-        x-checker-data:
-          type: html
-          url: https://www.freedesktop.org/software/uchardet/releases/
-          version-pattern: uchardet-(\d\.\d+\.?\d*).tar.xz
-          url-template: https://www.freedesktop.org/software/uchardet/releases/uchardet-$version.tar.xz
 
   - name: libass
     cleanup:
@@ -141,8 +131,8 @@ modules:
     sources:
       - type: archive
         archive-type: tar
-        url: https://api.github.com/repos/sekrit-twc/zimg/tarball/release-3.0.5
-        sha256: 1b8998f03f4a49e4d730033143722b32bc28a5306ef809ccfb3b4bbb29e4b784
+        url: https://api.github.com/repos/sekrit-twc/zimg/tarball/release-3.0.6
+        sha256: 15140e491c4ce9db5f02a038d8a1eb53e9151b55eeed06a2899425a6ebfef367
         x-checker-data:
           type: json
           url: https://api.github.com/repos/sekrit-twc/zimg/releases/latest
@@ -177,6 +167,7 @@ modules:
       - type: git
         url: https://github.com/jpsdr/x264
         commit: da14df5535fd46776fb1c9da3130973295c87aca
+        # commit: fb6c86416130b9c20f4d1fa36c93276b142036de
   - name: x265
     buildsystem: cmake
     subdir: source
@@ -190,8 +181,8 @@ modules:
     sources:
       - type: git
         url: https://bitbucket.org/multicoreware/x265_git.git
-        tag: '4.0'
-        commit: 6318f223684118a2c71f67f3f4633a9e35046b00
+        tag: '4.1'
+        commit: 1d117bed4747758b51bd2c124d738527e30392cb
 
   - name: vulkan-headers
     buildsystem: cmake-ninja
@@ -234,10 +225,6 @@ modules:
         url: https://github.com/FFmpeg/FFmpeg.git
         commit: db69d06eeeab4f46da15030a80d539efb4503ca8
         tag: n7.1.1
-        x-checker-data:
-          type: git
-          tag-pattern: ^n([\d.]{3,7})$
-
   - name: libplacebo
     buildsystem: meson
     config-opts:
@@ -292,17 +279,45 @@ modules:
       - --enable-shared
       - --disable-static
     sources:
-      - type: archive
-        url: https://mediaarea.net/download/source/libmediainfo/24.06/libmediainfo_24.06.tar.xz
-        sha256: 0683f28a2475dc2417205ba528debccc407da4d9fa6516eb4b75b3ff7244e96e
+      - type: git
+        url: https://github.com/MediaArea/MediaInfoLib.git
+        tag: v25.10
+        commit: a7860aab31a47f0d09549c6dafc329c5816d96c7
     cleanup:
       - /bin
       - /include
       - /lib/pkgconfig
       - /lib/*.la
+  - name: deno
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 deno /app/bin/deno
+    sources:
+      # -------- x86_64 build --------
+      - type: file
+        only-arches:
+          - x86_64
+        url: https://github.com/denoland/deno/releases/download/v2.5.6/deno-x86_64-unknown-linux-gnu.zip
+        sha256: fd4f6abc1b6a134fa9a4dba56519f1631f44c88e04e4e3e9a8ff5975dfa66e1a
+        dest-filename: deno.zip
+
+      # -------- aarch64 build --------
+      - type: file
+        only-arches:
+          - aarch64
+        url: https://github.com/denoland/deno/releases/download/v2.5.6/deno-aarch64-unknown-linux-gnu.zip
+        sha256: f5e60ae3dfceb61e5e5a41f22129e40a8bc17f6393b59e75d7ca19ceef32d824
+        dest-filename: deno.zip
+
+      # -------- unpack the zip --------
+      - type: shell
+        commands:
+          - unzip deno.zip
+
   - python3-poetry-core.yaml
   - python3-expandvars.yaml
   - python3-cffi.yaml
+  - python3-pdm-backend.yaml
   - python3-requirements-client.yaml
   - name: syng
     buildsystem: simple
@@ -320,4 +335,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/christofsteel/syng.git
-        commit: 63eff81740c2cd4a3fb886d0f98a1d1eb3972e81
+        commit: d539a03d597c9cf1194cd22a03a00d6a8f97bf2a
