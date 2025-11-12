@@ -318,6 +318,7 @@ modules:
   - python3-expandvars.yaml
   - python3-cffi.yaml
   - python3-pdm-backend.yaml
+  - python3-pybind11.yaml
   - python3-requirements-client.yaml
   - name: syng
     buildsystem: simple
