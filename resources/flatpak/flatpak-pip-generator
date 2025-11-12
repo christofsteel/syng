@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#    "requirements-parser<1.0.0,>=0.11.0",
+# ]
+# ///
 
 __license__ = "MIT"
+
+import sys
+
+if sys.version_info < (3, 10):
+    sys.stderr.write("Error: This script requires Python 3.10 or higher.\n")
+    sys.exit(1)
 
 import argparse
 import hashlib
@@ -9,7 +21,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import urllib.request
 from collections import OrderedDict
@@ -32,8 +43,15 @@ parser.add_argument(
 parser.add_argument(
     "--cleanup", choices=["scripts", "all"], help="Select what to clean up after build"
 )
-parser.add_argument("--requirements-file", "-r", help="Specify requirements.txt file")
-parser.add_argument("--pyproject-file", help="Specify pyproject.toml file")
+parser.add_argument(
+    "--requirements-file",
+    "-r",
+    help="Specify requirements.txt file. Cannot be used with pyproject file.",
+)
+parser.add_argument(
+    "--pyproject-file",
+    help="Specify pyproject.toml file. Cannot be used with requirements file.",
+)
 parser.add_argument(
     "--build-only",
     action="store_const",
@@ -70,7 +88,7 @@ parser.add_argument(
     "--runtime",
     help=(
         "Specify a flatpak to run pip inside of a sandbox, "
-        "ensures python version compatibility"
+        "ensures python version compatibility. Format: $RUNTIME_ID//$RUNTIME_BRANCH"
     ),
 )
 parser.add_argument(
@@ -85,10 +103,12 @@ parser.add_argument(
     "--ignore-pkg",
     nargs="*",
     help=(
-        "Ignore a package when generating the manifest. "
-        "Can only be used with a requirements file"
+        "Ignore packages when generating the manifest. "
+        "Needs to be specified with version constraints if present "
+        "(e.g. --ignore-pkg 'foo>=3.0.0' 'baz>=21.0')."
     ),
 )
+
 opts = parser.parse_args()
 
 if opts.requirements_file and opts.pyproject_file:
@@ -108,6 +128,53 @@ if opts.yaml:
         import yaml
     except ImportError:
         sys.exit('PyYAML modules is not installed. Run "pip install PyYAML"')
+
+
+def get_poetry_deps(pyproject_data: dict[str, Any]) -> list[str]:
+    poetry_deps = pyproject_data.get("tool", {}).get("poetry", {}).get("dependencies")
+
+    if not poetry_deps:
+        return []
+
+    def format_dependency_version(name: str, value: Any) -> str:
+        sep, suffix = "@", ""
+        dep_name = name
+
+        if isinstance(value, dict):
+            if version := value.get("version"):
+                sep, val = "==", version
+            elif git_url := value.get("git"):
+                val = f"git+{git_url}" if not git_url.startswith("git@") else git_url
+                if rev := value.get("branch") or value.get("rev") or value.get("tag"):
+                    val += f"@{rev}"
+                if subdir := value.get("subdirectory"):
+                    val += f"#subdirectory={subdir}"
+            elif path := value.get("path"):
+                dep_name, sep, val = "", "", path
+            elif url := value.get("url"):
+                dep_name, sep, val = "", "", url
+            else:
+                dep_name, sep, val = name, "", ""
+
+            if markers := value.get("markers"):
+                suffix = f";{markers}"
+        else:
+            sep, val = "==", value
+
+        if val.startswith("^"):
+            sep, val = ">=", val[1:]
+        elif val.startswith("~"):
+            sep, val = "~=", val[1:]
+        elif "<" in val or ">" in val:
+            sep, val = "", val.replace(" ", "")
+
+        return f"{dep_name}{sep}{val}{suffix}"
+
+    return sorted(
+        format_dependency_version(dep, val)
+        for dep, val in poetry_deps.items()
+        if dep != "python"
+    )
 
 
 def get_pypi_url(name: str, filename: str) -> str:
@@ -207,6 +274,21 @@ def fprint(string: str) -> None:
     print(separator)
 
 
+def get_flatpak_runtime_scope(runtime: str) -> str:
+    for scope in ("--user", "--system"):
+        try:
+            subprocess.run(
+                ["flatpak", "info", scope, runtime],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+            return scope
+        except subprocess.CalledProcessError:
+            continue
+    sys.exit(f"Runtime {runtime} not found for user or system")
+
+
 packages = []
 if opts.requirements_file:
     requirements_file_input = os.path.expanduser(opts.requirements_file)
@@ -237,8 +319,28 @@ elif opts.pyproject_file:
     pyproject_file = os.path.expanduser(opts.pyproject_file)
     with open(pyproject_file, "rb") as f:
         pyproject_data = toml_load(f)
-    dependencies = pyproject_data.get("project", {}).get("dependencies", [])
+    is_poetry = pyproject_data.get("tool", {}).get("poetry") is not None
+    if is_poetry:
+        dependencies = get_poetry_deps(pyproject_data)
+    else:
+        dependencies = pyproject_data.get("project", {}).get("dependencies", [])
+
+    if not dependencies:
+        sys.exit("Pyproject file was specified but no dependencies were collected")
+
+    build_system_requires = pyproject_data.get("build-system", {}).get("requires", [])
+    if build_system_requires:
+        dependencies.extend(build_system_requires)
+
+    if opts.ignore_pkg:
+        print(dependencies)
+        print(opts.ignore_pkg)
+        dependencies = [
+            dep for dep in dependencies if dep.split(" ")[0] not in opts.ignore_pkg
+        ]
+
     packages = list(requirements.parse("\n".join(dependencies)))
+
     with tempfile.NamedTemporaryFile(
         "w", delete=False, prefix="requirements."
     ) as req_file:
@@ -274,8 +376,15 @@ python_version = "2" if opts.python2 else "3"
 pip_executable = "pip2" if opts.python2 else "pip3"
 
 if opts.runtime:
+    parts = opts.runtime.split("//", 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        sys.exit(
+            "Runtime argument must be in the following format: $RUNTIME_ID//$RUNTIME_BRANCH"
+        )
+
     flatpak_cmd = [
         "flatpak",
+        get_flatpak_runtime_scope(opts.runtime),
         "--devel",
         "--share=network",
         "--filesystem=/tmp",
@@ -439,14 +548,12 @@ with tempfile.TemporaryDirectory(prefix=tempdir_prefix) as tempdir:
 # Python3 packages that come as part of org.freedesktop.Sdk.
 system_packages = [
     "cython",
-    "easy_install",
     "mako",
     "markdown",
     "meson",
+    "packaging",
     "pip",
-    "pygments",
     "setuptools",
-    "six",
     "wheel",
 ]
 
