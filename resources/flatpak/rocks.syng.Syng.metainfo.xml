@@ -46,6 +46,18 @@
 
 
   <releases>
+    <release version="2.2.1" date="2025-11-12">
+      <description>
+        <p>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Updated yt-dlp</li>
+          <li>Better readability on next-up pop up</li>
+          <li>Current version is shown in admin tab</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.2.0" date="2025-07-02">
       <description>
         <p>

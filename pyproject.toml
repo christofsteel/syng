@@ -1,6 +1,6 @@
 [project]
 name = "syng"
-version = "2.2.1a0"
+version = "2.2.1"
 description = "Easily host karaoke events"
 license = "AGPL-3.0-or-later"
 readme = "README.md"

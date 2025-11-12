@@ -49,7 +49,7 @@ Alternatively Syng can be installed via the _Python Package Index_ (PyPI). When 
 
 This installs both the playback client (`syng client`) and a configuration GUI (`syng gui`). 
 
-**Note:** When installing via PyPI, you need to have [libmpv](https://mpv.io/) installed on machine of the playback client.
+**Note:** When installing via PyPI, you need to have [libmpv](https://mpv.io/) installed on machine of the playback client. Additionally, since version 2.2.1, you also need to have [deno](https://github.com/denoland/deno/) installed for proper YouTube support.
 
 The Syng client is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-client)
 
