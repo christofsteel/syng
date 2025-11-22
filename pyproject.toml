@@ -57,26 +57,23 @@ repository = "https://git.k-fortytwo.de/christofsteel/syng"
 syng = "syng.main:main"
 
 
-[tool.poetry]
-include = ["syng/static"]
+[tool.uv.build-backend]
+module-root = ""
+source-include = ["syng/static/**"]
 
-[tool.poetry.group.dev.dependencies]
-types-pyyaml = "^6.0.12.12"
-types-pillow = "^10.1.0.2"
-mypy = "^1.10.0"
-pylint = "^3.2.7"
-requirements-parser = "^0.11.0"
-ruff = "^0.14.3"
-
+[dependency-groups]
+dev = [
+    "types-pyyaml>=6.0.12.12",
+    "types-pillow>=10.1.0.2",
+    "mypy>=1.10.0",
+    "pylint>=3.2.7",
+    "requirements-parser>=0.11.0",
+    "ruff>=0.14.3",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.pyright]
-exclude = [ ".venv" ]
-venvPath = "."
-venv = ".venv"
+requires = ["uv_build>=0.9.10,<0.10.0"]
+build-backend = "uv_build"
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = '''too-many-lines,
