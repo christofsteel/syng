@@ -10,9 +10,9 @@ env:
   WINEARCH: win64
   WINEDEBUG: -all
   WINE_VERSION: 10.17
-  MPV_NIGHTLY: 20251022
-  MPV_HASH: 99d6d4c
-  FFMPEG_HASH: 535d4047d
+  MPV_NIGHTLY: 20251211
+  MPV_HASH: 95c7599
+  FFMPEG_HASH: f8929c451
   PYTHON_VERSION: 3.13.9
   MONO_VERSION: 10.3.0
   DENO_VERSION: 2.5.4
@@ -113,16 +113,6 @@ jobs:
         run: |
           PYINSTALLER=$(find /wineprefix -iname "pyinstaller.exe" -exec readlink -f {} \;)
           echo "pyinstaller=$PYINSTALLER" >> $GITHUB_ENV
-      - name: Install poetry
-        if: steps.cache-syng.outputs.cache-hit != 'true'
-        run: |
-          ${{ env.wine }} ${{ env.python }} -m pip install poetry 
-          ${{ env.wine }} ${{ env.python }} -m pip install poetry-plugin-export
-      - name: Find poetry
-        run: |
-          POETRY=$(find /wineprefix -iname "poetry.exe" -exec readlink -f {} \;)
-          echo "poetry=$POETRY" >> $GITHUB_ENV
-
       - name: Install wine-mono
         if: steps.cache-dl.outputs.cache-hit != 'true'
         run: |
@@ -131,6 +121,7 @@ jobs:
       - name: preparing workdir
         if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
+          ls
           cp -r syng work/syng
           # cp requirements-client.txt work/reqs.txt
           cp resources/icons/syng.ico work/
@@ -143,13 +134,8 @@ jobs:
           cp resources/windows/dialog.bmp work/
           cp resources/windows/banner.bmp work/
           cp resources/windows/agpl-3.0.rtf work/
-          
-      - name: Install syng deps
-        if: steps.cache-syng.outputs.cache-hit != 'true'
-        run: |
-          ${{ env.wine }} ${{ env.poetry }} export --without-hashes -f requirements.txt -E client -o reqs.txt
-          ${{ env.wine }} ${{ env.python }} -m pip install -r reqs.txt
-        working-directory: ./work
+      - name: install syng
+        run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
         if: steps.cache-syng.outputs.cache-hit != 'true'
         run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
