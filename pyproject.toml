@@ -1,6 +1,6 @@
 [project]
 name = "syng"
-version = "2.2.1"
+version = "2.2.2"
 description = "Easily host karaoke events"
 license = "AGPL-3.0-or-later"
 readme = "README.md"
@@ -27,7 +27,7 @@ dependencies = [
   "python-socketio>=5.14.3",
   "aiohttp>=3.9.1",
   "platformdirs>=4.0.0",
-  "yt-dlp[default]>=2025.11.12",
+  "yt-dlp[default]>=2025.12.08",
   "qrcode>=8.2",
   "packaging>=25.0",
 ]
