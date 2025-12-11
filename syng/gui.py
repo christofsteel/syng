@@ -802,7 +802,6 @@ class SyngGui(QMainWindow):
         self.version_label.setText(label_string)
 
     async def get_pypi_version(self) -> None:
-        print("search")
         async with aiohttp.ClientSession() as session:
             async with session.get("https://pypi.org/pypi/syng/json") as resp:
                 if resp.status == 200:
