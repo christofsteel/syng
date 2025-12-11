@@ -1,0 +1,26 @@
+# Generated with flatpak-pip-generator --build-only --yaml uv-build
+name: python3-uv-build
+buildsystem: simple
+build-commands:
+  - pip3 install --prefix=${FLATPAK_DEST} uv_build*.whl
+sources:
+  - type: file
+    only-arches:
+      - x86_64
+    url: https://files.pythonhosted.org/packages/dd/c3/c2061eaf62753603806f34bd63c4c59adb3764fef57f267379ee6bbcce46/uv_build-0.9.17-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl 
+    sha256: 5abb1e474f7e7cac6a90d51b0a9dc813857e9f870d82f4e82c2a0e22cb416535
+    x-checker-data:
+      type: pypi
+      name: uv-build
+      packagetype: bdist_wheel              
+  - type: file
+    only-arches:
+      - aarch64
+    url: https://files.pythonhosted.org/packages/e1/4b/22182d20d0be6c215ec7abb884887b43d25862c83b148c1cc5dea06e7ea9/uv_build-0.9.17-py3-none-manylinux_2_28_aarch64.whl
+    sha256: ed8add98c766a2f969c19bc830a962bdac6eea8e76c7e887be3e1813bf024bae
+    x-checker-data:
+      type: pypi
+      name: uv-build
+      packagetype: bdist_wheel              
+
+

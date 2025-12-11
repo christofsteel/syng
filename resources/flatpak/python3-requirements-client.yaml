@@ -46,7 +46,7 @@ modules:
     type: file
     url: https://files.pythonhosted.org/packages/9e/da/e9fc233cf63743258bff22b3dfa7ea5baef7b5bc324af47a0ad89b8ffc6f/propcache-0.4.1.tar.gz
     sha256: f48107a8c637e80362555f37ecf49abe20370e557cc4ab374f04ec4423c97c3d
-  - &id022
+  - &id028
     type: file
     url: https://files.pythonhosted.org/packages/57/63/0c6ebca57330cd313f6102b16dd57ffaf3ec4c83403dcb45dbd15c6f3ea1/yarl-1.22.0.tar.gz
     sha256: bebf8557577d4401ba8bd9ff33906f1376c877aa78d1fe216ad01b4d6745af71
@@ -58,12 +58,16 @@ modules:
   sources:
   - *id002
   - *id003
-- name: python3-argon2-cffi-bindings
+- name: python3-argon2-cffi
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "argon2-cffi-bindings==25.1.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "argon2-cffi==25.1.0" --no-build-isolation
   sources:
+  - &id009
+    type: file
+    url: https://files.pythonhosted.org/packages/4f/d3/a8b22fa575b297cd6e3e3b0155c7e25db170edf1c74783d6a31a2490b8d9/argon2_cffi-25.1.0-py3-none-any.whl
+    sha256: fdc8b074db390fccb6eb4a3604ae7231f219aa669a2652e0f20e16ba513d5741
   - &id004
     type: file
     url: https://files.pythonhosted.org/packages/5c/2d/db8af0df73c1cf454f71b2bbe5e356b8c1f8041c979f505b3d3186e520a9/argon2_cffi_bindings-25.1.0.tar.gz
@@ -76,19 +80,25 @@ modules:
     type: file
     url: https://files.pythonhosted.org/packages/a0/e3/59cd50310fc9b59512193629e1984c1f95e5c8ae6e5d8c69532ccc65a7fe/pycparser-2.23-py3-none-any.whl
     sha256: e5c6e8d3fbad53479cab09ac03729e0a9faf2bee3db8208a550daf5af81a5934
-- name: python3-argon2-cffi
+- name: python3-argon2-cffi-bindings
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "argon2-cffi==25.1.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "argon2-cffi-bindings==25.1.0" --no-build-isolation
   sources:
-  - &id009
-    type: file
-    url: https://files.pythonhosted.org/packages/4f/d3/a8b22fa575b297cd6e3e3b0155c7e25db170edf1c74783d6a31a2490b8d9/argon2_cffi-25.1.0-py3-none-any.whl
-    sha256: fdc8b074db390fccb6eb4a3604ae7231f219aa669a2652e0f20e16ba513d5741
   - *id004
   - *id005
   - *id006
+- name: python3-astroid
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "astroid==4.0.2" --no-build-isolation
+  sources:
+  - &id014
+    type: file
+    url: https://files.pythonhosted.org/packages/93/ac/a85b4bfb4cf53221513e27f33cc37ad158fce02ac291d18bee6b49ab477d/astroid-4.0.2-py3-none-any.whl
+    sha256: d7546c00a12efc32650b19a2bb66a153883185d3179ab0d4868086f807338b9b
 - name: python3-attrs
   buildsystem: simple
   build-commands:
@@ -102,7 +112,7 @@ modules:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "bidict==0.23.1" --no-build-isolation
   sources:
-  - &id015
+  - &id020
     type: file
     url: https://files.pythonhosted.org/packages/99/37/e8730c3587a65eb5645d4aba2d27aae48e8003614d6aaf15dda67f702f1f/bidict-0.23.1-py3-none-any.whl
     sha256: 5dae8d4d79b552a71cbabc7deb25dfe8ce710b17ff41711e13010ead2abfc3e5
@@ -139,10 +149,20 @@ modules:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "charset-normalizer==3.4.4" --no-build-isolation
   sources:
-  - &id019
+  - &id024
     type: file
     url: https://files.pythonhosted.org/packages/13/69/33ddede1939fdd074bce5434295f38fae7136463422fe4fd3e0e89b98062/charset_normalizer-3.4.4.tar.gz
     sha256: 94537985111c35f28720e43603b8e7b43a6ecfb2ce1d3058bbe955b73404e21a
+- name: python3-dill
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "dill==0.4.0" --no-build-isolation
+  sources:
+  - &id015
+    type: file
+    url: https://files.pythonhosted.org/packages/50/3d/9373ad9c56321fdab5b41197068e1d8c25883b3fea29dd361f9b55116869/dill-0.4.0-py3-none-any.whl
+    sha256: 44f54bf6412c2c8464c14e8243eb163690a9800dbe2c367330883b19c7561049
 - name: python3-frozenlist
   buildsystem: simple
   build-commands:
@@ -156,7 +176,7 @@ modules:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "h11==0.16.0" --no-build-isolation
   sources:
-  - &id014
+  - &id019
     type: file
     url: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
     sha256: 63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
@@ -167,6 +187,26 @@ modules:
     --prefix=${FLATPAK_DEST} "idna==3.11" --no-build-isolation
   sources:
   - *id008
+- name: python3-isort
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "isort==7.0.0" --no-build-isolation
+  sources:
+  - &id016
+    type: file
+    url: https://files.pythonhosted.org/packages/7f/ed/e3705d6d02b4f7aea715a353c8ce193efd0b5db13e204df895d38734c244/isort-7.0.0-py3-none-any.whl
+    sha256: 1bcabac8bc3c36c7fb7b98a76c8abb18e0f841a3ba81decac7691008592499c1
+- name: python3-mccabe
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "mccabe==0.7.0" --no-build-isolation
+  sources:
+  - &id017
+    type: file
+    url: https://files.pythonhosted.org/packages/27/1a/1f68f9ba0c207934b35b86a8ca3aad8395a3d6dd7921c0686e23853ff5a9/mccabe-0.7.0-py2.py3-none-any.whl
+    sha256: 6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e
 - name: python3-minio
   buildsystem: simple
   build-commands:
@@ -185,11 +225,11 @@ modules:
     type: file
     url: https://files.pythonhosted.org/packages/8e/a6/8452177684d5e906854776276ddd34eca30d1b1e15aa1ee9cefc289a33f5/pycryptodome-3.23.0.tar.gz
     sha256: 447700a657182d60338bab09fdb27518f8856aecd80ae4c6bdddb67ff5da44ef
-  - &id021
+  - &id027
     type: file
     url: https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl
     sha256: f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548
-  - &id020
+  - &id025
     type: file
     url: https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl
     sha256: e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc
@@ -233,7 +273,8 @@ modules:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "platformdirs==4.5.0" --no-build-isolation
   sources:
-  - type: file
+  - &id018
+    type: file
     url: https://files.pythonhosted.org/packages/73/cb/ac7874b3e5d58441674fb70742e6c374b28b0c7cb988d37d991cde47166c/platformdirs-4.5.0-py3-none-any.whl
     sha256: e578a81bb873cbb89a41fcc904c7ef523cc18284b7e3b3ccf06aca1403b7ebd3
 - name: python3-propcache
@@ -266,6 +307,24 @@ modules:
   - type: file
     url: https://files.pythonhosted.org/packages/c9/85/e24bf90972a30b0fcd16c73009add1d7d7cd9140c2498a68252028899e41/pycryptodomex-3.23.0.tar.gz
     sha256: 71909758f010c82bc99b0abf4ea12012c98962fbf0583c2164f8b84533c2e4da
+- name: python3-pylint
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "pylint==4.0.3" --no-build-isolation
+  sources:
+  - *id014
+  - *id015
+  - *id016
+  - *id017
+  - *id018
+  - type: file
+    url: https://files.pythonhosted.org/packages/1f/01/b8acd4087102c774d432a6663bac4857405c64771445c0a3110828bc5c88/pylint-4.0.3-py3-none-any.whl
+    sha256: 896d09afb0e78bbf2e030cd1f3d8dc92771a51f7e46828cbc3948a89cd03433a
+  - &id026
+    type: file
+    url: https://files.pythonhosted.org/packages/bd/75/8539d011f6be8e29f339c42e633aae3cb73bffa95dd0f9adec09b9c58e85/tomlkit-0.13.3-py3-none-any.whl
+    sha256: c89c649d79ee40629a9fda55f8ace8c6a1b42deb912b2a8fd8d942ddadb606b0
 - name: python3-pymediainfo
   buildsystem: simple
   build-commands:
@@ -281,33 +340,33 @@ modules:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "python-engineio==4.12.3" --no-build-isolation
   sources:
-  - *id014
-  - &id016
+  - *id019
+  - &id021
     type: file
     url: https://files.pythonhosted.org/packages/d8/f0/c5aa0a69fd9326f013110653543f36ece4913c17921f3e1dbd78e1b423ee/python_engineio-4.12.3-py3-none-any.whl
     sha256: 7c099abb2a27ea7ab429c04da86ab2d82698cdd6c52406cb73766fe454feb7e1
-  - &id017
+  - &id022
     type: file
     url: https://files.pythonhosted.org/packages/52/59/0782e51887ac6b07ffd1570e0364cf901ebc36345fea669969d2084baebb/simple_websocket-1.1.0-py3-none-any.whl
     sha256: 4af6069630a38ed6c561010f0e11a5bc0d4ca569b36306eb257cd9a192497c8c
-  - &id018
+  - &id023
     type: file
-    url: https://files.pythonhosted.org/packages/8f/da/539c2d24b13025e54a86ce3215eb9b6297b023937a087db9ef2a436cc7b4/wsproto-1.3.1-py3-none-any.whl
-    sha256: 297ce79322989c0d286cc158681641cd18bc7632dfb38cf4054696a89179b993
+    url: https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl
+    sha256: 61eea322cdf56e8cc904bd3ad7573359a242ba65688716b0710a5eb12beab584
 - name: python3-python-socketio
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "python-socketio==5.14.3" --no-build-isolation
   sources:
-  - *id015
-  - *id014
-  - *id016
+  - *id020
+  - *id019
+  - *id021
   - type: file
     url: https://files.pythonhosted.org/packages/c0/1a/b393a06aa6f2f6ab4a9c5c160a62d488b17d6da5cf93a67bc13a6e3239cd/python_socketio-5.14.3-py3-none-any.whl
     sha256: a5208c1bbf45a8d6328d01ed67e3fa52ec8b186fd3ea44cfcfcbd120f0c71fbe
-  - *id017
-  - *id018
+  - *id022
+  - *id023
 - name: python3-pyyaml
   buildsystem: simple
   build-commands:
@@ -342,35 +401,51 @@ modules:
     --prefix=${FLATPAK_DEST} "requests==2.32.5" --no-build-isolation
   sources:
   - *id010
-  - *id019
+  - *id024
   - *id008
   - type: file
     url: https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl
     sha256: 2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6
-  - *id020
+  - *id025
+- name: python3-requirements-parser
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "requirements-parser==0.13.0" --no-build-isolation
+  sources:
+  - type: file
+    url: https://files.pythonhosted.org/packages/bd/60/50fbb6ffb35f733654466f1a90d162bcbea358adc3b0871339254fbc37b2/requirements_parser-0.13.0-py3-none-any.whl
+    sha256: 2b3173faecf19ec5501971b7222d38f04cb45bb9d87d0ad629ca71e2e62ded14
 - name: python3-simple-websocket
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "simple-websocket==1.1.0" --no-build-isolation
   sources:
-  - *id014
-  - *id017
-  - *id018
+  - *id019
+  - *id022
+  - *id023
+- name: python3-tomlkit
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "tomlkit==0.13.3" --no-build-isolation
+  sources:
+  - *id026
 - name: python3-typing-extensions
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "typing-extensions==4.15.0" --no-build-isolation
   sources:
-  - *id021
+  - *id027
 - name: python3-urllib3
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
     --prefix=${FLATPAK_DEST} "urllib3==2.5.0" --no-build-isolation
   sources:
-  - *id020
+  - *id025
 - name: python3-websockets
   buildsystem: simple
   build-commands:
@@ -384,10 +459,10 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "wsproto==1.3.1" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "wsproto==1.3.2" --no-build-isolation
   sources:
-  - *id014
-  - *id018
+  - *id019
+  - *id023
 - name: python3-yarl
   buildsystem: simple
   build-commands:
@@ -397,23 +472,23 @@ modules:
   - *id008
   - *id011
   - *id012
-  - *id022
-- name: python3-yt-dlp-ejs
-  buildsystem: simple
-  build-commands:
-  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "yt-dlp-ejs==0.3.1" --no-build-isolation
-  sources:
-  - type: file
-    url: https://files.pythonhosted.org/packages/e7/fd/34fbdaf0d53386c47e219c532a479766cd9336fde34c00834c8e0123df7a/yt_dlp_ejs-0.3.1-py3-none-any.whl
-    sha256: a6e3548874db7c774388931752bb46c7f4642c044b2a189e56968f3d5ecab622
+  - *id028
 - name: python3-yt-dlp
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "yt-dlp==2025.11.12" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "yt-dlp==2025.12.8" --no-build-isolation
   sources:
   - type: file
-    url: https://files.pythonhosted.org/packages/5f/16/fdebbee6473473a1c0576bd165a50e4a70762484d638c1d59fa9074e175b/yt_dlp-2025.11.12-py3-none-any.whl
-    sha256: b47af37bbb16b08efebb36825a280ea25a507c051f93bf413a6e4a0e586c6e79
+    url: https://files.pythonhosted.org/packages/6e/2f/98c3596ad923f8efd32c90dca62e241e8ad9efcebf20831173c357042ba0/yt_dlp-2025.12.8-py3-none-any.whl
+    sha256: 36e2584342e409cfbfa0b5e61448a1c5189e345cf4564294456ee509e7d3e065
+- name: python3-yt-dlp-ejs
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "yt-dlp-ejs==0.3.2" --no-build-isolation
+  sources:
+  - type: file
+    url: https://files.pythonhosted.org/packages/9d/0d/1f0d7a735ca60b87953271b15d00eff5eef05f6118390ddf6f81982526ed/yt_dlp_ejs-0.3.2-py3-none-any.whl
+    sha256: f2dc6b3d1b909af1f13e021621b0af048056fca5fb07c4db6aa9bbb37a4f66a9
 name: python3-requirements-client

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-./flatpak-pip-generator --build-only --yaml poetry-core
 ./flatpak-pip-generator --build-only --yaml expandvars
 ./flatpak-pip-generator --yaml cffi
 ./flatpak-pip-generator --yaml pdm-backend
