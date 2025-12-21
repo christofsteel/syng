@@ -140,7 +140,7 @@ class Search:
             if channel[0] == "/":
                 channel = channel[1:]
             query_url = (
-                f"https://www.youtube.com/{channel}/search?{urlencode({'query': query, 'sp':sp})}"
+                f"https://www.youtube.com/{channel}/search?{urlencode({'query': query, 'sp': sp})}"
             )
 
         results = YoutubeDL(
@@ -227,7 +227,7 @@ class YoutubeSource(Source):
             config["start_streaming"] if "start_streaming" in config else False
         )
         self.formatstring = (
-            f"bestvideo[height<={self.max_res}]+" f"bestaudio/best[height<={self.max_res}]"
+            f"bestvideo[height<={self.max_res}]+bestaudio/best[height<={self.max_res}]"
         )
         self.search_suffix = config.get("search_suffix", "karaoke")
         self.extra_mpv_options = {"ytdl-format": self.formatstring}
@@ -268,6 +268,7 @@ class YoutubeSource(Source):
         self,
         performer: str,
         ident: str,
+        collab_mode: Optional[str],
         /,
         artist: Optional[str] = None,
         title: Optional[str] = None,
@@ -295,6 +296,7 @@ class YoutubeSource(Source):
             artist=artist,
             performer=performer,
             incomplete_data=True,
+            collab_mode=collab_mode,
         )
 
     async def search(self, query: str) -> list[Result]:

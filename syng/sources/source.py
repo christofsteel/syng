@@ -146,6 +146,7 @@ class Source(ABC):
         self,
         performer: str,
         ident: str,
+        collab_mode: Optional[str],
         /,
         artist: Optional[str] = None,
         title: Optional[str] = None,
@@ -181,6 +182,7 @@ class Source(ABC):
             artist=res.artist if res.artist else artist if artist else "Unknown",
             performer=performer,
             incomplete_data=True,
+            collab_mode=collab_mode,
         )
         if not self.is_valid(entry):
             raise EntryNotValid(f"Entry {entry} is not valid for source {self.source_name}")
