@@ -173,7 +173,7 @@ class Source(ABC):
         """
 
         res: Result = Result.from_filename(ident, self.source_name)
-        if collab_mode not in ["solo", "group"]:
+        if collab_mode not in ["solo", "group", "duet"]:
             collab_mode = None
         entry = Entry(
             ident=ident,
