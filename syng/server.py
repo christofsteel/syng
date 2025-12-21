@@ -622,6 +622,7 @@ class Server:
                             "ident": data["ident"],
                             "artist": data.get("artist", None),
                             "title": data.get("title", None),
+                            "uid": data.get("uid", None),
                         },
                         "old_entry": {
                             "artist": old_entry.artist,
