@@ -430,7 +430,11 @@ class Server:
         source_obj = state.client.sources[data["source"]]
         try:
             entry = await source_obj.get_entry(
-                data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+                data["performer"],
+                data["ident"],
+                data.get("collab_mode", None),
+                artist=data["artist"],
+                title=data["title"],
             )
             if entry is None:
                 await self.sio.emit(
@@ -620,6 +624,7 @@ class Server:
                             "source": data["source"],
                             "performer": data["performer"],
                             "ident": data["ident"],
+                            "collab_mode": data.get("collab_mode", None),
                             "artist": data.get("artist", None),
                             "title": data.get("title", None),
                             "uid": data.get("uid", None),
@@ -640,6 +645,7 @@ class Server:
             entry = await source_obj.get_entry(
                 data["performer"],
                 data["ident"],
+                data.get("collab_mode", None),
                 artist=data.get("artist", None),
                 title=data.get("title", None),
             )
@@ -699,7 +705,11 @@ class Server:
 
         try:
             entry = await source_obj.get_entry(
-                data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+                data["performer"],
+                data["ident"],
+                data.get("collab_mode", None),
+                artist=data["artist"],
+                title=data["title"],
             )
 
             if entry is None:
