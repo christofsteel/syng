@@ -114,6 +114,7 @@ class OptionFrame(QWidget):
         self.bool_options[name] = QCheckBox(self)
         self.bool_options[name].setChecked(value)
         self.form_layout.addRow(label, self.bool_options[name])
+        self.rows[name] = (label, self.bool_options[name])
 
     def add_string_option(
         self,
@@ -480,6 +481,11 @@ class GeneralConfig(OptionFrame):
             "Waiting room policy",
             ["forced", "optional", "none"],
             str(config["waiting_room_policy"]).lower(),
+        )
+        self.add_bool_option(
+            "allow_collab_mode",
+            "Allow performers to add collaboration tags",
+            config["allow_collab_mode"],
         )
         self.add_date_time_option("last_song", "Last song ends at", config["last_song"])
         self.add_int_option(

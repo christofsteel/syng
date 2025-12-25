@@ -31,6 +31,8 @@ class Entry:
     :type album: str
     :param performer: The person, that will sing this song.
     :type performer: str
+    :param collab_mode: Collaboration mode, one of 'single', 'group;, ``None``
+    :type collab_mode: Optional[str]
     :param failed: A flag, that indecates, that something went wrong. E.g.
         buffering was canceled, the file could not be read from disc etc.
         The exact meaning can differ from source to source. Default is false.
@@ -56,6 +58,7 @@ class Entry:
     artist: Optional[str]
     album: str
     performer: str
+    collab_mode: Optional[str] = None
     failed: bool = False
     skip: bool = False
     uuid: UUID = field(default_factory=uuid4)

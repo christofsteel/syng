@@ -54,6 +54,7 @@ from .sources import Source
 DEFAULT_CONFIG = {
     "preview_duration": 3,
     "waiting_room_policy": None,
+    "allow_collab_mode": True,
     "last_song": None,
 }
 
@@ -147,6 +148,8 @@ class Client:
             - `optional`, if a performer is already in the queue, they have the option
                           to be put in the waiting room.
             - `None`, performers are always added to the queue.
+        * `allow_collab_mode` (`bool`): True if users can tag their entries with
+             collaboration requests.
     :type config: dict[str, Any]:
     """
 
@@ -427,10 +430,16 @@ class Server:
         :return: The uuid of the added entry or None if the entry could not be added
         :rtype: Optional[str]
         """
+        if not state.client.config["allow_collab_mode"]:
+            data["collab_mode"] = None
         source_obj = state.client.sources[data["source"]]
         try:
             entry = await source_obj.get_entry(
-                data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+                data["performer"],
+                data["ident"],
+                data.get("collab_mode", None),
+                artist=data["artist"],
+                title=data["title"],
             )
             if entry is None:
                 await self.sio.emit(
@@ -620,8 +629,10 @@ class Server:
                             "source": data["source"],
                             "performer": data["performer"],
                             "ident": data["ident"],
+                            "collab_mode": data.get("collab_mode", None),
                             "artist": data.get("artist", None),
                             "title": data.get("title", None),
+                            "uid": data.get("uid", None),
                         },
                         "old_entry": {
                             "artist": old_entry.artist,
@@ -633,12 +644,15 @@ class Server:
                 )
                 return None
 
+        if not state.client.config["allow_collab_mode"]:
+            data["collab_mode"] = None
         source_obj = state.client.sources[data["source"]]
 
         try:
             entry = await source_obj.get_entry(
                 data["performer"],
                 data["ident"],
+                data.get("collab_mode", None),
                 artist=data.get("artist", None),
                 title=data.get("title", None),
             )
@@ -694,11 +708,18 @@ class Server:
             )
             return None
 
+        if not state.client.config["allow_collab_mode"]:
+            data["collab_mode"] = None
+
         source_obj = state.client.sources[data["source"]]
 
         try:
             entry = await source_obj.get_entry(
-                data["performer"], data["ident"], artist=data["artist"], title=data["title"]
+                data["performer"],
+                data["ident"],
+                data.get("collab_mode", None),
+                artist=data["artist"],
+                title=data["title"],
             )
 
             if entry is None:

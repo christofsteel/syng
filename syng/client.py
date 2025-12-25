@@ -91,6 +91,7 @@ def default_config() -> dict[str, Optional[int | str]]:
         "show_advanced": False,
         "log_level": "info",
         "next_up_time": 20,
+        "allow_collab_mode": True,
     }
 
 
@@ -132,6 +133,7 @@ class State:
             - `optional`, if a performer is already in the queue, they have the option
                           to be put in the waiting room.
             - `None`, performers are always added to the queue.
+        * `allow_collab_mode` (`bool`): If False, does not allow for collab_mode selection in webui
         * `buffer_in_advance` (`int`): The number of songs, that are buffered in
             advance.
         * `qr_box_size` (`int`): The size of one box in the QR code.
