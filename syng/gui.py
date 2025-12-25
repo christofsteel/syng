@@ -464,6 +464,27 @@ class SourceTab(OptionFrame):
                     self.add_choose_option(name, option.description, choices, value)
 
 
+class UIConfig(OptionFrame):
+    def __init__(self, parent: QWidget, config: dict[str, Any]):
+        super().__init__(parent)
+
+        self.add_int_option(
+            "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
+        )
+        self.add_int_option(
+            "next_up_time",
+            "Time remaining before Next Up Box is shown",
+            int(config["next_up_time"]),
+        )
+        self.add_int_option("qr_box_size", "QR Code Box Size", int(config["qr_box_size"]))
+        self.add_choose_option(
+            "qr_position",
+            "QR Code Position",
+            ["top-left", "top-right", "bottom-left", "bottom-right"],
+            config["qr_position"],
+        )
+
+
 class GeneralConfig(OptionFrame):
     def __init__(
         self,
@@ -488,14 +509,6 @@ class GeneralConfig(OptionFrame):
             config["allow_collab_mode"],
         )
         self.add_date_time_option("last_song", "Last song ends at", config["last_song"])
-        self.add_int_option(
-            "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
-        )
-        self.add_int_option(
-            "next_up_time",
-            "Time remaining before Next Up Box is shown",
-            int(config["next_up_time"]),
-        )
         self.add_string_option(
             "key", "Key for server (if necessary)", config["key"], is_password=True
         )
@@ -503,13 +516,6 @@ class GeneralConfig(OptionFrame):
             "buffer_in_advance",
             "Buffer the next songs in advance",
             int(config["buffer_in_advance"]),
-        )
-        self.add_int_option("qr_box_size", "QR Code Box Size", int(config["qr_box_size"]))
-        self.add_choose_option(
-            "qr_position",
-            "QR Code Position",
-            ["top-left", "top-right", "bottom-left", "bottom-right"],
-            config["qr_position"],
         )
         self.add_choose_option(
             "log_level",
@@ -731,6 +737,10 @@ class SyngGui(QMainWindow):
         self.general_config = GeneralConfig(self, config, self.update_qr)
         self.tabview.addTab(self.general_config, "General")
 
+    def add_ui_config(self, config: dict[str, Any]) -> None:
+        self.ui_config = UIConfig(self, config)
+        self.tabview.addTab(self.ui_config, "UI")
+
     def add_source_config(self, source_name: str, source_config: dict[str, Any]) -> None:
         self.tabs[source_name] = SourceTab(self, source_name, source_config)
         self.tabview.addTab(self.tabs[source_name], source_name)
@@ -848,6 +858,7 @@ class SyngGui(QMainWindow):
         self.init_tabs(config["config"]["show_advanced"])
         self.add_buttons(config["config"]["show_advanced"])
         self.add_general_config(config["config"])
+        self.add_ui_config(config["config"])
         self.add_qr(config["config"]["show_advanced"])
         self.tabs: dict[str, SourceTab] = {}
 
