@@ -54,6 +54,7 @@ from .sources import Source
 DEFAULT_CONFIG = {
     "preview_duration": 3,
     "waiting_room_policy": None,
+    "allow_collab_mode": True,
     "last_song": None,
 }
 
@@ -147,6 +148,8 @@ class Client:
             - `optional`, if a performer is already in the queue, they have the option
                           to be put in the waiting room.
             - `None`, performers are always added to the queue.
+        * `allow_collab_mode` (`bool`): True if users can tag their entries with
+             collaboration requests.
     :type config: dict[str, Any]:
     """
 
@@ -427,6 +430,8 @@ class Server:
         :return: The uuid of the added entry or None if the entry could not be added
         :rtype: Optional[str]
         """
+        if not state.client.config["allow_collab_mode"]:
+            data["collab_mode"] = None
         source_obj = state.client.sources[data["source"]]
         try:
             entry = await source_obj.get_entry(
@@ -639,6 +644,8 @@ class Server:
                 )
                 return None
 
+        if not state.client.config["allow_collab_mode"]:
+            data["collab_mode"] = None
         source_obj = state.client.sources[data["source"]]
 
         try:
@@ -700,6 +707,9 @@ class Server:
                 room=sid,
             )
             return None
+
+        if not state.client.config["allow_collab_mode"]:
+            data["collab_mode"] = None
 
         source_obj = state.client.sources[data["source"]]
 
