@@ -1826,8 +1826,8 @@ class Server:
         self.admin_app.router.add_route("*", "/", self.admin_handler)
 
         self.app.cleanup_ctx.append(self.background_tasks)
-        if args.admin_password:
-            self.sio.instrument(auth={"username": "admin", "password": args.admin_password})
+        # if args.admin_password:
+        #     self.sio.instrument(auth={"username": "admin", "password": args.admin_password})
 
         try:
             asyncio.run(
