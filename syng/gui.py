@@ -812,7 +812,7 @@ class SyngGui(QMainWindow):
         label_string = f"<i>Running version: {running_version}</i><br />Current version on pypi: {current_version}"
         if current_version is not None and running_version is not None:
             if current_version > running_version:
-                label_string += '<br /><span style="color:red;">A new version is available! Please update syng.</span>'
+                label_string += '<br /><span style="color:red;">A new version is available! Please update Syng.Rocks!</span>'
             else:
                 label_string += '<br /><span style="color:green;">You are running the latest version.</span><br />Visit <a href="https://site.syng.rocks/">syng.rocks</a> for more information.'
         self.version_label.setText(label_string)

@@ -14,7 +14,7 @@ _Easily host karaoke events_
 [![Forgejo Pipeline Status](https://git.k-fortytwo.de/christofsteel/syng/badges/workflows/check.yaml/badge.svg?logo=python&label=mypy%2Bruff)](https://git.k-fortytwo.de/christofsteel/syng)
 
 
-**Syng** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
+**Syng.Rocks!** is an all-in-one karaoke software, consisting of a *backend server*, a *web frontend* and a *playback client*.
 Karaoke performers can search a library using the web frontend, and add songs to the queue.
 The playback client retrieves songs from the backend server and plays them in order.
 
@@ -43,7 +43,7 @@ To host a karaoke event, you only need to use the playback client. You can use t
 
 The preferred way to install the client is via [Flathub](https://flathub.org/apps/rocks.syng.Syng).
 
-Alternatively Syng can be installed via the _Python Package Index_ (PyPI). When installing the client it is mandatory to include the `client` flag:
+Alternatively Syng.Rocks! can be installed via the _Python Package Index_ (PyPI). When installing the client it is mandatory to include the `client` flag:
 
     pip install 'syng[client]'
 
@@ -51,7 +51,7 @@ This installs both the playback client (`syng client`) and a configuration GUI (
 
 **Note:** When installing via PyPI, you need to have [libmpv](https://mpv.io/) installed on machine of the playback client. Additionally, since version 2.2.1, you also need to have [deno](https://github.com/denoland/deno/) installed for proper YouTube support.
 
-The Syng client is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-client)
+The Syng.Rocks! client is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-client)
 
 ### Windows
 
@@ -64,7 +64,7 @@ See [Website](https://site.syng.rocks).
 
 # Server
 
-If you want to host your own Syng server, you can do that, but you can also use the publicly available Syng instance at https://syng.rocks.
+If you want to host your own Syng.Rocks! server, you can do that, but you can also use the publicly available Syng.Rocks! instance at https://syng.rocks.
 
 ## Python Package Index
 
@@ -88,7 +88,7 @@ Alternatively you can run the server using docker. It listens on port 8080 and r
 
 ## Arch Linux
 
-The Syng server is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-server)
+The Syng.Rocks! server is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-server)
 
 ## Configuration
 
