@@ -1,9 +1,9 @@
 id: rocks.syng.Syng
 runtime: org.kde.Platform
-runtime-version: '6.9'
+runtime-version: '6.10'
 sdk: org.kde.Sdk
 base: com.riverbankcomputing.PyQt.BaseApp
-base-version: '6.9'
+base-version: '6.10'
 cleanup-commands:
   - /app/cleanup-BaseApp.sh
 build-options:
@@ -34,8 +34,8 @@ modules:
     sources:
       - type: git
         url: https://gitlab.freedesktop.org/xorg/lib/libxmu.git
-        tag: libXmu-1.2.1
-        commit: 792f80402ee06ce69bca3a8f2a84295999c3a170
+        tag: libXmu-1.3.1
+        commit: cdf280f6611932f79ab872832974e8043b1cad6d
         x-checker-data:
           type: git
           tag-pattern: ^libXmu-([\d.]+)$
@@ -81,12 +81,12 @@ modules:
       - pip3 install --prefix=/app yt_dlp_ejs*.whl
     sources:
       - type: file
-        url: https://files.pythonhosted.org/packages/9d/0d/1f0d7a735ca60b87953271b15d00eff5eef05f6118390ddf6f81982526ed/yt_dlp_ejs-0.3.2-py3-none-any.whl
-        sha256: f2dc6b3d1b909af1f13e021621b0af048056fca5fb07c4db6aa9bbb37a4f66a9 
+        url: https://files.pythonhosted.org/packages/a4/90/8911146822364666be47f184c4180cec20fcc537a268ef40d1ab077dd25b/yt_dlp_ejs-0.4.0-py3-none-any.whl
+        sha256: 19278cff397b243074df46342bb7616c404296aeaff01986b62b4e21823b0b9c
         x-checker-data:
           type: pypi
           name: yt-dlp-ejs
-          packagetype: bdist_wheel              
+          packagetype: bdist_wheel
 
   - name: yt-dlp
     no-autogen: true
@@ -98,8 +98,8 @@ modules:
       - install yt-dlp /app/bin
     sources:
       - type: archive
-        url: https://github.com/yt-dlp/yt-dlp/releases/download/2025.12.08/yt-dlp.tar.gz
-        sha256: 9814ae7dd4118a80a6104399d4984e355d2a71f78e6bbc48137a5b299eddcbaf
+        url: https://github.com/yt-dlp/yt-dlp/releases/download/2026.01.29/yt-dlp.tar.gz
+        sha256: e4edd01abd229f646b8280209d462785c2d0929f7612fb24740fa528e5eff433
         x-checker-data:
           type: json
           url: https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest
@@ -139,105 +139,27 @@ modules:
           url-query: .tarball_url
           version-query: .tag_name | sub("^release-"; "")
           timestamp-query: .published_at
-
-  - name: nv-codec-headers
-    cleanup:
-      - '*'
-    no-autogen: true
-    make-install-args:
-      - PREFIX=/app
-    sources:
-      - type: git
-        url: https://github.com/FFmpeg/nv-codec-headers.git
-        tag: n13.0.19.0
-        commit: e844e5b26f46bb77479f063029595293aa8f812d
-        x-checker-data:
-          type: git
-          tag-pattern: ^n([\d.]+)$
-
-  - name: x264
-    cleanup:
-      - /include
-      - /lib/pkgconfig
-      - /share/man
-    config-opts:
-      - --disable-cli
-      - --enable-shared
-    sources:
-      - type: git
-        url: https://github.com/jpsdr/x264
-        commit: da14df5535fd46776fb1c9da3130973295c87aca
-        # commit: fb6c86416130b9c20f4d1fa36c93276b142036de
-  - name: x265
-    buildsystem: cmake
-    subdir: source
-    config-opts:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -DBUILD_STATIC=0
-    cleanup:
-      - /include
-      - /lib/pkgconfig
-      - /share/man
-    sources:
-      - type: git
-        url: https://bitbucket.org/multicoreware/x265_git.git
-        tag: '4.1'
-        commit: 1d117bed4747758b51bd2c124d738527e30392cb
-
   - name: vulkan-headers
     buildsystem: cmake-ninja
     sources:
       - type: archive
         url: https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.4.306.tar.gz
         sha256: 18f4b4de873d071ddd7b73ea48e2ec4e7c6133e2ebb6b4236ca2345acd056994
-
-  - name: ffmpeg
-    cleanup:
-      - /include
-      - /lib/pkgconfig
-      - /share/ffmpeg/examples
-    config-opts:
-      - --disable-debug
-      - --disable-doc
-      - --disable-static
-      - --enable-encoder=png
-      - --enable-gnutls
-      - --enable-gpl
-      - --enable-shared
-      - --enable-version3
-      - --enable-libaom
-      - --enable-libass
-      - --enable-libdav1d
-      - --enable-libfreetype
-      - --enable-libmp3lame
-      - --enable-libopus
-      - --enable-libtheora
-      - --enable-libvorbis
-      - --enable-libvpx
-      - --enable-libx264
-      - --enable-libx265
-      - --enable-libwebp
-      - --enable-libxml2
-      - --enable-vulkan
-
-    sources:
-      - type: git
-        url: https://github.com/FFmpeg/FFmpeg.git
-        commit: db69d06eeeab4f46da15030a80d539efb4503ca8
-        tag: n7.1.1
   - name: libplacebo
     buildsystem: meson
     config-opts:
       - -Dvulkan=enabled
-      - -Dshaderc=enabled
+      - -Dshaderc=disabled
     cleanup:
       - /include
       - /lib/pkgconfig
     sources:
       - type: git
         url: https://github.com/haasn/libplacebo.git
-        tag: v7.349.0
-        commit: 1fd3c7bde7b943fe8985c893310b5269a09b46c5
+        tag: v7.351.0
+        commit: 3188549fba13bbdf3a5a98de2a38c2e71f04e21e
+      - type: patch
+        path: patches/libplacebo-vulkan-python-xml.patch
   - name: mpv
     buildsystem: meson
     config-opts:
@@ -245,7 +167,6 @@ modules:
       - -Dlibmpv=true
       - -Dmanpage-build=disabled
       - -Dlibarchive=enabled
-      - -Dsdl2=enabled
       - -Dshaderc=disabled
       - -Dvulkan=enabled
     cleanup:
@@ -254,8 +175,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/mpv-player/mpv.git
-        tag: v0.40.0
-        commit: e48ac7ce08462f5e33af6ef9deeac6fa87eef01e
+        tag: v0.41.0
+        commit: 41f6a645068483470267271e1d09966ca3b9f413
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$
@@ -336,4 +257,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/christofsteel/syng.git
-        commit: c9c599190fa3ff583cbf736163661e3d1ecabf03
+        commit: 2d0752bd00dcf0aa6356b0879fd05ab33ab19c10

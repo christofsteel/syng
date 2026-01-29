@@ -6,5 +6,5 @@ build-commands:
   --prefix=${FLATPAK_DEST} "pdm-backend" --no-build-isolation
 sources:
 - type: file
-  url: https://files.pythonhosted.org/packages/82/62/091e98e492bd415e02d6a82e307a96b20b64b489540318041a0cd3db9e6d/pdm_backend-2.4.6-py3-none-any.whl
-  sha256: 4427c235d9ee84afd23a376a0961e5b9ad7e1db09039127b71b2053d19185784
+  url: https://files.pythonhosted.org/packages/bd/88/b390b6a78e77f6ab8a232265ba8fbad78b360b3224c893afbc10c7b1289f/pdm_backend-2.4.7-py3-none-any.whl
+  sha256: 1599e3afa6f229b30cb4d3bd9caeca42229c42eb5730abd13e0b5256ec93c9f7

@@ -21,6 +21,9 @@ AWK_PROG='
 awk -v package="pyqt6" "$AWK_PROG" "../../requirements-client.txt" \
   | awk -v package="brotlicffi" "$AWK_PROG" \
   | awk -v package="colorama" "$AWK_PROG" \
+  | awk -v package="ruff" "$AWK_PROG" \
+  | awk -v package="mypy" "$AWK_PROG" \
+  | sed 's/-e .//g' \
   > "requirements-client.txt"
 
 ./flatpak-pip-generator --requirements-file requirements-client.txt --ignore-pkg cffi==1.17.1 --yaml
