@@ -46,6 +46,18 @@
 
 
   <releases>
+    <release version="2.3.0" date="2026-01-29">
+      <description>
+        <p>
+          <em>Changes</em>:
+        </p>
+        <ul>
+          <li>Updated yt-dlp</li>
+          <li>Collaboration tags: Option to mark songs as "Only me", "Looking for additional Singers", "Everyone can join"</li>
+          <li>Improved layout of configuration window</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.2.2" date="2025-12-11">
       <description>
         <p>
