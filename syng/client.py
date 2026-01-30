@@ -14,6 +14,7 @@ be one of:
 
 from __future__ import annotations
 from collections.abc import Callable
+from enum import Enum
 from functools import partial
 import logging
 import os
@@ -47,21 +48,18 @@ from .sources import configure_sources, Source
 from .log import logger
 
 
-class ConnectionState:
-    __is_connected__ = False
-    __mpv_running__ = False
+class ClientConnectionState(Enum):
+    DICONNECTED = 0
+    CONNECTING = 1
+    CONNECTED = 2
 
-    def is_connected(self) -> bool:
-        return self.__is_connected__
+
+class ConnectionState:
+    client_connection_state = ClientConnectionState.DICONNECTED
+    __mpv_running__ = False
 
     def is_mpv_running(self) -> bool:
         return self.__mpv_running__
-
-    def set_disconnected(self) -> None:
-        self.__is_connected__ = False
-
-    def set_connected(self) -> None:
-        self.__is_connected__ = True
 
     def set_mpv_running(self) -> None:
         self.__mpv_running__ = True
@@ -166,6 +164,7 @@ class Client:
 
         self.connection_event = asyncio.Event()
         self.connection_state = ConnectionState()
+        self.connection_state.client_connection_state = ClientConnectionState.CONNECTING
         self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -245,7 +244,7 @@ class Client:
         logger.warning(f"Unknown message: {event} with data: {data}")
 
     async def handle_disconnect(self) -> None:
-        self.connection_state.set_disconnected()
+        self.connection_state.client_connection_state = ClientConnectionState.DICONNECTED
         await self.ensure_disconnect()
 
     async def ensure_disconnect(self) -> None:
@@ -254,9 +253,9 @@ class Client:
         terminated.
         """
         logger.info("Disconnecting from server")
-        logger.debug(f"Connection: {self.connection_state.is_connected()}")
+        logger.debug(f"Connection: {self.connection_state.client_connection_state}")
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()}")
-        if self.connection_state.is_connected():
+        if not self.connection_state.client_connection_state == ClientConnectionState.DICONNECTED:
             await self.sio.disconnect()
         if self.connection_state.is_mpv_running():
             if self.player.mpv is not None:
@@ -423,7 +422,7 @@ class Client:
         if self.state.current_source is None:  # A possible race condition can occur here
             await self.sio.emit("get-first")
         self.connection_event.set()
-        self.connection_state.set_connected()
+        self.connection_state.client_connection_state = ClientConnectionState.CONNECTED
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
         """

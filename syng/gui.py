@@ -68,7 +68,7 @@ from qrcode.main import QRCode
 import platformdirs
 
 from . import __version__, resources  # noqa
-from .client import Client, default_config
+from .client import Client, ClientConnectionState, default_config
 from .log import logger
 from .entry import Entry
 
@@ -980,7 +980,10 @@ class SyngGui(QMainWindow):
             self.timer.stop()
             return
 
-        if not self.client.connection_state.is_connected():
+        if (
+            self.client.connection_state.client_connection_state
+            == ClientConnectionState.DICONNECTED
+        ):
             self.client = None
             self.set_client_button_start()
         else:
@@ -1007,7 +1010,11 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:
-        if self.client is None or not self.client.connection_state.is_connected():
+        if (
+            self.client is None
+            or self.client.connection_state.client_connection_state
+            == ClientConnectionState.DICONNECTED
+        ):
             logger.debug("Starting client")
             self.save_config()
             config = self.gather_config()
@@ -1016,7 +1023,7 @@ class SyngGui(QMainWindow):
             # model = QueueModel(self.client.state.queue)
             # self.queue_list_view.setModel(model)
             # self.client.add_queue_callback(model.update)
-            self.timer.start(500)
+            self.timer.start(1500)
             self.set_client_button_stop()
         else:
             logger.debug("Stopping client")
