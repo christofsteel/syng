@@ -970,10 +970,9 @@ class Server:
         if client_version > SYNG_VERSION:
             await self.sio.emit(
                 "msg",
-                {"type": "error", "msg": "Server is outdated. Please update."},
+                {"type": "warning", "msg": "Server is outdated. Please update."},
                 room=sid,
             )
-            raise ConnectionRefusedError("Server is outdated. Please update.")
 
         if client_version < SYNG_VERSION:
             await self.sio.emit(
