@@ -332,7 +332,10 @@ class YoutubeSource(Source):
             """
             compare_string: str = result.title.lower() + " " + result.author.lower()
             hits: int = 0
-            queries: list[str] = shlex.split(query.lower())
+            try:
+                queries: list[str] = shlex.split(query.lower())
+            except ValueError:
+                queries: list[str] = query.lower().split(" ")
             for word in queries:
                 if word in compare_string:
                     hits += 1
