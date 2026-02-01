@@ -21,7 +21,7 @@ from platformdirs import user_cache_dir
 
 from ..entry import Entry
 from ..result import Result
-from .source import Source, available_sources
+from .source import MalformedSearchQueryException, Source, available_sources
 from ..config import (
     BoolOption,
     ChoiceOption,
@@ -316,6 +316,7 @@ class YoutubeSource(Source):
         :type query: str
         :return: A list of Results.
         :rtype: list[Result]
+        :raises: MalformedSearchQueryException when the search query is malformed
         """
 
         def _contains_index(query: str, result: YouTube) -> float:
@@ -335,7 +336,7 @@ class YoutubeSource(Source):
             try:
                 queries: list[str] = shlex.split(query.lower())
             except ValueError:
-                queries = query.lower().split(" ")
+                raise MalformedSearchQueryException
             for word in queries:
                 if word in compare_string:
                     hits += 1

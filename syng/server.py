@@ -39,7 +39,7 @@ except ImportError:
         return [0]
 
 
-from syng.sources.source import EntryNotValid
+from syng.sources.source import EntryNotValid, MalformedSearchQueryException
 
 from .result import Result
 
@@ -232,6 +232,7 @@ class Server:
         self.sio.on("search", self.handle_search)
         self.sio.on("search-results", self.handle_search_results)
         self.sio.on("import-queue", self.handle_import_queue)
+        self.sio.on("client-msg", self.handle_client_msg)
 
     async def is_admin(self, state: State, sid: str) -> bool:
         """
@@ -1480,14 +1481,20 @@ class Server:
         :rtype: list[Result]
         """
 
-        results_list = await asyncio.gather(
-            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
-        )
+        try:
+            results_list = await asyncio.gather(
+                *[
+                    state.client.sources[source].search(query)
+                    for source in state.client.sources_prio
+                ]
+            )
 
-        results = [
-            search_result for source_result in results_list for search_result in source_result
-        ]
-        await self.send_search_results(sid, results, search_id)
+            results = [
+                search_result for source_result in results_list for search_result in source_result
+            ]
+            await self.send_search_results(sid, results, search_id)
+        except MalformedSearchQueryException as e:
+            await self.sio.emit("msg", {"msg": e.msg}, room=sid)
 
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:
@@ -1514,6 +1521,18 @@ class Server:
         results = [Result.from_dict(result) for result in data["results"]]
 
         await self.send_search_results(web_sid, results, search_id)
+
+    @playback
+    async def handle_client_msg(self, sid: str, data: dict[str, Any]) -> None:
+        logger.debug(msg=f"Client-msg: {sid}, {data}")
+        if "target_sid" in data:
+            await self.sio.emit(
+                "msg",
+                {"msg": data.get("msg", None)},
+                room=data.get("target_sid"),
+            )
+        else:
+            logger.log(level=data.get("type", 1), msg=f"Client-msg: {sid}, {data.get('msg')}")
 
     async def send_search_results(
         self, sid: str, results: list[Result], search_id: Optional[uuid.UUID]

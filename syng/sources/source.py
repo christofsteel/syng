@@ -32,6 +32,12 @@ class EntryNotValid(Exception):
     """Raised when an entry is not valid for a source."""
 
 
+class MalformedSearchQueryException(Exception):
+    """Raised when a search query is malformed"""
+
+    msg = "Your search expression is malformed. Maybe you have unmatched double or single quotes?"
+
+
 @dataclass
 class DLFilesEntry:
     """This represents a song in the context of a source.
@@ -322,14 +328,13 @@ class Source(ABC):
         """
         Filter the ``data``-list by the ``query``.
 
-        If splitting failes (e.g. odd number of quotations) no results return.
-
         :param query: The query to filter
         :type query: str
         :param data: The list to filter
         :type data: list[str]
         :return: All entries in the list containing the query.
         :rtype: list[str]
+        :raises: MalformedSearchQueryException when the search query is malformed
         """
 
         def contains_all_words(words: list[str], element: str) -> bool:
@@ -341,7 +346,7 @@ class Source(ABC):
         try:
             splitquery = shlex.split(query)
         except ValueError:
-            return []
+            raise MalformedSearchQueryException()
         return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:
