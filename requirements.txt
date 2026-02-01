@@ -848,9 +848,9 @@ yarl==1.22.0 \
     --hash=sha256:f87ac53513d22240c7d59203f25cc3beac1e574c6cd681bbfd321987b69f95fd \
     --hash=sha256:ff86011bd159a9d2dfc89c34cfd8aff12875980e3bd6a39ff097887520e60249
     # via aiohttp
-yt-dlp==2026.1.29 \
-    --hash=sha256:08d0a25aead160c4787cbd0d2e82a269c75c8dbcfbfa729ce45ad52a8375fa1d \
-    --hash=sha256:12b489eb16828cc3fff1723f244992ebae8a5bf1ad75c8e9f01d729ae237ebb9
+yt-dlp==2026.1.31 \
+    --hash=sha256:16767a3172cbb7183199f4db19e34b77b19e030ab7101b8f26d6c9e6af6f42ae \
+    --hash=sha256:81f8e70c0d111b9572420cfea0ba9b4c2ae783fa1a4237fa767eeb777d4c5a58
     # via syng
 yt-dlp-ejs==0.4.0 \
     --hash=sha256:19278cff397b243074df46342bb7616c404296aeaff01986b62b4e21823b0b9c \
