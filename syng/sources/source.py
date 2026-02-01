@@ -322,6 +322,8 @@ class Source(ABC):
         """
         Filter the ``data``-list by the ``query``.
 
+        If splitting failes (e.g. odd number of quotations) no results return.
+
         :param query: The query to filter
         :type query: str
         :param data: The list to filter
@@ -336,7 +338,10 @@ class Source(ABC):
                     return False
             return True
 
-        splitquery = shlex.split(query)
+        try:
+            splitquery = shlex.split(query)
+        except ValueError:
+            return []
         return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:
