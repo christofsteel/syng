@@ -40,6 +40,7 @@ import engineio
 from yaml import load, Loader
 
 from syng.player_libmpv import Player
+from syng.sources.source import MalformedSearchQueryException
 
 from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
@@ -530,20 +531,27 @@ class Client:
         query = data["query"]
         sid = data["sid"]
         search_id = data["search_id"]
-        results_list = await asyncio.gather(
-            *[source.search(query) for source in self.sources.values()]
-        )
+        try:
+            results_list = await asyncio.gather(
+                *[source.search(query) for source in self.sources.values()]
+            )
 
-        results = [
-            search_result.to_dict()
-            for source_result in results_list
-            for search_result in source_result
-        ]
-        logger.debug("Search results: %d results", len(results))
+            results = [
+                search_result.to_dict()
+                for source_result in results_list
+                for search_result in source_result
+            ]
+            logger.debug("Search results: %d results", len(results))
 
-        await self.sio.emit(
-            "search-results", {"results": results, "sid": sid, "search_id": search_id}
-        )
+            await self.sio.emit(
+                "search-results", {"results": results, "sid": sid, "search_id": search_id}
+            )
+        except MalformedSearchQueryException as e:
+            logger.debug(f"Malformed search expression: {query}")
+            await self.sio.emit(
+                "client-msg",
+                {"target_sid": sid, "msg": e.msg},
+            )
 
     async def handle_request_config(self, data: dict[str, Any]) -> None:
         """
