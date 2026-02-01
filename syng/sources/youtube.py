@@ -319,7 +319,7 @@ class YoutubeSource(Source):
         :raises: MalformedSearchQueryException when the search query is malformed
         """
 
-        def _contains_index(query: str, result: YouTube) -> float:
+        def _contains_index(queries: list[str], result: YouTube) -> float:
             """
             Calculate a score for the result.
 
@@ -333,15 +333,16 @@ class YoutubeSource(Source):
             """
             compare_string: str = result.title.lower() + " " + result.author.lower()
             hits: int = 0
-            try:
-                queries: list[str] = shlex.split(query.lower())
-            except ValueError:
-                raise MalformedSearchQueryException
             for word in queries:
                 if word in compare_string:
                     hits += 1
 
             return 1 - (hits / len(queries))
+
+        try:
+            queries: list[str] = shlex.split(query.lower())
+        except ValueError:
+            raise MalformedSearchQueryException
 
         results: list[YouTube] = []
         results_lists: list[list[YouTube]] = await asyncio.gather(
@@ -350,7 +351,7 @@ class YoutubeSource(Source):
         )
         results = [search_result for yt_result in results_lists for search_result in yt_result]
 
-        results.sort(key=partial(_contains_index, query))
+        results.sort(key=partial(_contains_index, queries))
 
         return [
             Result(
