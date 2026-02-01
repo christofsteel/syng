@@ -335,7 +335,7 @@ class YoutubeSource(Source):
             try:
                 queries: list[str] = shlex.split(query.lower())
             except ValueError:
-                queries: list[str] = query.lower().split(" ")
+                queries = query.lower().split(" ")
             for word in queries:
                 if word in compare_string:
                     hits += 1
