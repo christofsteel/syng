@@ -1463,7 +1463,7 @@ requires-dist = [
     { name = "qasync", marker = "extra == 'client'", specifier = ">=0.27.1" },
     { name = "qrcode", specifier = ">=8.2" },
     { name = "qrcode", marker = "extra == 'client'", specifier = ">=8.2" },
-    { name = "yt-dlp", extras = ["default"], specifier = ">=2025.12.8" },
+    { name = "yt-dlp", extras = ["default"], specifier = ">=2026.1.31" },
 ]
 provides-extras = ["client", "profanity"]
 

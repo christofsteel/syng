@@ -27,7 +27,7 @@ dependencies = [
   "python-socketio>=5.14.3",
   "aiohttp>=3.9.1",
   "platformdirs>=4.0.0",
-  "yt-dlp[default]>=2025.12.08",
+  "yt-dlp[default]>=2026.1.31",
   "qrcode>=8.2",
   "packaging>=25.0",
 ]
