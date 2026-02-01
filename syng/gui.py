@@ -938,6 +938,7 @@ class SyngGui(QMainWindow):
 
     def update_config(self, config: dict[str, Any]) -> None:
         self.general_config.load_config(config["config"])
+        self.ui_config.load_config(config["config"])
         for source_name, source_config in config["sources"].items():
             self.tabs[source_name].load_config(source_config)
 
@@ -957,8 +958,9 @@ class SyngGui(QMainWindow):
         general_config = self.general_config.get_config() | {
             "show_advanced": self.show_advanced_toggle.isChecked()
         }
+        ui_config = self.ui_config.get_config()
 
-        return {"sources": sources, "config": general_config}
+        return {"sources": sources, "config": general_config | ui_config}
 
     def import_config(self) -> None:
         filename = QFileDialog.getOpenFileName(self, "Open File", "", "YAML Files (*.yaml)")[0]
