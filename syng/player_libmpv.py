@@ -107,7 +107,7 @@ class Player:
         self.mpv.command(
             "osd_overlay",
             id=self.next_up_overlay_id,
-            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry.artist} - {entry.title} ({entry.performer})",
+            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry.short_str()}",
             res_x=1920,
             res_y=1080,
             z=0,
@@ -121,10 +121,13 @@ class Player:
             if not self.closing:
                 self.closing = True
                 self.quit_callback()
-        elif e["event"] == b"file-loaded":
-            if self.callback_audio_load is not None and self.mpv is not None:
-                self.mpv.audio_add(self.callback_audio_load)
-                self.callback_audio_load = None
+        elif (
+            e["event"] == b"file-loaded"
+            and self.callback_audio_load is not None
+            and self.mpv is not None
+        ):
+            self.mpv.audio_add(self.callback_audio_load)
+            self.callback_audio_load = None
 
     def update_qr(self, qr_string: str) -> None:
         qr = QRCode(box_size=self.qr_box_size, border=1)

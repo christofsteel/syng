@@ -178,7 +178,8 @@ class YoutubeSource(Source):
           ``yt-dlp``. Default is False.
         - ``search_suffix``: A string that is appended to the search query.
           Default is "karaoke".
-        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this. Default is 1800.
+        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this.
+                            Default is 1800.
     """
 
     source_name = "youtube"
@@ -221,9 +222,7 @@ class YoutubeSource(Source):
             self.max_res: int = int(config["max_res"])
         except (ValueError, KeyError):
             self.max_res = 720
-        self.start_streaming: bool = (
-            config.get("start_streaming", False)
-        )
+        self.start_streaming: bool = config.get("start_streaming", False)
         self.formatstring = (
             f"bestvideo[height<={self.max_res}]+bestaudio/best[height<={self.max_res}]"
         )
@@ -339,8 +338,8 @@ class YoutubeSource(Source):
 
         try:
             queries: list[str] = shlex.split(query.lower())
-        except ValueError:
-            raise MalformedSearchQueryException
+        except ValueError as err:
+            raise MalformedSearchQueryException from err
 
         results: list[YouTube] = []
         results_lists: list[list[YouTube]] = await asyncio.gather(

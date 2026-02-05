@@ -261,9 +261,9 @@ class Source(ABC):
             self.downloaded_files[entry.ident].complete = True
         except ValueError as exc:
             raise exc
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             print_exc()
-            raise ValueError(f"Buffering failed for {entry}")
+            raise ValueError(f"Buffering failed for {entry}") from err
 
         self.downloaded_files[entry.ident].ready.set()
 
@@ -337,8 +337,8 @@ class Source(ABC):
 
         try:
             splitquery = shlex.split(query)
-        except ValueError:
-            raise MalformedSearchQueryException()
+        except ValueError as err:
+            raise MalformedSearchQueryException from err
         return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:

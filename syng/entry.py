@@ -58,6 +58,15 @@ class Entry:
     started_at: float | None = None
     incomplete_data: bool = False
 
+    def short_str(self) -> str:
+        """
+        Get a short string representation of this entry.
+
+        :return: A short string representation.
+        :rtype: str
+        """
+        return f"{self.artist} - {self.title} ({self.performer})"
+
     def update(self, **kwargs: Any) -> None:
         """
         Update the attributes with given substitutions.

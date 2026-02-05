@@ -31,8 +31,6 @@ import contextlib
 
 import platformdirs
 from PyQt6.QtCore import (
-    QAbstractListModel,
-    QModelIndex,
     QObject,
     Qt,
     QTimer,
@@ -78,29 +76,10 @@ from syng.config import (
     PasswordOption,
     StrOption,
 )
-from syng.entry import Entry
 from syng.log import logger
 from syng.sources import available_sources
 
 from . import __version__, resources  # noqa
-
-
-class QueueModel(QAbstractListModel):
-    def __init__(self, queue: list[Entry]) -> None:
-        super().__init__()
-        self.queue = queue
-
-    def update(self, queue: list[Entry]) -> None:
-        self.queue = queue
-        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, 0))
-
-    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if role == Qt.ItemDataRole.DisplayRole:
-            entry = self.queue[index.row()]
-            return f"{entry.title} - {entry.artist} [{entry.album}]\n{entry.performer}"
-
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
-        return len(self.queue)
 
 
 class QueueView(QListView):
@@ -648,7 +627,8 @@ class SyngGui(QMainWindow):
             answer = QMessageBox.question(
                 self,
                 "Remove Room",
-                "Are you sure you want to remove the room on the server? This will disconnect all clients and clear the queue.",
+                "Are you sure you want to remove the room on the server? This will disconnect "
+                "all clients and clear the queue.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if answer == QMessageBox.StandardButton.Yes:
@@ -809,27 +789,39 @@ class SyngGui(QMainWindow):
         running_version: packaging.version.Version | None,
         current_version: packaging.version.Version | None,
     ) -> None:
-        label_string = f"<i>Running version: {running_version}</i><br />Current version on pypi: {current_version}"
+        label_string = (
+            f"<i>Running version: {running_version}</i><br />"
+            f"Current version on pypi: {current_version}"
+        )
         if current_version is not None and running_version is not None:
             if current_version > running_version:
-                label_string += '<br /><span style="color:red;">A new version is available! Please update Syng.Rocks!</span>'
+                label_string += (
+                    '<br /><span style="color:red;">'
+                    "A new version is available! Please update Syng.Rocks!</span>"
+                )
             else:
-                label_string += '<br /><span style="color:green;">You are running the latest version.</span><br />Visit <a href="https://site.syng.rocks/">syng.rocks</a> for more information.'
+                label_string += (
+                    '<br /><span style="color:green;">You are running the latest '
+                    'version.</span><br />Visit <a href="https://site.syng.rocks/">syng.rocks</a> '
+                    "for more information."
+                )
         self.version_label.setText(label_string)
 
     async def get_pypi_version(self) -> None:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://pypi.org/pypi/syng/json") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    versions = filter(
-                        lambda v: not v.is_prerelease,
-                        map(packaging.version.parse, data["releases"].keys()),
-                    )
-                    self.update_version_label(
-                        running_version=packaging.version.parse(__version__),
-                        current_version=max(versions),
-                    )
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get("https://pypi.org/pypi/syng/json") as resp,
+        ):
+            if resp.status == 200:
+                data = await resp.json()
+                versions = filter(
+                    lambda v: not v.is_prerelease,
+                    map(packaging.version.parse, data["releases"].keys()),
+                )
+                self.update_version_label(
+                    running_version=packaging.version.parse(__version__),
+                    current_version=max(versions),
+                )
         return None
 
     def __init__(self) -> None:
@@ -1013,9 +1005,6 @@ class SyngGui(QMainWindow):
             config = self.gather_config()
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            # model = QueueModel(self.client.state.queue)
-            # self.queue_list_view.setModel(model)
-            # self.client.add_queue_callback(model.update)
             self.timer.start(500)
             self.set_client_button_stop()
         else:

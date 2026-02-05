@@ -439,9 +439,7 @@ class Server:
             if entry is None:
                 await self.sio.emit(
                     "msg",
-                    {
-                        "msg": f"Unable to add to the waiting room: {data['ident']}. Maybe try again?"
-                    },
+                    {"msg": f"Unable to add to the waiting room: {data['ident']}."},
                     room=sid,
                 )
                 return None
@@ -499,20 +497,21 @@ class Server:
             start_time,
         )
 
-        if (report_to is None or not await self.is_admin(state, report_to)) and state.client.config[
-            "last_song"
-        ]:
-            if state.client.config["last_song"] < start_time:
-                if report_to is not None:
-                    await self.sio.emit(
-                        "err",
-                        {
-                            "type": "QUEUE_FULL",
-                            "end_time": state.client.config["last_song"],
-                        },
-                        room=report_to,
-                    )
-                return
+        if (
+            (report_to is None or not await self.is_admin(state, report_to))
+            and state.client.config.get("last_song") is not None
+            and state.client.config["last_song"] < start_time
+        ):
+            if report_to is not None:
+                await self.sio.emit(
+                    "err",
+                    {
+                        "type": "QUEUE_FULL",
+                        "end_time": state.client.config["last_song"],
+                    },
+                    room=report_to,
+                )
+            return
 
         state.queue.append(entry)
         await self.broadcast_state(state, sid=report_to)
@@ -1134,11 +1133,7 @@ class Server:
         """
         logger.debug("Client %s connected", sid)
         if auth is None or "type" not in auth:
-            logger.warning(
-                "Client %s connected without auth data, fall back to old registration", sid
-            )
-            return
-            # raise ConnectionRefusedError("No authentication data provided. Please register first.")
+            raise ConnectionRefusedError("No authentication data provided. Please register first.")
 
         match auth["type"]:
             case "playback":
@@ -1552,7 +1547,8 @@ class Server:
         """
         Clean up the unused playback clients
 
-        This runs every hour, and removes every client, that did not requested a song for four hours.
+        This runs every hour, and removes every client, that did not requested a song for four
+        hours.
 
         :rtype: None
         """
