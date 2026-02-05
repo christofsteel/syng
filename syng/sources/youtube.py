@@ -11,26 +11,25 @@ from __future__ import annotations
 import asyncio
 import shlex
 from functools import partial
+from typing import Any
 from urllib.parse import urlencode
-from typing import Any, Optional, Tuple
 
+from platformdirs import user_cache_dir
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
-from platformdirs import user_cache_dir
 
-
-from ..entry import Entry
-from ..result import Result
-from .source import MalformedSearchQueryException, Source, available_sources
 from ..config import (
     BoolOption,
     ChoiceOption,
-    FolderOption,
-    ListStrOption,
     ConfigOption,
-    StrOption,
+    FolderOption,
     IntOption,
+    ListStrOption,
+    StrOption,
 )
+from ..entry import Entry
+from ..result import Result
+from .source import MalformedSearchQueryException, Source, available_sources
 
 
 class YouTube:
@@ -38,7 +37,7 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    def __init__(self, url: Optional[str] = None, info: Optional[dict[str, Any]] = None):
+    def __init__(self, url: str | None = None, info: dict[str, Any] | None = None):
         """
         Construct a YouTube object from a url.
 
@@ -48,8 +47,8 @@ class YouTube:
         :param url: The url of the video.
         :type url: Optional[str]
         """
-        self._title: Optional[str]
-        self._author: Optional[str]
+        self._title: str | None
+        self._author: str | None
 
         if url is not None:
             try:
@@ -118,7 +117,7 @@ class Search:
     """
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, query: str, channel: Optional[str] = None):
+    def __init__(self, query: str, channel: str | None = None):
         """
         Construct a Search object from a query and an optional channel.
 
@@ -240,7 +239,7 @@ class YoutubeSource(Source):
         )
         self.max_duration: int = config.get("max_duration", 1800)
 
-    async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
+    async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
         """
         Ensure that the entry is playable.
 
@@ -268,11 +267,11 @@ class YoutubeSource(Source):
         self,
         performer: str,
         ident: str,
-        collab_mode: Optional[str],
+        collab_mode: str | None,
         /,
-        artist: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> Optional[Entry]:
+        artist: str | None = None,
+        title: str | None = None,
+    ) -> Entry | None:
         """
         Create an :py:class:`syng.entry.Entry` for the identifier.
 
@@ -409,7 +408,7 @@ class YoutubeSource(Source):
             }
         return {}
 
-    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """
         Download the video.
 

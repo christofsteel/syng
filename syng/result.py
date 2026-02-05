@@ -1,9 +1,9 @@
 """Module for search results."""
 
 from __future__ import annotations
-from dataclasses import dataclass
+
 import os.path
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -26,9 +26,9 @@ class Result:
     ident: str
     source: str
     title: str
-    artist: Optional[str]
-    album: Optional[str]
-    duration: Optional[str] = None
+    artist: str | None
+    album: str | None
+    duration: str | None = None
 
     @classmethod
     def from_filename(cls, filename: str, source: str) -> Result:
@@ -84,7 +84,7 @@ class Result:
             title=values["title"],
             artist=values["artist"],
             album=values["album"],
-            duration=values.get("duration", None),
+            duration=values.get("duration"),
         )
 
     def to_dict(self) -> dict[str, str]:

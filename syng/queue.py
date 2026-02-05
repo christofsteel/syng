@@ -4,7 +4,6 @@ import asyncio
 from collections import deque
 from collections.abc import Callable, Iterable
 from typing import Any
-from typing import Optional
 from uuid import UUID
 
 from .entry import Entry
@@ -53,7 +52,7 @@ class Queue:
         self._queue.append(entry)
         self.num_of_entries_sem.release()
 
-    def try_peek(self) -> Optional[Entry]:
+    def try_peek(self) -> Entry | None:
         """Return the first entry in the queue, if it exists."""
         if len(self._queue) > 0:
             return self._queue[0]
@@ -117,7 +116,7 @@ class Queue:
             if item.uuid == uuid or str(item.uuid) == uuid:
                 updater(item)
 
-    def find_by_name(self, name: str) -> Optional[Entry]:
+    def find_by_name(self, name: str) -> Entry | None:
         """
         Find the first entry by its performer and return it.
 
@@ -145,7 +144,7 @@ class Queue:
             if item.shares_performer(name):
                 yield item
 
-    def find_by_uuid(self, uuid: UUID | str) -> Optional[Entry]:
+    def find_by_uuid(self, uuid: UUID | str) -> Entry | None:
         """
         Find an entry by its uuid and return it.
 

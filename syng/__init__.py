@@ -1,4 +1,5 @@
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, version
+
 from packaging.version import Version
 
 try:

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from dataclasses import field
 import re
+from dataclasses import dataclass, field
 from typing import Any
-from typing import Optional
-from uuid import UUID
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 
 @dataclass
@@ -50,15 +47,15 @@ class Entry:
     ident: str
     source: str
     duration: int
-    title: Optional[str]
-    artist: Optional[str]
+    title: str | None
+    artist: str | None
     album: str
     performer: str
-    collab_mode: Optional[str] = None
+    collab_mode: str | None = None
     skip: bool = False
     uuid: UUID = field(default_factory=uuid4)
-    uid: Optional[str] = None
-    started_at: Optional[float] = None
+    uid: str | None = None
+    started_at: float | None = None
     incomplete_data: bool = False
 
     def update(self, **kwargs: Any) -> None:

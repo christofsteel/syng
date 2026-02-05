@@ -1,23 +1,21 @@
 import asyncio
-from io import BytesIO
-import sys
 import logging
-from logging.handlers import QueueListener
-from logging.handlers import QueueHandler
-import packaging.version
-
-import aiohttp
-from queue import Queue
+import os
+import random
+import secrets
+import signal
+import string
+import sys
 from collections.abc import Callable
 from datetime import datetime
-import os
 from functools import partial
-import random
-from typing import TYPE_CHECKING, Any, Optional
-import secrets
-import string
-import signal
+from io import BytesIO
+from logging.handlers import QueueHandler, QueueListener
+from queue import Queue
+from typing import TYPE_CHECKING, Any
 
+import aiohttp
+import packaging.version
 
 try:
     if not TYPE_CHECKING:
@@ -29,13 +27,13 @@ except ImportError:
     pass
 
 os.environ["QT_API"] = "pyqt6"
-from qasync import QEventLoop, QApplication
+import platformdirs
 from PyQt6.QtCore import (
     QAbstractListModel,
     QModelIndex,
     QObject,
-    QTimer,
     Qt,
+    QTimer,
     pyqtSignal,
     pyqtSlot,
 )
@@ -63,16 +61,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from yaml import dump, load, Loader, Dumper
+from qasync import QApplication, QEventLoop
 from qrcode.main import QRCode
-import platformdirs
+from yaml import Dumper, Loader, dump, load
 
 from . import __version__, resources  # noqa
 from .client import Client, default_config
-from .log import logger
-from .entry import Entry
-
-from .sources import available_sources
 from .config import (
     BoolOption,
     ChoiceOption,
@@ -83,6 +77,9 @@ from .config import (
     PasswordOption,
     StrOption,
 )
+from .entry import Entry
+from .log import logger
+from .sources import available_sources
 
 
 class QueueModel(QAbstractListModel):
@@ -120,8 +117,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[str] = "",
-        callback: Optional[Callable[..., None]] = None,
+        value: str | None = "",
+        callback: Callable[..., None] | None = None,
         is_password: bool = False,
     ) -> None:
         if value is None:
@@ -158,7 +155,7 @@ class OptionFrame(QWidget):
         if callback is not None:
             self.string_options[name].textChanged.connect(callback)
 
-    def path_setter(self, line: QLineEdit, name: Optional[str]) -> None:
+    def path_setter(self, line: QLineEdit, name: str | None) -> None:
         if name:
             line.setText(name)
 
@@ -166,8 +163,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[str] = "",
-        callback: Optional[Callable[..., None]] = None,
+        value: str | None = "",
+        callback: Callable[..., None] | None = None,
     ) -> None:
         if value is None:
             value = ""
@@ -200,8 +197,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[str] = "",
-        callback: Optional[Callable[..., None]] = None,
+        value: str | None = "",
+        callback: Callable[..., None] | None = None,
     ) -> None:
         if value is None:
             value = ""
@@ -234,8 +231,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[int] = 0,
-        callback: Optional[Callable[..., None]] = None,
+        value: int | None = 0,
+        callback: Callable[..., None] | None = None,
     ) -> None:
         if value is None:
             value = 0
@@ -267,7 +264,7 @@ class OptionFrame(QWidget):
         name: str,
         layout: QVBoxLayout,
         init: str,
-        callback: Optional[Callable[..., None]],
+        callback: Callable[..., None] | None,
     ) -> None:
         input_and_minus = QWidget()
         input_and_minus_layout = QHBoxLayout(input_and_minus)
@@ -299,7 +296,7 @@ class OptionFrame(QWidget):
         name: str,
         description: str,
         value: list[str],
-        callback: Optional[Callable[..., None]] = None,
+        callback: Callable[..., None] | None = None,
     ) -> None:
         label = QLabel(description, self)
 
@@ -355,7 +352,7 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, date_time_layout)
         self.rows[name] = (label, date_time_layout)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.form_layout = QFormLayout(self)
         self.setLayout(self.form_layout)
@@ -545,7 +542,7 @@ class GeneralConfig(OptionFrame):
 
 
 class SyngGui(QMainWindow):
-    def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
         if self.client is not None:
             if self.client.player is not None and self.client.player.mpv is not None:
                 self.client.player.mpv.terminate()
@@ -679,7 +676,7 @@ class SyngGui(QMainWindow):
                     if widget:
                         widget.setVisible(state)
 
-        tabbar: Optional[QTabBar] = self.tabview.tabBar()
+        tabbar: QTabBar | None = self.tabview.tabBar()
         if not state:
             if tabbar is not None:
                 tabbar.hide()
@@ -806,8 +803,8 @@ class SyngGui(QMainWindow):
 
     def update_version_label(
         self,
-        running_version: Optional[packaging.version.Version],
-        current_version: Optional[packaging.version.Version],
+        running_version: packaging.version.Version | None,
+        current_version: packaging.version.Version | None,
     ) -> None:
         label_string = f"<i>Running version: {running_version}</i><br />Current version on pypi: {current_version}"
         if current_version is not None and running_version is not None:
@@ -841,11 +838,11 @@ class SyngGui(QMainWindow):
 
         self.loop = asyncio.get_event_loop()
 
-        self.pypi_version: Optional[str] = None
+        self.pypi_version: str | None = None
         asyncio.run_coroutine_threadsafe(self.get_pypi_version(), self.loop)
 
-        self.client: Optional[Client] = None
-        self.syng_client_logging_listener: Optional[QueueListener] = None
+        self.client: Client | None = None
+        self.syng_client_logging_listener: QueueListener | None = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
@@ -1062,10 +1059,10 @@ class LoggingLabelHandler(logging.Handler):
     class LogSignalEmiter(QObject):
         log_signal = pyqtSignal(str, int)
 
-        def __init__(self, parent: Optional[QObject] = None):
+        def __init__(self, parent: QObject | None = None):
             super().__init__(parent)
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: QObject | None = None):
         super().__init__()
         self.log_signal_emiter = self.LogSignalEmiter(parent)
         self._cleanup = False
@@ -1084,7 +1081,7 @@ def run_gui() -> None:
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
     base_dir = os.path.dirname(__file__)
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        base_dir = getattr(sys, "_MEIPASS")
+        base_dir = sys._MEIPASS
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 

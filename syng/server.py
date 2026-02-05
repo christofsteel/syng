@@ -21,15 +21,15 @@ import os
 import random
 import string
 import uuid
-from json.decoder import JSONDecodeError
 from argparse import Namespace
-from dataclasses import dataclass
-from dataclasses import field
-from typing import Any, Callable, Literal, AsyncGenerator, Optional, cast
+from collections.abc import AsyncGenerator, Callable
+from dataclasses import dataclass, field
+from json.decoder import JSONDecodeError
+from typing import Any, Literal, cast
 
 import socketio
-from socketio.exceptions import ConnectionRefusedError
 from aiohttp import web
+from socketio.exceptions import ConnectionRefusedError
 
 try:
     from profanity_check import predict
@@ -41,15 +41,12 @@ except ImportError:
 
 from syng.sources.source import EntryNotValid, MalformedSearchQueryException
 
-from .result import Result
-
-from . import jsonencoder
-from . import SYNG_VERSION, SYNG_PROTOCOL_VERSION
-from .log import logger
+from . import SYNG_PROTOCOL_VERSION, SYNG_VERSION, jsonencoder
 from .entry import Entry
+from .log import logger
 from .queue import Queue
-from .sources import available_sources
-from .sources import Source
+from .result import Result
+from .sources import Source, available_sources
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -343,7 +340,7 @@ class Server:
         return web.json_response(info_dict, dumps=jsonencoder.dumps)
 
     async def broadcast_state(
-        self, state: State, /, sid: Optional[str] = None, room: Optional[str] = None
+        self, state: State, /, sid: str | None = None, room: str | None = None
     ) -> None:
         if room is None:
             sid = state.sid if sid is None else sid
@@ -413,7 +410,7 @@ class Server:
     @with_state
     async def handle_waiting_room_append(
         self, state: State, sid: str, data: dict[str, Any]
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Append a song to the waiting room.
 
@@ -436,7 +433,7 @@ class Server:
             entry = await source_obj.get_entry(
                 data["performer"],
                 data["ident"],
-                data.get("collab_mode", None),
+                data.get("collab_mode"),
                 artist=data["artist"],
                 title=data["title"],
             )
@@ -476,7 +473,7 @@ class Server:
         return str(entry.uuid)
 
     async def append_to_queue(
-        self, state: State, entry: Entry, report_to: Optional[str] = None
+        self, state: State, entry: Entry, report_to: str | None = None
     ) -> None:
         """
         Append a song to the queue for a given session.
@@ -571,7 +568,7 @@ class Server:
             await self.sio.emit("err", {"type": "JSON_MALFORMED"}, room=sid)
 
     @with_state
-    async def handle_append(self, state: State, sid: str, data: dict[str, Any]) -> Optional[str]:
+    async def handle_append(self, state: State, sid: str, data: dict[str, Any]) -> str | None:
         """
         Handle the "append" message.
 
@@ -628,10 +625,10 @@ class Server:
                             "source": data["source"],
                             "performer": data["performer"],
                             "ident": data["ident"],
-                            "collab_mode": data.get("collab_mode", None),
-                            "artist": data.get("artist", None),
-                            "title": data.get("title", None),
-                            "uid": data.get("uid", None),
+                            "collab_mode": data.get("collab_mode"),
+                            "artist": data.get("artist"),
+                            "title": data.get("title"),
+                            "uid": data.get("uid"),
                         },
                         "old_entry": {
                             "artist": old_entry.artist,
@@ -651,9 +648,9 @@ class Server:
             entry = await source_obj.get_entry(
                 data["performer"],
                 data["ident"],
-                data.get("collab_mode", None),
-                artist=data.get("artist", None),
-                title=data.get("title", None),
+                data.get("collab_mode"),
+                artist=data.get("artist"),
+                title=data.get("title"),
             )
             if entry is None:
                 await self.sio.emit(
@@ -679,7 +676,7 @@ class Server:
     @with_state
     async def handle_append_anyway(
         self, state: State, sid: str, data: dict[str, Any]
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Appends a song to the queue, even if the performer is already in queue.
 
@@ -716,7 +713,7 @@ class Server:
             entry = await source_obj.get_entry(
                 data["performer"],
                 data["ident"],
-                data.get("collab_mode", None),
+                data.get("collab_mode"),
                 artist=data["artist"],
                 title=data["title"],
             )
@@ -1528,14 +1525,14 @@ class Server:
         if "target_sid" in data:
             await self.sio.emit(
                 "msg",
-                {"msg": data.get("msg", None)},
+                {"msg": data.get("msg")},
                 room=data.get("target_sid"),
             )
         else:
             logger.log(level=data.get("type", 1), msg=f"Client-msg: {sid}, {data.get('msg')}")
 
     async def send_search_results(
-        self, sid: str, results: list[Result], search_id: Optional[uuid.UUID]
+        self, sid: str, results: list[Result], search_id: uuid.UUID | None
     ) -> None:
         """
         Send search results to a client.
@@ -1604,7 +1601,7 @@ class Server:
         iapp["repeated_cleanup"].cancel()
         await iapp["repeated_cleanup"]
 
-    async def run_apps(self, host: str, port: int, admin_port: Optional[int]) -> None:
+    async def run_apps(self, host: str, port: int, admin_port: int | None) -> None:
         """
         Run the main and admin apps.
 

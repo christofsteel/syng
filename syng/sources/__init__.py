@@ -7,11 +7,11 @@ Imports all sources, so that they add themselves to the
 
 from typing import Any
 
-from .source import available_sources as available_sources
-from .source import Source as Source
-from .youtube import YoutubeSource  # noqa: F401
-from .s3 import S3Source  # noqa: F401
 from .files import FilesSource  # noqa: F401
+from .s3 import S3Source  # noqa: F401
+from .source import Source as Source
+from .source import available_sources as available_sources
+from .youtube import YoutubeSource  # noqa: F401
 
 
 def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:

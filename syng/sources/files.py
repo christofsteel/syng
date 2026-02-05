@@ -2,14 +2,12 @@
 
 import asyncio
 import os
-from typing import Any, Optional
-from typing import Tuple
+from typing import Any
 
-
+from ..config import ConfigOption, FolderOption
 from ..entry import Entry
-from .source import available_sources
 from .filebased import FileBasedSource
-from ..config import FolderOption, ConfigOption
+from .source import available_sources
 
 
 class FilesSource(FileBasedSource):
@@ -57,7 +55,7 @@ class FilesSource(FileBasedSource):
 
         return {"duration": duration}
 
-    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """
         No buffering needs to be done, since the files are already on disk.
 

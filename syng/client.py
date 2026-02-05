@@ -13,39 +13,38 @@ be one of:
 """
 
 from __future__ import annotations
-from collections.abc import Callable
-from functools import partial
-import logging
-import os
+
 import asyncio
 import datetime
+import logging
+import os
+import secrets
+import signal
+import string
+from argparse import Namespace
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from functools import partial
 from logging import LogRecord
 from logging.handlers import QueueHandler
 from multiprocessing import Queue
-import secrets
-import string
-import signal
-from argparse import Namespace
-from dataclasses import dataclass
-from dataclasses import field
 from traceback import print_exc
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
-from qrcode.main import QRCode
-
-import socketio
-from socketio.exceptions import ConnectionError, BadNamespaceError
 import engineio
-from yaml import load, Loader
+import socketio
+from qrcode.main import QRCode
+from socketio.exceptions import BadNamespaceError, ConnectionError
+from yaml import Loader, load
 
 from syng.player_libmpv import Player
 from syng.sources.source import MalformedSearchQueryException
 
 from . import SYNG_VERSION, jsonencoder
 from .entry import Entry
-from .sources import configure_sources, Source
 from .log import logger
+from .sources import Source, configure_sources
 
 
 class ConnectionState:
@@ -71,7 +70,7 @@ class ConnectionState:
         self.__mpv_running__ = False
 
 
-def default_config() -> dict[str, Optional[int | str]]:
+def default_config() -> dict[str, int | str | None]:
     """
     Return a default configuration for the client.
 
@@ -153,7 +152,7 @@ class State:
 
     # pylint: disable=too-many-instance-attributes
 
-    current_source: Optional[Source] = None
+    current_source: Source | None = None
     queue: list[Entry] = field(default_factory=list)
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
@@ -169,7 +168,7 @@ class Client:
         self.connection_state = ConnectionState()
         self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
         self.sources = configure_sources(config["sources"])
         self.state = State()
@@ -681,7 +680,7 @@ class Client:
         :type filename: str
         :rtype: None
         """
-        with open(filename, "r", encoding="utf8") as file:
+        with open(filename, encoding="utf8") as file:
             data = jsonencoder.load(file)
             queue = [Entry(**entry) for entry in data["queue"]]
             waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
@@ -760,8 +759,8 @@ class Client:
 
 def create_async_and_start_client(
     config: dict[str, Any],
-    queue: Optional[Queue[LogRecord]] = None,
-    client: Optional[Client] = None,
+    queue: Queue[LogRecord] | None = None,
+    client: Client | None = None,
 ) -> None:
     """
     Create an asyncio event loop and start the client.
