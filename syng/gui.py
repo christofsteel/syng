@@ -1,23 +1,21 @@
 import asyncio
-from io import BytesIO
-import sys
 import logging
-from logging.handlers import QueueListener
-from logging.handlers import QueueHandler
-import packaging.version
-
-import aiohttp
-from queue import Queue
+import os
+import random
+import secrets
+import signal
+import string
+import sys
 from collections.abc import Callable
 from datetime import datetime
-import os
 from functools import partial
-import random
-from typing import TYPE_CHECKING, Any, Optional
-import secrets
-import string
-import signal
+from io import BytesIO
+from logging.handlers import QueueHandler, QueueListener
+from queue import Queue
+from typing import TYPE_CHECKING, Any
 
+import aiohttp
+import packaging.version
 
 try:
     if not TYPE_CHECKING:
@@ -29,13 +27,13 @@ except ImportError:
     pass
 
 os.environ["QT_API"] = "pyqt6"
-from qasync import QEventLoop, QApplication
+import contextlib
+
+import platformdirs
 from PyQt6.QtCore import (
-    QAbstractListModel,
-    QModelIndex,
     QObject,
-    QTimer,
     Qt,
+    QTimer,
     pyqtSignal,
     pyqtSlot,
 )
@@ -63,17 +61,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from yaml import dump, load, Loader, Dumper
+from qasync import QApplication, QEventLoop
 from qrcode.main import QRCode
-import platformdirs
+from yaml import Dumper, Loader, dump, load
 
-from . import __version__, resources  # noqa
-from .client import Client, default_config
-from .log import logger
-from .entry import Entry
-
-from .sources import available_sources
-from .config import (
+from syng.client import Client, default_config
+from syng.config import (
     BoolOption,
     ChoiceOption,
     FileOption,
@@ -83,24 +76,10 @@ from .config import (
     PasswordOption,
     StrOption,
 )
+from syng.log import logger
+from syng.sources import available_sources
 
-
-class QueueModel(QAbstractListModel):
-    def __init__(self, queue: list[Entry]) -> None:
-        super().__init__()
-        self.queue = queue
-
-    def update(self, queue: list[Entry]) -> None:
-        self.queue = queue
-        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, 0))
-
-    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if role == Qt.ItemDataRole.DisplayRole:
-            entry = self.queue[index.row()]
-            return f"{entry.title} - {entry.artist} [{entry.album}]\n{entry.performer}"
-
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
-        return len(self.queue)
+from . import __version__, resources  # noqa
 
 
 class QueueView(QListView):
@@ -120,8 +99,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[str] = "",
-        callback: Optional[Callable[..., None]] = None,
+        value: str | None = "",
+        callback: Callable[..., None] | None = None,
         is_password: bool = False,
     ) -> None:
         if value is None:
@@ -158,7 +137,7 @@ class OptionFrame(QWidget):
         if callback is not None:
             self.string_options[name].textChanged.connect(callback)
 
-    def path_setter(self, line: QLineEdit, name: Optional[str]) -> None:
+    def path_setter(self, line: QLineEdit, name: str | None) -> None:
         if name:
             line.setText(name)
 
@@ -166,8 +145,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[str] = "",
-        callback: Optional[Callable[..., None]] = None,
+        value: str | None = "",
+        callback: Callable[..., None] | None = None,
     ) -> None:
         if value is None:
             value = ""
@@ -200,8 +179,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[str] = "",
-        callback: Optional[Callable[..., None]] = None,
+        value: str | None = "",
+        callback: Callable[..., None] | None = None,
     ) -> None:
         if value is None:
             value = ""
@@ -234,8 +213,8 @@ class OptionFrame(QWidget):
         self,
         name: str,
         description: str,
-        value: Optional[int] = 0,
-        callback: Optional[Callable[..., None]] = None,
+        value: int | None = 0,
+        callback: Callable[..., None] | None = None,
     ) -> None:
         if value is None:
             value = 0
@@ -267,7 +246,7 @@ class OptionFrame(QWidget):
         name: str,
         layout: QVBoxLayout,
         init: str,
-        callback: Optional[Callable[..., None]],
+        callback: Callable[..., None] | None,
     ) -> None:
         input_and_minus = QWidget()
         input_and_minus_layout = QHBoxLayout(input_and_minus)
@@ -299,7 +278,7 @@ class OptionFrame(QWidget):
         name: str,
         description: str,
         value: list[str],
-        callback: Optional[Callable[..., None]] = None,
+        callback: Callable[..., None] | None = None,
     ) -> None:
         label = QLabel(description, self)
 
@@ -355,7 +334,7 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, date_time_layout)
         self.rows[name] = (label, date_time_layout)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.form_layout = QFormLayout(self)
         self.setLayout(self.form_layout)
@@ -444,7 +423,7 @@ class SourceTab(OptionFrame):
         source = available_sources[source_name]
         self.vars: dict[str, str | bool | list[str]] = {}
         for name, option in source.config_schema.items():
-            value = config[name] if name in config else option.default
+            value = config.get(name, option.default)
             match option.type:
                 case BoolOption():
                     self.add_bool_option(name, option.description, value=value)
@@ -545,7 +524,7 @@ class GeneralConfig(OptionFrame):
 
 
 class SyngGui(QMainWindow):
-    def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
         if self.client is not None:
             if self.client.player is not None and self.client.player.mpv is not None:
                 self.client.player.mpv.terminate()
@@ -648,7 +627,8 @@ class SyngGui(QMainWindow):
             answer = QMessageBox.question(
                 self,
                 "Remove Room",
-                "Are you sure you want to remove the room on the server? This will disconnect all clients and clear the queue.",
+                "Are you sure you want to remove the room on the server? This will disconnect "
+                "all clients and clear the queue.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if answer == QMessageBox.StandardButton.Yes:
@@ -679,7 +659,7 @@ class SyngGui(QMainWindow):
                     if widget:
                         widget.setVisible(state)
 
-        tabbar: Optional[QTabBar] = self.tabview.tabBar()
+        tabbar: QTabBar | None = self.tabview.tabBar()
         if not state:
             if tabbar is not None:
                 tabbar.hide()
@@ -806,30 +786,42 @@ class SyngGui(QMainWindow):
 
     def update_version_label(
         self,
-        running_version: Optional[packaging.version.Version],
-        current_version: Optional[packaging.version.Version],
+        running_version: packaging.version.Version | None,
+        current_version: packaging.version.Version | None,
     ) -> None:
-        label_string = f"<i>Running version: {running_version}</i><br />Current version on pypi: {current_version}"
+        label_string = (
+            f"<i>Running version: {running_version}</i><br />"
+            f"Current version on pypi: {current_version}"
+        )
         if current_version is not None and running_version is not None:
             if current_version > running_version:
-                label_string += '<br /><span style="color:red;">A new version is available! Please update Syng.Rocks!</span>'
+                label_string += (
+                    '<br /><span style="color:red;">'
+                    "A new version is available! Please update Syng.Rocks!</span>"
+                )
             else:
-                label_string += '<br /><span style="color:green;">You are running the latest version.</span><br />Visit <a href="https://site.syng.rocks/">syng.rocks</a> for more information.'
+                label_string += (
+                    '<br /><span style="color:green;">You are running the latest '
+                    'version.</span><br />Visit <a href="https://site.syng.rocks/">syng.rocks</a> '
+                    "for more information."
+                )
         self.version_label.setText(label_string)
 
     async def get_pypi_version(self) -> None:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://pypi.org/pypi/syng/json") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    versions = filter(
-                        lambda v: not v.is_prerelease,
-                        map(packaging.version.parse, data["releases"].keys()),
-                    )
-                    self.update_version_label(
-                        running_version=packaging.version.parse(__version__),
-                        current_version=max(versions),
-                    )
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get("https://pypi.org/pypi/syng/json") as resp,
+        ):
+            if resp.status == 200:
+                data = await resp.json()
+                versions = filter(
+                    lambda v: not v.is_prerelease,
+                    map(packaging.version.parse, data["releases"].keys()),
+                )
+                self.update_version_label(
+                    running_version=packaging.version.parse(__version__),
+                    current_version=max(versions),
+                )
         return None
 
     def __init__(self) -> None:
@@ -841,11 +833,11 @@ class SyngGui(QMainWindow):
 
         self.loop = asyncio.get_event_loop()
 
-        self.pypi_version: Optional[str] = None
+        self.pypi_version: str | None = None
         asyncio.run_coroutine_threadsafe(self.get_pypi_version(), self.loop)
 
-        self.client: Optional[Client] = None
-        self.syng_client_logging_listener: Optional[QueueListener] = None
+        self.client: Client | None = None
+        self.syng_client_logging_listener: QueueListener | None = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
@@ -909,10 +901,8 @@ class SyngGui(QMainWindow):
 
             output["sources"][source_name] = source_config
 
-            try:
+            with contextlib.suppress(KeyError, TypeError):
                 output["sources"][source_name] |= config["sources"][source_name]
-            except (KeyError, TypeError):
-                pass
 
         return output
 
@@ -1015,9 +1005,6 @@ class SyngGui(QMainWindow):
             config = self.gather_config()
             self.client = Client(config)
             asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            # model = QueueModel(self.client.state.queue)
-            # self.queue_list_view.setModel(model)
-            # self.client.add_queue_callback(model.update)
             self.timer.start(500)
             self.set_client_button_stop()
         else:
@@ -1062,10 +1049,10 @@ class LoggingLabelHandler(logging.Handler):
     class LogSignalEmiter(QObject):
         log_signal = pyqtSignal(str, int)
 
-        def __init__(self, parent: Optional[QObject] = None):
+        def __init__(self, parent: QObject | None = None):
             super().__init__(parent)
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: QObject | None = None):
         super().__init__()
         self.log_signal_emiter = self.LogSignalEmiter(parent)
         self._cleanup = False
@@ -1084,7 +1071,7 @@ def run_gui() -> None:
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
     base_dir = os.path.dirname(__file__)
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        base_dir = getattr(sys, "_MEIPASS")
+        base_dir = sys._MEIPASS
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 

@@ -1,15 +1,15 @@
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
 
-class Option(Generic[T]):
+class Option[T]:
     pass
 
 
 @dataclass
-class ConfigOption(Generic[T]):
+class ConfigOption[T]:
     type: Option[T]
     description: str
     default: T

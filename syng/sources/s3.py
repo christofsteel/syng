@@ -7,10 +7,9 @@ Adds it to the ``available_sources`` with the name ``s3``
 import asyncio
 import os
 from json import dump, load
-from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from platformdirs import user_cache_dir
-
 
 try:
     from minio import Minio
@@ -21,10 +20,17 @@ except ImportError:
         from minio import Minio
     MINIO_AVAILABE = False
 
-from ..entry import Entry
-from .filebased import FileBasedSource
-from .source import available_sources
-from ..config import BoolOption, ConfigOption, FileOption, FolderOption, PasswordOption, StrOption
+from syng.config import (
+    BoolOption,
+    ConfigOption,
+    FileOption,
+    FolderOption,
+    PasswordOption,
+    StrOption,
+)
+from syng.entry import Entry
+from syng.sources.filebased import FileBasedSource
+from syng.sources.source import available_sources
 
 
 class S3Source(FileBasedSource):
@@ -69,12 +75,12 @@ class S3Source(FileBasedSource):
                 config["endpoint"],
                 access_key=config["access_key"],
                 secret_key=config["secret_key"],
-                secure=(config["secure"] if "secure" in config else True),
+                secure=(config.get("secure", True)),
             )
             self.bucket: str = config["bucket"]
-            self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            self.tmp_dir: str = config.get("tmp_dir", "/tmp/syng")
 
-        self.index_file: Optional[str] = config["index_file"] if "index_file" in config else None
+        self.index_file: str | None = config.get("index_file")
 
     def load_file_list_from_server(self) -> list[str]:
         """
@@ -116,7 +122,7 @@ class S3Source(FileBasedSource):
 
         def _get_file_list() -> list[str]:
             if self.index_file is not None and os.path.isfile(self.index_file):
-                with open(self.index_file, "r", encoding="utf8") as index_file_handle:
+                with open(self.index_file, encoding="utf8") as index_file_handle:
                     return cast(list[str], load(index_file_handle))
 
             file_list = self.load_file_list_from_server()
@@ -127,7 +133,7 @@ class S3Source(FileBasedSource):
 
         return await asyncio.to_thread(_get_file_list)
 
-    async def update_file_list(self) -> Optional[list[str]]:
+    async def update_file_list(self) -> list[str] | None:
         """
         Rescan the file list and update the index file.
 
@@ -161,7 +167,7 @@ class S3Source(FileBasedSource):
 
         return {"duration": duration}
 
-    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """
         Download the file from the s3.
 
@@ -182,7 +188,7 @@ class S3Source(FileBasedSource):
             asyncio.to_thread(self.minio.fget_object, self.bucket, entry.ident, video_dl_path)
         )
 
-        audio_dl_path: Optional[str]
+        audio_dl_path: str | None
         if audio_path is not None:
             audio_dl_path = os.path.join(self.tmp_dir, audio_path)
 

@@ -10,22 +10,17 @@ from __future__ import annotations
 import asyncio
 import os.path
 import shlex
+from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from itertools import zip_longest
 from traceback import print_exc
 from typing import Any
-from typing import Optional
-from typing import Tuple
-from typing import Type
-from abc import ABC, abstractmethod
 
-
-from ..log import logger
-from ..entry import Entry
-from ..result import Result
-from ..config import BoolOption, ConfigOption
+from syng.config import BoolOption, ConfigOption
+from syng.entry import Entry
+from syng.log import logger
+from syng.result import Result
 
 
 class EntryNotValid(Exception):
@@ -66,11 +61,11 @@ class DLFilesEntry:
 
     ready: asyncio.Event = field(default_factory=asyncio.Event)
     video: str = ""
-    audio: Optional[str] = None
+    audio: str | None = None
     buffering: bool = False
     complete: bool = False
     skip: bool = False
-    buffer_task: Optional[asyncio.Task[Tuple[str, Optional[str]]]] = None
+    buffer_task: asyncio.Task[tuple[str, str | None]] | None = None
 
 
 class Source(ABC):
@@ -129,7 +124,7 @@ class Source(ABC):
         self.config: dict[str, Any] = config
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
-        self._index: list[str] = config["index"] if "index" in config else []
+        self._index: list[str] = config.get("index", [])
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
         self.build_index = False
@@ -152,11 +147,11 @@ class Source(ABC):
         self,
         performer: str,
         ident: str,
-        collab_mode: Optional[str],
+        collab_mode: str | None,
         /,
-        artist: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> Optional[Entry]:
+        artist: str | None = None,
+        title: str | None = None,
+    ) -> Entry | None:
         """
         Create an :py:class:`syng.entry.Entry` from a given identifier.
 
@@ -214,7 +209,7 @@ class Source(ABC):
         return results
 
     @abstractmethod
-    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """
         Source specific part of buffering.
 
@@ -266,9 +261,9 @@ class Source(ABC):
             self.downloaded_files[entry.ident].complete = True
         except ValueError as exc:
             raise exc
-        except Exception:  # pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             print_exc()
-            raise ValueError("Buffering failed for %s" % entry)
+            raise ValueError(f"Buffering failed for {entry}") from err
 
         self.downloaded_files[entry.ident].ready.set()
 
@@ -292,7 +287,7 @@ class Source(ABC):
                 buffer_task.cancel()
             self.downloaded_files[entry.ident].ready.set()
 
-    async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
+    async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
         """
         Guaranties that the given entry can be played.
 
@@ -338,15 +333,12 @@ class Source(ABC):
         """
 
         def contains_all_words(words: list[str], element: str) -> bool:
-            for word in words:
-                if word.lower() not in os.path.basename(element).lower():
-                    return False
-            return True
+            return all(word.lower() in os.path.basename(element).lower() for word in words)
 
         try:
             splitquery = shlex.split(query)
-        except ValueError:
-            raise MalformedSearchQueryException()
+        except ValueError as err:
+            raise MalformedSearchQueryException from err
         return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:
@@ -361,7 +353,7 @@ class Source(ABC):
         """
         return []
 
-    async def update_file_list(self) -> Optional[list[str]]:
+    async def update_file_list(self) -> list[str] | None:
         """
         Update the internal list of files.
 
@@ -377,7 +369,7 @@ class Source(ABC):
         """
         return None
 
-    async def update_config(self) -> Optional[dict[str, Any] | list[dict[str, Any]]]:
+    async def update_config(self) -> dict[str, Any] | list[dict[str, Any]] | None:
         """
         Update the config of the source.
 
@@ -477,4 +469,4 @@ class Source(ABC):
         pass
 
 
-available_sources: dict[str, Type[Source]] = {}
+available_sources: dict[str, type[Source]] = {}

@@ -1,13 +1,15 @@
 import asyncio
-from enum import Enum
 import locale
-import sys
-from typing import Any, Callable, Iterable, Optional, cast
-from qrcode.main import QRCode
-import mpv
 import os
+import sys
+from collections.abc import Callable, Iterable
+from enum import Enum
+from typing import Any, cast
 
-from .entry import Entry
+import mpv
+from qrcode.main import QRCode
+
+from syng.entry import Entry
 
 
 class QRPosition(Enum):
@@ -36,7 +38,7 @@ class Player:
         self,
         config: dict[str, Any],
         quit_callback: Callable[[], None],
-        queue: Optional[list[Entry]] = None,
+        queue: list[Entry] | None = None,
     ) -> None:
         locale.setlocale(locale.LC_ALL, "C")
         qr_string = f"{config['server']}/{config['room']}"
@@ -44,10 +46,10 @@ class Player:
         self.queue = queue if queue is not None else []
         self.base_dir = f"{os.path.dirname(__file__)}/static"
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-            self.base_dir = getattr(sys, "_MEIPASS")
+            self.base_dir = sys._MEIPASS
         self.closing = False
-        self.mpv: Optional[mpv.MPV] = None
-        self.qr_overlay: Optional[mpv.ImageOverlay] = None
+        self.mpv: mpv.MPV | None = None
+        self.qr_overlay: mpv.ImageOverlay | None = None
         self.qr_box_size = 1 if config["qr_box_size"] < 1 else config["qr_box_size"]
         self.qr_position = QRPosition.from_string(config["qr_position"])
         self.next_up_time = config.get("next_up_time", 20)
@@ -59,7 +61,7 @@ class Player:
             "scale": "bilinear",
         }
         self.quit_callback = quit_callback
-        self.callback_audio_load: Optional[str] = None
+        self.callback_audio_load: str | None = None
 
     def start(self) -> None:
         self.mpv = mpv.MPV(
@@ -105,7 +107,7 @@ class Player:
         self.mpv.command(
             "osd_overlay",
             id=self.next_up_overlay_id,
-            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry.artist} - {entry.title} ({entry.performer})",
+            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry.short_str()}",
             res_x=1920,
             res_y=1080,
             z=0,
@@ -119,10 +121,13 @@ class Player:
             if not self.closing:
                 self.closing = True
                 self.quit_callback()
-        elif e["event"] == b"file-loaded":
-            if self.callback_audio_load is not None and self.mpv is not None:
-                self.mpv.audio_add(self.callback_audio_load)
-                self.callback_audio_load = None
+        elif (
+            e["event"] == b"file-loaded"
+            and self.callback_audio_load is not None
+            and self.mpv is not None
+        ):
+            self.mpv.audio_add(self.callback_audio_load)
+            self.callback_audio_load = None
 
     def update_qr(self, qr_string: str) -> None:
         qr = QRCode(box_size=self.qr_box_size, border=1)
@@ -185,7 +190,7 @@ class Player:
         except mpv.ShutdownError:
             self.quit_callback()
 
-    def play_image(self, image: str, duration: int, sub_file: Optional[str] = None) -> None:
+    def play_image(self, image: str, duration: int, sub_file: str | None = None) -> None:
         if self.mpv is None:
             print("MPV is not initialized", file=sys.stderr)
             return
@@ -203,8 +208,8 @@ class Player:
     async def play(
         self,
         video: str,
-        audio: Optional[str] = None,
-        override_options: Optional[dict[str, str]] = None,
+        audio: str | None = None,
+        override_options: dict[str, str] | None = None,
     ) -> None:
         if self.mpv is None:
             print("MPV is not initialized", file=sys.stderr)

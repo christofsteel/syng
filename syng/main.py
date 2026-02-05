@@ -32,11 +32,11 @@ The config file for the client should be a yaml file in the following style::
         key: ..
 """
 
-from typing import TYPE_CHECKING
-from argparse import ArgumentParser
-import os
 import multiprocessing
+import os
 import traceback
+from argparse import ArgumentParser
+from typing import TYPE_CHECKING
 
 import platformdirs
 
@@ -52,22 +52,22 @@ except ImportError:
     GUI_AVAILABLE = False
 
 try:
-    from .client import run_client
+    from syng.client import run_client
 
     CLIENT_AVAILABLE = True
 except ImportError:
     if TYPE_CHECKING:
-        from .client import run_client
+        from syng.client import run_client
 
     CLIENT_AVAILABLE = False
 
 try:
-    from .server import run_server
+    from syng.server import run_server
 
     SERVER_AVAILABLE = True
 except ImportError:
     if TYPE_CHECKING:
-        from .server import run_server
+        from syng.server import run_server
 
     SERVER_AVAILABLE = False
 

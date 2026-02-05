@@ -9,28 +9,28 @@ Adds it to the ``available_sources`` with the name ``youtube``.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import shlex
 from functools import partial
+from typing import Any
 from urllib.parse import urlencode
-from typing import Any, Optional, Tuple
 
+from platformdirs import user_cache_dir
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
-from platformdirs import user_cache_dir
 
-
-from ..entry import Entry
-from ..result import Result
-from .source import MalformedSearchQueryException, Source, available_sources
-from ..config import (
+from syng.config import (
     BoolOption,
     ChoiceOption,
-    FolderOption,
-    ListStrOption,
     ConfigOption,
-    StrOption,
+    FolderOption,
     IntOption,
+    ListStrOption,
+    StrOption,
 )
+from syng.entry import Entry
+from syng.result import Result
+from syng.sources.source import MalformedSearchQueryException, Source, available_sources
 
 
 class YouTube:
@@ -38,7 +38,7 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    def __init__(self, url: Optional[str] = None, info: Optional[dict[str, Any]] = None):
+    def __init__(self, url: str | None = None, info: dict[str, Any] | None = None):
         """
         Construct a YouTube object from a url.
 
@@ -48,8 +48,8 @@ class YouTube:
         :param url: The url of the video.
         :type url: Optional[str]
         """
-        self._title: Optional[str]
-        self._author: Optional[str]
+        self._title: str | None
+        self._author: str | None
 
         if url is not None:
             try:
@@ -118,7 +118,7 @@ class Search:
     """
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, query: str, channel: Optional[str] = None):
+    def __init__(self, query: str, channel: str | None = None):
         """
         Construct a Search object from a query and an optional channel.
 
@@ -158,10 +158,8 @@ class Search:
             filtered_entries = filter(lambda entry: "short" not in entry["url"], results["entries"])
 
             for r in filtered_entries:
-                try:
+                with contextlib.suppress(KeyError):
                     self.results.append(YouTube.from_result(r))
-                except KeyError:
-                    pass
 
 
 class YoutubeSource(Source):
@@ -180,7 +178,8 @@ class YoutubeSource(Source):
           ``yt-dlp``. Default is False.
         - ``search_suffix``: A string that is appended to the search query.
           Default is "karaoke".
-        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this. Default is 1800.
+        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this.
+                            Default is 1800.
     """
 
     source_name = "youtube"
@@ -217,15 +216,13 @@ class YoutubeSource(Source):
     }
 
     def apply_config(self, config: dict[str, Any]) -> None:
-        self.channels: list[str] = config["channels"] if "channels" in config else []
-        self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+        self.channels: list[str] = config.get("channels", [])
+        self.tmp_dir: str = config.get("tmp_dir", "/tmp/syng")
         try:
             self.max_res: int = int(config["max_res"])
         except (ValueError, KeyError):
             self.max_res = 720
-        self.start_streaming: bool = (
-            config["start_streaming"] if "start_streaming" in config else False
-        )
+        self.start_streaming: bool = config.get("start_streaming", False)
         self.formatstring = (
             f"bestvideo[height<={self.max_res}]+bestaudio/best[height<={self.max_res}]"
         )
@@ -240,7 +237,7 @@ class YoutubeSource(Source):
         )
         self.max_duration: int = config.get("max_duration", 1800)
 
-    async def ensure_playable(self, entry: Entry) -> tuple[str, Optional[str]]:
+    async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
         """
         Ensure that the entry is playable.
 
@@ -268,11 +265,11 @@ class YoutubeSource(Source):
         self,
         performer: str,
         ident: str,
-        collab_mode: Optional[str],
+        collab_mode: str | None,
         /,
-        artist: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> Optional[Entry]:
+        artist: str | None = None,
+        title: str | None = None,
+    ) -> Entry | None:
         """
         Create an :py:class:`syng.entry.Entry` for the identifier.
 
@@ -341,8 +338,8 @@ class YoutubeSource(Source):
 
         try:
             queries: list[str] = shlex.split(query.lower())
-        except ValueError:
-            raise MalformedSearchQueryException
+        except ValueError as err:
+            raise MalformedSearchQueryException from err
 
         results: list[YouTube] = []
         results_lists: list[list[YouTube]] = await asyncio.gather(
@@ -409,7 +406,7 @@ class YoutubeSource(Source):
             }
         return {}
 
-    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """
         Download the video.
 

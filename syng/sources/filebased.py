@@ -2,10 +2,9 @@
 
 import asyncio
 import os
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from syng.entry import Entry
-
 
 try:
     from pymediainfo import MediaInfo
@@ -16,8 +15,8 @@ except ImportError:
         from pymediainfo import MediaInfo
     PYMEDIAINFO_AVAILABLE = False
 
-from .source import Source
-from ..config import ListStrOption, ConfigOption
+from syng.config import ConfigOption, ListStrOption
+from syng.sources.source import Source
 
 
 class FileBasedSource(Source):
@@ -38,13 +37,13 @@ class FileBasedSource(Source):
 
     def apply_config(self, config: dict[str, Any]) -> None:
         self.build_index = True
-        self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
+        self.extensions: list[str] = config.get("extensions", ["mp3+cdg"])
         self.extra_mpv_options = {"scale": "oversample"}
 
     def is_valid(self, entry: Entry) -> bool:
         return entry.ident in self._index and entry.source == self.source_name
 
-    def has_correct_extension(self, path: Optional[str]) -> bool:
+    def has_correct_extension(self, path: str | None) -> bool:
         """
         Check if a `path` has a correct extension.
 
@@ -59,7 +58,7 @@ class FileBasedSource(Source):
             ext.rsplit("+", maxsplit=1)[-1] for ext in self.extensions
         ]
 
-    def get_video_audio_split(self, path: str) -> tuple[str, Optional[str]]:
+    def get_video_audio_split(self, path: str) -> tuple[str, str | None]:
         """
         Returns path for audio and video file, if filetype is marked as split.
 

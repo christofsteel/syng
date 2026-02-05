@@ -2,14 +2,12 @@
 
 import asyncio
 import os
-from typing import Any, Optional
-from typing import Tuple
+from typing import Any
 
-
-from ..entry import Entry
-from .source import available_sources
-from .filebased import FileBasedSource
-from ..config import FolderOption, ConfigOption
+from syng.config import ConfigOption, FolderOption
+from syng.entry import Entry
+from syng.sources.filebased import FileBasedSource
+from syng.sources.source import available_sources
 
 
 class FilesSource(FileBasedSource):
@@ -27,7 +25,7 @@ class FilesSource(FileBasedSource):
 
     def apply_config(self, config: dict[str, Any]) -> None:
         super().apply_config(config)
-        self.dir = config["dir"] if "dir" in config else "."
+        self.dir = config.get("dir", ".")
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension"""
@@ -57,7 +55,7 @@ class FilesSource(FileBasedSource):
 
         return {"duration": duration}
 
-    async def do_buffer(self, entry: Entry, pos: int) -> Tuple[str, Optional[str]]:
+    async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """
         No buffering needs to be done, since the files are already on disk.
 

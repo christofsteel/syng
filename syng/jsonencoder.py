@@ -5,9 +5,9 @@ from dataclasses import asdict
 from typing import Any
 from uuid import UUID
 
-from .entry import Entry
-from .queue import Queue
-from .result import Result
+from syng.entry import Entry
+from syng.queue import Queue
+from syng.result import Result
 
 
 class SyngEncoder(json.JSONEncoder):
