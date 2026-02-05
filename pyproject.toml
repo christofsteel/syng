@@ -100,5 +100,11 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 100
 
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "TID", "I"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
 [tool.black]
 line-length = 100
