@@ -9,6 +9,7 @@ Adds it to the ``available_sources`` with the name ``youtube``.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import shlex
 from functools import partial
 from typing import Any
@@ -18,7 +19,7 @@ from platformdirs import user_cache_dir
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
-from ..config import (
+from syng.config import (
     BoolOption,
     ChoiceOption,
     ConfigOption,
@@ -27,9 +28,9 @@ from ..config import (
     ListStrOption,
     StrOption,
 )
-from ..entry import Entry
-from ..result import Result
-from .source import MalformedSearchQueryException, Source, available_sources
+from syng.entry import Entry
+from syng.result import Result
+from syng.sources.source import MalformedSearchQueryException, Source, available_sources
 
 
 class YouTube:
@@ -157,10 +158,8 @@ class Search:
             filtered_entries = filter(lambda entry: "short" not in entry["url"], results["entries"])
 
             for r in filtered_entries:
-                try:
+                with contextlib.suppress(KeyError):
                     self.results.append(YouTube.from_result(r))
-                except KeyError:
-                    pass
 
 
 class YoutubeSource(Source):
@@ -216,14 +215,14 @@ class YoutubeSource(Source):
     }
 
     def apply_config(self, config: dict[str, Any]) -> None:
-        self.channels: list[str] = config["channels"] if "channels" in config else []
-        self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+        self.channels: list[str] = config.get("channels", [])
+        self.tmp_dir: str = config.get("tmp_dir", "/tmp/syng")
         try:
             self.max_res: int = int(config["max_res"])
         except (ValueError, KeyError):
             self.max_res = 720
         self.start_streaming: bool = (
-            config["start_streaming"] if "start_streaming" in config else False
+            config.get("start_streaming", False)
         )
         self.formatstring = (
             f"bestvideo[height<={self.max_res}]+bestaudio/best[height<={self.max_res}]"

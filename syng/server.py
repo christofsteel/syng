@@ -39,14 +39,13 @@ except ImportError:
         return [0]
 
 
+from syng import SYNG_PROTOCOL_VERSION, SYNG_VERSION, jsonencoder
+from syng.entry import Entry
+from syng.log import logger
+from syng.queue import Queue
+from syng.result import Result
+from syng.sources import Source, available_sources
 from syng.sources.source import EntryNotValid, MalformedSearchQueryException
-
-from . import SYNG_PROTOCOL_VERSION, SYNG_VERSION, jsonencoder
-from .entry import Entry
-from .log import logger
-from .queue import Queue
-from .result import Result
-from .sources import Source, available_sources
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -273,7 +272,7 @@ class Server:
         num = 0
         for namespace in self.sio.manager.get_namespaces():
             for room in self.sio.manager.rooms[namespace]:
-                for participant in self.sio.manager.get_participants(namespace, room):
+                for _participant in self.sio.manager.get_participants(namespace, room):
                     num += 1
         return num
 
@@ -303,7 +302,7 @@ class Server:
         :rtype: int
         """
         clients = []
-        for sid, client_id in self.sio.manager.get_participants("/", room):
+        for sid, _client_id in self.sio.manager.get_participants("/", room):
             client: dict[str, Any] = {}
             client["sid"] = sid
             if sid == self.clients[room].sid:
@@ -668,7 +667,7 @@ class Server:
             return None
 
         logger.debug(f"Appending {entry} to queue in room {state.sid}")
-        entry.uid = data["uid"] if "uid" in data else None
+        entry.uid = data.get("uid")
 
         await self.append_to_queue(state, entry, sid)
         return str(entry.uuid)
@@ -733,7 +732,7 @@ class Server:
             )
             return None
 
-        entry.uid = data["uid"] if "uid" in data else None
+        entry.uid = data.get("uid")
 
         await self.append_to_queue(state, entry, sid)
         return str(entry.uuid)
@@ -1513,7 +1512,7 @@ class Server:
         :rtype: None
         """
         web_sid = data["sid"]
-        search_id = data["search_id"] if "search_id" in data else None
+        search_id = data.get("search_id")
 
         results = [Result.from_dict(result) for result in data["results"]]
 

@@ -17,10 +17,10 @@ from itertools import zip_longest
 from traceback import print_exc
 from typing import Any
 
-from ..config import BoolOption, ConfigOption
-from ..entry import Entry
-from ..log import logger
-from ..result import Result
+from syng.config import BoolOption, ConfigOption
+from syng.entry import Entry
+from syng.log import logger
+from syng.result import Result
 
 
 class EntryNotValid(Exception):
@@ -124,7 +124,7 @@ class Source(ABC):
         self.config: dict[str, Any] = config
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
-        self._index: list[str] = config["index"] if "index" in config else []
+        self._index: list[str] = config.get("index", [])
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
         self.build_index = False
@@ -263,7 +263,7 @@ class Source(ABC):
             raise exc
         except Exception:  # pylint: disable=broad-except
             print_exc()
-            raise ValueError("Buffering failed for %s" % entry)
+            raise ValueError(f"Buffering failed for {entry}")
 
         self.downloaded_files[entry.ident].ready.set()
 
@@ -333,10 +333,7 @@ class Source(ABC):
         """
 
         def contains_all_words(words: list[str], element: str) -> bool:
-            for word in words:
-                if word.lower() not in os.path.basename(element).lower():
-                    return False
-            return True
+            return all(word.lower() in os.path.basename(element).lower() for word in words)
 
         try:
             splitquery = shlex.split(query)

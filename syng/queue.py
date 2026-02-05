@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 from uuid import UUID
 
-from .entry import Entry
+from syng.entry import Entry
 
 
 class Queue:

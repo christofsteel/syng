@@ -20,10 +20,17 @@ except ImportError:
         from minio import Minio
     MINIO_AVAILABE = False
 
-from ..config import BoolOption, ConfigOption, FileOption, FolderOption, PasswordOption, StrOption
-from ..entry import Entry
-from .filebased import FileBasedSource
-from .source import available_sources
+from syng.config import (
+    BoolOption,
+    ConfigOption,
+    FileOption,
+    FolderOption,
+    PasswordOption,
+    StrOption,
+)
+from syng.entry import Entry
+from syng.sources.filebased import FileBasedSource
+from syng.sources.source import available_sources
 
 
 class S3Source(FileBasedSource):
@@ -68,12 +75,12 @@ class S3Source(FileBasedSource):
                 config["endpoint"],
                 access_key=config["access_key"],
                 secret_key=config["secret_key"],
-                secure=(config["secure"] if "secure" in config else True),
+                secure=(config.get("secure", True)),
             )
             self.bucket: str = config["bucket"]
-            self.tmp_dir: str = config["tmp_dir"] if "tmp_dir" in config else "/tmp/syng"
+            self.tmp_dir: str = config.get("tmp_dir", "/tmp/syng")
 
-        self.index_file: str | None = config["index_file"] if "index_file" in config else None
+        self.index_file: str | None = config.get("index_file")
 
     def load_file_list_from_server(self) -> list[str]:
         """

@@ -7,11 +7,11 @@ Imports all sources, so that they add themselves to the
 
 from typing import Any
 
-from .files import FilesSource  # noqa: F401
-from .s3 import S3Source  # noqa: F401
-from .source import Source as Source
-from .source import available_sources as available_sources
-from .youtube import YoutubeSource  # noqa: F401
+from syng.sources.files import FilesSource  # noqa: F401
+from syng.sources.s3 import S3Source  # noqa: F401
+from syng.sources.source import Source as Source
+from syng.sources.source import available_sources as available_sources
+from syng.sources.youtube import YoutubeSource  # noqa: F401
 
 
 def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
@@ -26,7 +26,6 @@ def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
     """
     configured_sources = {}
     for source, config in configs.items():
-        if source in available_sources:
-            if "enabled" in config and config["enabled"]:
-                configured_sources[source] = available_sources[source](config)
+        if source in available_sources and "enabled" in config and config["enabled"]:
+            configured_sources[source] = available_sources[source](config)
     return configured_sources

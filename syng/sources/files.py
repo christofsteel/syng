@@ -4,10 +4,10 @@ import asyncio
 import os
 from typing import Any
 
-from ..config import ConfigOption, FolderOption
-from ..entry import Entry
-from .filebased import FileBasedSource
-from .source import available_sources
+from syng.config import ConfigOption, FolderOption
+from syng.entry import Entry
+from syng.sources.filebased import FileBasedSource
+from syng.sources.source import available_sources
 
 
 class FilesSource(FileBasedSource):
@@ -25,7 +25,7 @@ class FilesSource(FileBasedSource):
 
     def apply_config(self, config: dict[str, Any]) -> None:
         super().apply_config(config)
-        self.dir = config["dir"] if "dir" in config else "."
+        self.dir = config.get("dir", ".")
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension"""

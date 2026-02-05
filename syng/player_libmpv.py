@@ -9,7 +9,7 @@ from typing import Any, cast
 import mpv
 from qrcode.main import QRCode
 
-from .entry import Entry
+from syng.entry import Entry
 
 
 class QRPosition(Enum):

@@ -15,8 +15,8 @@ except ImportError:
         from pymediainfo import MediaInfo
     PYMEDIAINFO_AVAILABLE = False
 
-from ..config import ConfigOption, ListStrOption
-from .source import Source
+from syng.config import ConfigOption, ListStrOption
+from syng.sources.source import Source
 
 
 class FileBasedSource(Source):
@@ -37,7 +37,7 @@ class FileBasedSource(Source):
 
     def apply_config(self, config: dict[str, Any]) -> None:
         self.build_index = True
-        self.extensions: list[str] = config["extensions"] if "extensions" in config else ["mp3+cdg"]
+        self.extensions: list[str] = config.get("extensions", ["mp3+cdg"])
         self.extra_mpv_options = {"scale": "oversample"}
 
     def is_valid(self, entry: Entry) -> bool:

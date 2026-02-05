@@ -15,6 +15,7 @@ be one of:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import logging
 import os
@@ -38,13 +39,12 @@ from qrcode.main import QRCode
 from socketio.exceptions import BadNamespaceError, ConnectionError
 from yaml import Loader, load
 
+from syng import SYNG_VERSION, jsonencoder
+from syng.entry import Entry
+from syng.log import logger
 from syng.player_libmpv import Player
+from syng.sources import Source, configure_sources
 from syng.sources.source import MalformedSearchQueryException
-
-from . import SYNG_VERSION, jsonencoder
-from .entry import Entry
-from .log import logger
-from .sources import Source, configure_sources
 
 
 class ConnectionState:
@@ -258,9 +258,8 @@ class Client:
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()}")
         if self.connection_state.is_connected():
             await self.sio.disconnect()
-        if self.connection_state.is_mpv_running():
-            if self.player.mpv is not None:
-                self.player.mpv.terminate()
+        if self.connection_state.is_mpv_running() and self.player.mpv is not None:
+            self.player.mpv.terminate()
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
         """
@@ -507,10 +506,8 @@ class Client:
             self.skipped.remove(entry.uuid)
             await self.sio.emit("get-first")
         else:
-            try:
+            with contextlib.suppress(BadNamespaceError):
                 await self.sio.emit("pop-then-get-next")
-            except BadNamespaceError:
-                pass
 
     async def handle_search(self, data: dict[str, Any]) -> None:
         """

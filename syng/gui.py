@@ -27,6 +27,8 @@ except ImportError:
     pass
 
 os.environ["QT_API"] = "pyqt6"
+import contextlib
+
 import platformdirs
 from PyQt6.QtCore import (
     QAbstractListModel,
@@ -65,9 +67,8 @@ from qasync import QApplication, QEventLoop
 from qrcode.main import QRCode
 from yaml import Dumper, Loader, dump, load
 
-from . import __version__, resources  # noqa
-from .client import Client, default_config
-from .config import (
+from syng.client import Client, default_config
+from syng.config import (
     BoolOption,
     ChoiceOption,
     FileOption,
@@ -77,9 +78,11 @@ from .config import (
     PasswordOption,
     StrOption,
 )
-from .entry import Entry
-from .log import logger
-from .sources import available_sources
+from syng.entry import Entry
+from syng.log import logger
+from syng.sources import available_sources
+
+from . import __version__, resources  # noqa
 
 
 class QueueModel(QAbstractListModel):
@@ -441,7 +444,7 @@ class SourceTab(OptionFrame):
         source = available_sources[source_name]
         self.vars: dict[str, str | bool | list[str]] = {}
         for name, option in source.config_schema.items():
-            value = config[name] if name in config else option.default
+            value = config.get(name, option.default)
             match option.type:
                 case BoolOption():
                     self.add_bool_option(name, option.description, value=value)
@@ -906,10 +909,8 @@ class SyngGui(QMainWindow):
 
             output["sources"][source_name] = source_config
 
-            try:
+            with contextlib.suppress(KeyError, TypeError):
                 output["sources"][source_name] |= config["sources"][source_name]
-            except (KeyError, TypeError):
-                pass
 
         return output
 
