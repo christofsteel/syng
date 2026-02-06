@@ -31,8 +31,8 @@ from urllib.request import urlopen
 import platformdirs
 from PyQt6.QtCore import (
     QObject,
-    QThread,
     Qt,
+    QThread,
     pyqtSignal,
     pyqtSlot,
 )
@@ -64,6 +64,7 @@ from PyQt6.QtWidgets import (
 from qrcode.main import QRCode
 from yaml import Dumper, Loader, dump, load
 
+from syng import __version__, resources  # noqa
 from syng.client import Client, default_config
 from syng.config import (
     BoolOption,
@@ -77,8 +78,6 @@ from syng.config import (
 )
 from syng.log import logger
 from syng.sources import available_sources
-
-from syng import __version__, resources  # noqa
 
 
 class QueueView(QListView):
