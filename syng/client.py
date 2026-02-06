@@ -26,6 +26,7 @@ import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
 from functools import partial
 from logging import LogRecord
 from logging.handlers import QueueHandler
@@ -48,9 +49,17 @@ from syng.sources import Source, configure_sources
 from syng.sources.source import MalformedSearchQueryException
 
 
+class RunningState(Enum):
+    ENDED = 0
+    STARTING = 1
+    STARTED = 2
+    ENDING = 3
+
+
 class ConnectionState:
     __is_connected__ = False
     __mpv_running__ = False
+    running_state = RunningState.ENDED
 
     def is_connected(self) -> bool:
         return self.__is_connected__
@@ -271,13 +280,23 @@ class Client:
         Ensure that the client is disconnected from the server and the player is
         terminated.
         """
+        if (
+            self.connection_state.running_state == RunningState.ENDING
+            or self.connection_state.running_state == RunningState.ENDED
+        ):
+            return
+
+        self.connection_state.running_state = RunningState.ENDING
         logger.info("Disconnecting from server")
         logger.debug(f"Connection: {self.connection_state.is_connected()}")
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()}")
+        logger.debug(f"RunningState: {self.connection_state.running_state}")
         if self.connection_state.is_connected():
             await self.sio.disconnect()
         if self.connection_state.is_mpv_running() and self.player.mpv is not None:
+            self.connection_state.set_mpv_terminated()
             self.player.mpv.terminate()
+        self.connection_state.running_state = RunningState.ENDED
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
         """
@@ -441,6 +460,7 @@ class Client:
             await self.sio.emit("get-first")
         self.connection_event.set()
         self.connection_state.set_connected()
+        self.connection_state.running_state = RunningState.STARTED
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
         """
@@ -644,10 +664,8 @@ class Client:
 
         :rtype: None
         """
-        self.connection_state.set_mpv_terminated()
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.ensure_disconnect(), self.loop)
-            asyncio.run_coroutine_threadsafe(self.kill_mpv(), self.loop)
 
     async def kill_mpv(self) -> None:
         """
@@ -728,6 +746,8 @@ class Client:
         """
         if not self.configured:
             self.configure(config)
+
+        self.connection_state.running_state = RunningState.STARTING
 
         self.loop = asyncio.get_running_loop()
 
