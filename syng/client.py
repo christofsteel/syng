@@ -208,6 +208,7 @@ class Client:
             self.state.queue,
         )
         self.connection_state.set_mpv_running()
+        self.buffer_in_advance = config["config"]["buffer_in_advance"]
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()} ")
         self.configured = True
 
