@@ -22,9 +22,11 @@ import os
 import secrets
 import signal
 import string
+import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
 from functools import partial
 from logging import LogRecord
 from logging.handlers import QueueHandler
@@ -47,9 +49,17 @@ from syng.sources import Source, configure_sources
 from syng.sources.source import MalformedSearchQueryException
 
 
+class RunningState(Enum):
+    ENDED = 0
+    STARTING = 1
+    STARTED = 2
+    ENDING = 3
+
+
 class ConnectionState:
     __is_connected__ = False
     __mpv_running__ = False
+    running_state = RunningState.ENDED
 
     def is_connected(self) -> bool:
         return self.__is_connected__
@@ -161,19 +171,37 @@ class State:
 
 
 class Client:
-    def __init__(self, config: dict[str, Any]):
-        config["config"] = default_config() | config["config"]
-
+    def __init__(self, config: dict[str, Any] | None = None):
         self.connection_event = asyncio.Event()
         self.connection_state = ConnectionState()
-        self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
-        self.sources = configure_sources(config["sources"])
+        self.sources: dict[str, Source] = {}
         self.state = State()
-        self.currentLock = asyncio.Semaphore(0)
-        self.buffer_in_advance = config["config"]["buffer_in_advance"]
+        self.buffer_in_advance = 2
+        self.player: Player
+        self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
+        self.register_handlers()
+        self.configured = False
+
+        if config is not None:
+            self.configure(config)
+
+    def configure(self, config: dict[str, Any]) -> None:
+        """
+        Configure the client with a given configuration.
+
+        This can be used to update the configuration of the client after it has
+        been initialized.
+
+        :param config: A dictionary with the new configuration.
+        :type config: dict[str, Any]
+        :rtype: None
+        """
+        config["config"] = default_config() | config["config"]
+        self.set_log_level(config["config"]["log_level"])
+        self.sources = configure_sources(config["sources"])
         self.player = Player(
             config["config"],
             self.quit_callback,
@@ -181,8 +209,7 @@ class Client:
         )
         self.connection_state.set_mpv_running()
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()} ")
-        self.register_handlers()
-        self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
+        self.configured = True
 
     def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
         self.queue_callbacks.append(callback)
@@ -253,13 +280,23 @@ class Client:
         Ensure that the client is disconnected from the server and the player is
         terminated.
         """
+        if (
+            self.connection_state.running_state == RunningState.ENDING
+            or self.connection_state.running_state == RunningState.ENDED
+        ):
+            return
+
+        self.connection_state.running_state = RunningState.ENDING
         logger.info("Disconnecting from server")
         logger.debug(f"Connection: {self.connection_state.is_connected()}")
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()}")
+        logger.debug(f"RunningState: {self.connection_state.running_state}")
         if self.connection_state.is_connected():
             await self.sio.disconnect()
         if self.connection_state.is_mpv_running() and self.player.mpv is not None:
+            self.connection_state.set_mpv_terminated()
             self.player.mpv.terminate()
+        self.connection_state.running_state = RunningState.ENDED
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
         """
@@ -423,6 +460,7 @@ class Client:
             await self.sio.emit("get-first")
         self.connection_event.set()
         self.connection_state.set_connected()
+        self.connection_state.running_state = RunningState.STARTED
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
         """
@@ -616,6 +654,7 @@ class Client:
         :type loop: asyncio.AbstractEventLoop
         :rtype: None
         """
+        logger.debug("Received termination signal, shutting down...")
         engineio.async_client.async_signal_handler()
         asyncio.ensure_future(self.ensure_disconnect(), loop=loop)
 
@@ -625,10 +664,8 @@ class Client:
 
         :rtype: None
         """
-        self.connection_state.set_mpv_terminated()
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.ensure_disconnect(), self.loop)
-            asyncio.run_coroutine_threadsafe(self.kill_mpv(), self.loop)
 
     async def kill_mpv(self) -> None:
         """
@@ -707,6 +744,10 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
+        if not self.configured:
+            self.configure(config)
+
+        self.connection_state.running_state = RunningState.STARTING
 
         self.loop = asyncio.get_running_loop()
 
@@ -741,13 +782,11 @@ class Client:
             await self.sio.connect(self.state.config["server"], auth=data)
 
             # this is not supported under windows
-            if os.name != "nt":
+            if os.name != "nt" and threading.current_thread() == threading.main_thread():
                 loop = asyncio.get_event_loop()
                 loop.add_signal_handler(signal.SIGINT, partial(self.signal_handler, loop))
 
             await self.sio.wait()
-        except asyncio.CancelledError:
-            pass
         except ConnectionError as e:
             logger.warning("Could not connect to server: %s", e.args[0])
         finally:

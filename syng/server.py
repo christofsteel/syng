@@ -42,8 +42,8 @@ except ImportError:
 from syng import SYNG_PROTOCOL_VERSION, SYNG_VERSION, jsonencoder
 from syng.entry import Entry
 from syng.log import logger
-from syng.queue import Queue
 from syng.result import Result
+from syng.song_queue import Queue
 from syng.sources import Source, available_sources
 from syng.sources.source import EntryNotValid, MalformedSearchQueryException
 

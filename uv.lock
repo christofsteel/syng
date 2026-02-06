@@ -1219,15 +1219,6 @@ wheels = [
 ]
 
 [[package]]
-name = "qasync"
-version = "0.28.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ec/b2/5be08597dbbf331edb69478eae2f8dd511834cebf56a183b442e7437f8e0/qasync-0.28.0.tar.gz", hash = "sha256:6f7f1f18971f59cb259b107218269ba56e3ad475ec456e54714b426a6e30b71d", size = 14010, upload-time = "2025-08-28T01:31:36.785Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/84/0ce4cd946f6e958428c87d5accac35df70f81607e45ba4919947d0762d63/qasync-0.28.0-py3-none-any.whl", hash = "sha256:21faba8d047c717008378f5ac29ea58c32a8128528629e4afd57c59b768dba0f", size = 16188, upload-time = "2025-08-28T01:31:35.591Z" },
-]
-
-[[package]]
 name = "qrcode"
 version = "8.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1418,7 +1409,6 @@ dependencies = [
     { name = "packaging" },
     { name = "platformdirs" },
     { name = "python-socketio" },
-    { name = "qrcode" },
     { name = "yt-dlp", extra = ["default"] },
 ]
 
@@ -1430,7 +1420,6 @@ client = [
     { name = "pymediainfo" },
     { name = "pyqt6" },
     { name = "pyyaml" },
-    { name = "qasync" },
     { name = "qrcode" },
 ]
 profanity = [
@@ -1460,8 +1449,6 @@ requires-dist = [
     { name = "pyqt6", marker = "extra == 'client'", specifier = ">=6.7.1" },
     { name = "python-socketio", specifier = ">=5.14.3" },
     { name = "pyyaml", marker = "extra == 'client'", specifier = ">=6.0.1" },
-    { name = "qasync", marker = "extra == 'client'", specifier = ">=0.27.1" },
-    { name = "qrcode", specifier = ">=8.2" },
     { name = "qrcode", marker = "extra == 'client'", specifier = ">=8.2" },
     { name = "yt-dlp", extras = ["default"], specifier = ">=2026.1.31" },
 ]
