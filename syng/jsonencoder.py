@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from syng.entry import Entry
-from syng.queue import Queue
+from syng.song_queue import Queue
 from syng.result import Result
 
 

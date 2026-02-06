@@ -22,6 +22,7 @@ import os
 import secrets
 import signal
 import string
+import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -161,19 +162,37 @@ class State:
 
 
 class Client:
-    def __init__(self, config: dict[str, Any]):
-        config["config"] = default_config() | config["config"]
-
+    def __init__(self, config: dict[str, Any] | None = None):
         self.connection_event = asyncio.Event()
         self.connection_state = ConnectionState()
-        self.set_log_level(config["config"]["log_level"])
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
-        self.sources = configure_sources(config["sources"])
+        self.sources: dict[str, Source] = {}
         self.state = State()
-        self.currentLock = asyncio.Semaphore(0)
-        self.buffer_in_advance = config["config"]["buffer_in_advance"]
+        self.buffer_in_advance = 2
+        self.player: Player
+        self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
+        self.register_handlers()
+        self.configured = False
+
+        if config is not None:
+            self.configure(config)
+
+    def configure(self, config: dict[str, Any]) -> None:
+        """
+        Configure the client with a given configuration.
+
+        This can be used to update the configuration of the client after it has
+        been initialized.
+
+        :param config: A dictionary with the new configuration.
+        :type config: dict[str, Any]
+        :rtype: None
+        """
+        config["config"] = default_config() | config["config"]
+        self.set_log_level(config["config"]["log_level"])
+        self.sources = configure_sources(config["sources"])
         self.player = Player(
             config["config"],
             self.quit_callback,
@@ -181,8 +200,7 @@ class Client:
         )
         self.connection_state.set_mpv_running()
         logger.debug(f"MPV running: {self.connection_state.is_mpv_running()} ")
-        self.register_handlers()
-        self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
+        self.configured = True
 
     def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
         self.queue_callbacks.append(callback)
@@ -616,6 +634,7 @@ class Client:
         :type loop: asyncio.AbstractEventLoop
         :rtype: None
         """
+        logger.debug("Received termination signal, shutting down...")
         engineio.async_client.async_signal_handler()
         asyncio.ensure_future(self.ensure_disconnect(), loop=loop)
 
@@ -707,6 +726,8 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
+        if not self.configured:
+            self.configure(config)
 
         self.loop = asyncio.get_running_loop()
 
@@ -741,13 +762,11 @@ class Client:
             await self.sio.connect(self.state.config["server"], auth=data)
 
             # this is not supported under windows
-            if os.name != "nt":
+            if os.name != "nt" and threading.current_thread() == threading.main_thread():
                 loop = asyncio.get_event_loop()
                 loop.add_signal_handler(signal.SIGINT, partial(self.signal_handler, loop))
 
             await self.sio.wait()
-        except asyncio.CancelledError:
-            pass
         except ConnectionError as e:
             logger.warning("Could not connect to server: %s", e.args[0])
         finally:

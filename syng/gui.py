@@ -14,7 +14,6 @@ from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
 from typing import TYPE_CHECKING, Any
 
-import aiohttp
 import packaging.version
 
 try:
@@ -26,19 +25,20 @@ try:
 except ImportError:
     pass
 
-os.environ["QT_API"] = "pyqt6"
 import contextlib
+from urllib.request import urlopen
 
 import platformdirs
 from PyQt6.QtCore import (
     QObject,
+    QThread,
     Qt,
-    QTimer,
     pyqtSignal,
     pyqtSlot,
 )
 from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
@@ -61,7 +61,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qasync import QApplication, QEventLoop
 from qrcode.main import QRCode
 from yaml import Dumper, Loader, dump, load
 
@@ -79,11 +78,62 @@ from syng.config import (
 from syng.log import logger
 from syng.sources import available_sources
 
-from . import __version__, resources  # noqa
+from syng import __version__, resources  # noqa
 
 
 class QueueView(QListView):
     pass
+
+
+class VersionCheckerWorker(QObject):
+    data = pyqtSignal(packaging.version.Version)
+    finished = pyqtSignal()
+
+    def run(self) -> None:
+        with urlopen("https://pypi.org/pypi/syng/json") as response:
+            if response.status == 200:
+                data = load(response.read(), Loader=Loader)
+                versions = filter(
+                    lambda v: not v.is_prerelease,
+                    map(packaging.version.parse, data["releases"].keys()),
+                )
+                self.data.emit(max(versions))
+        self.finished.emit()
+
+
+class SyngClientWorker(QThread):
+    def __init__(self, client: Client):
+        super().__init__()
+        self.client = client
+        self.config: dict[str, Any] = {}
+        self.loop: asyncio.AbstractEventLoop | None = None
+
+    def cleanup(self):
+        logger.debug("Closing the client")
+        if self.loop is not None:
+            logger.debug("Closing the client: Found event loop")
+            future = asyncio.run_coroutine_threadsafe(self.client.ensure_disconnect(), self.loop)
+            future.result()
+            logger.debug("Client closed")
+
+    def export_queue(self, filename) -> None:
+        self.client.export_queue(filename)
+
+    def import_queue(self, filename) -> None:
+        if self.loop is not None:
+            asyncio.run_coroutine_threadsafe(self.client.import_queue(filename), self.loop)
+
+    def remove_room(self) -> None:
+        if self.loop is not None:
+            asyncio.run_coroutine_threadsafe(self.client.remove_room(), self.loop)
+
+    def set_config(self, config: dict[str, Any]) -> None:
+        self.config = config
+
+    def run(self) -> None:
+        logger.debug("Create new event loop for client")
+        self.loop = asyncio.new_event_loop()
+        self.loop.run_until_complete(self.client.start_client(self.config))
 
 
 class OptionFrame(QWidget):
@@ -525,10 +575,8 @@ class GeneralConfig(OptionFrame):
 
 class SyngGui(QMainWindow):
     def closeEvent(self, a0: QCloseEvent | None) -> None:
-        if self.client is not None:
-            if self.client.player is not None and self.client.player.mpv is not None:
-                self.client.player.mpv.terminate()
-            self.client.quit_callback()
+        if self.client_thread is not None and self.client_thread.isRunning():
+            self.client_thread.cleanup()
 
         self.log_label_handler.cleanup()
 
@@ -561,25 +609,19 @@ class SyngGui(QMainWindow):
         spacer_item = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttons_layout.addItem(spacer_item)
 
-        if os.getenv("SYNG_DEBUG", "0") == "1":
-            self.print_background_tasks_button = QPushButton("Print Background Tasks")
-            self.print_background_tasks_button.clicked.connect(
-                lambda: print(asyncio.all_tasks(self.loop))
-            )
-            self.buttons_layout.addWidget(self.print_background_tasks_button)
-
         self.startbutton = QPushButton("Connect")
 
         self.startbutton.clicked.connect(self.start_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
 
     def export_queue(self) -> None:
-        if self.client is not None:
+        if self.client_thread is not None and self.client_thread.isRunning():
             filename = QFileDialog.getSaveFileName(self, "Export Queue", "", "JSON Files (*.json)")[
                 0
             ]
             if filename:
-                self.client.export_queue(filename)
+                logger.debug("Exporting queue to %s", filename)
+                self.client_thread.export_queue(filename)
         else:
             QMessageBox.warning(
                 self,
@@ -588,12 +630,13 @@ class SyngGui(QMainWindow):
             )
 
     def import_queue(self) -> None:
-        if self.client is not None:
+        if self.client_thread is not None and self.client_thread.isRunning():
             filename = QFileDialog.getOpenFileName(self, "Import Queue", "", "JSON Files (*.json)")[
                 0
             ]
             if filename:
-                asyncio.create_task(self.client.import_queue(filename))
+                logger.debug("Importing queue from %s", filename)
+                self.client_thread.import_queue(filename)
         else:
             QMessageBox.warning(
                 self,
@@ -623,7 +666,7 @@ class SyngGui(QMainWindow):
                 QMessageBox.information(self, "Cache Cleared", "The cache has been cleared.")
 
     def remove_room(self) -> None:
-        if self.client is not None:
+        if self.client_thread is not None and self.client_thread.isRunning():
             answer = QMessageBox.question(
                 self,
                 "Remove Room",
@@ -632,7 +675,7 @@ class SyngGui(QMainWindow):
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if answer == QMessageBox.StandardButton.Yes:
-                asyncio.create_task(self.client.remove_room())
+                self.client_thread.remove_room()
         else:
             QMessageBox.warning(
                 self,
@@ -786,9 +829,9 @@ class SyngGui(QMainWindow):
 
     def update_version_label(
         self,
-        running_version: packaging.version.Version | None,
         current_version: packaging.version.Version | None,
     ) -> None:
+        running_version = packaging.version.parse(__version__)
         label_string = (
             f"<i>Running version: {running_version}</i><br />"
             f"Current version on pypi: {current_version}"
@@ -807,23 +850,6 @@ class SyngGui(QMainWindow):
                 )
         self.version_label.setText(label_string)
 
-    async def get_pypi_version(self) -> None:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.get("https://pypi.org/pypi/syng/json") as resp,
-        ):
-            if resp.status == 200:
-                data = await resp.json()
-                versions = filter(
-                    lambda v: not v.is_prerelease,
-                    map(packaging.version.parse, data["releases"].keys()),
-                )
-                self.update_version_label(
-                    running_version=packaging.version.parse(__version__),
-                    current_version=max(versions),
-                )
-        return None
-
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Syng.Rocks!")
@@ -831,12 +857,10 @@ class SyngGui(QMainWindow):
         if os.name != "nt":
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
-        self.loop = asyncio.get_event_loop()
+        # self.loop = asyncio.get_event_loop()
 
         self.pypi_version: str | None = None
-        asyncio.run_coroutine_threadsafe(self.get_pypi_version(), self.loop)
 
-        self.client: Client | None = None
         self.syng_client_logging_listener: QueueListener | None = None
 
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
@@ -873,8 +897,24 @@ class SyngGui(QMainWindow):
 
         self.setCentralWidget(self.central_widget)
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.check_if_client_is_running)
+        # run in background qthread
+        self.version_thread = QThread(self)
+        self.version_worker = VersionCheckerWorker()
+        self.version_worker.moveToThread(self.version_thread)
+        self.version_thread.started.connect(self.version_worker.run)
+        self.version_worker.data.connect(self.update_version_label)
+        self.version_worker.finished.connect(self.version_thread.quit)
+        self.version_thread.start()
+
+        self.client_thread : SyngClientWorker | None = None
+
+
+    def new_client_thread(self):
+        print("New client")
+        self.client_thread: SyngClientWorker = SyngClientWorker(Client())
+        self.client_thread.finished.connect(self.set_client_button_start)
+        self.client_thread.started.connect(self.set_client_button_stop)
+
 
     def complete_config(self, config: dict[str, Any]) -> dict[str, Any]:
         output: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
@@ -967,17 +1007,6 @@ class SyngGui(QMainWindow):
             with open(filename, "w", encoding="utf-8") as f:
                 dump(config, f, Dumper=Dumper)
 
-    def check_if_client_is_running(self) -> None:
-        if self.client is None:
-            self.timer.stop()
-            return
-
-        if not self.client.connection_state.is_connected():
-            self.client = None
-            self.set_client_button_start()
-        else:
-            self.set_client_button_stop()
-
     def set_client_button_stop(self) -> None:
         self.general_config.string_options["server"].setEnabled(False)
         self.general_config.string_options["room"].setEnabled(False)
@@ -999,18 +1028,19 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:
-        if self.client is None or not self.client.connection_state.is_connected():
+        if self.client_thread is not None and self.client_thread.isRunning():
+            logger.debug("Stopping client")
+            self.client_thread.cleanup()
+            self.set_client_button_start()
+        else:
             logger.debug("Starting client")
+            self.new_client_thread()
+
             self.save_config()
             config = self.gather_config()
-            self.client = Client(config)
-            asyncio.run_coroutine_threadsafe(self.client.start_client(config), self.loop)
-            self.timer.start(500)
+            self.client_thread.set_config(config)
+            self.client_thread.start()
             self.set_client_button_stop()
-        else:
-            logger.debug("Stopping client")
-            self.client.quit_callback()
-            self.set_client_button_start()
 
     @pyqtSlot(str, int)
     def print_log(self, log: str, level: int) -> None:
@@ -1076,8 +1106,6 @@ def run_gui() -> None:
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication([])
-    event_loop = QEventLoop(app)
-    asyncio.set_event_loop(event_loop)
 
     if os.name == "nt":
         app.setWindowIcon(QIcon(os.path.join(base_dir, "syng.ico")))
@@ -1087,8 +1115,7 @@ def run_gui() -> None:
     app.setDesktopFileName("rocks.syng.Syng")
     window = SyngGui()
     window.show()
-    with event_loop:
-        event_loop.run_forever()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
