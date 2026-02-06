@@ -1,10 +1,8 @@
-from typing import Any, Awaitable
-from typing import Callable
-from typing import Optional
-from typing import TypeVar, TypeAlias
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
-Handler: TypeAlias = Callable[[str], Awaitable[Any]]
-DictHandler: TypeAlias = Callable[[str, dict[str, Any]], Awaitable[Any]]
+type Handler = Callable[[str], Awaitable[Any]]
+type DictHandler = Callable[[str, dict[str, Any]], Awaitable[Any]]
 ClientHandler = TypeVar("ClientHandler", bound=Callable[[dict[str, Any]], Any] | Callable[[], Any])
 
 class _session_context_manager:
@@ -29,11 +27,11 @@ class AsyncServer:
         self,
         message: str,
         body: Any = None,
-        room: Optional[str] = None,
+        room: str | None = None,
     ) -> None: ...
     def session(self, sid: str) -> _session_context_manager: ...
     def on(
-        self, event: str, handler: Optional[Handler | DictHandler] = None
+        self, event: str, handler: Handler | DictHandler | None = None
     ) -> Callable[[Handler | DictHandler], Handler | DictHandler]: ...
     async def enter_room(self, sid: str, room: str) -> None: ...
     async def leave_room(self, sid: str, room: str) -> None: ...
@@ -44,7 +42,7 @@ class AsyncServer:
 class AsyncClient:
     def __init__(self, json: Any = None, reconnection_attempts: int = 0): ...
     def on(
-        self, event: str, handler: Optional[Callable[..., Any]] = None
+        self, event: str, handler: Callable[..., Any] | None = None
     ) -> Callable[[ClientHandler], ClientHandler]: ...
     async def wait(self) -> None: ...
     async def connect(self, server: str, auth: dict[str, Any]) -> None: ...
