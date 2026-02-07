@@ -10,6 +10,7 @@ import mpv
 from qrcode.main import QRCode
 
 from syng.entry import Entry
+from syng.runningstates import Lifecycle, RunningState
 
 
 class QRPosition(Enum):
@@ -38,16 +39,18 @@ class Player:
         self,
         config: dict[str, Any],
         quit_callback: Callable[[], None],
+        connection_state: RunningState,
         queue: list[Entry] | None = None,
     ) -> None:
         locale.setlocale(locale.LC_ALL, "C")
         qr_string = f"{config['server']}/{config['room']}"
+        self.connection_state = connection_state
+        self.connection_state.set_mpv_state_no_lock(Lifecycle.STARTING)
 
         self.queue = queue if queue is not None else []
         self.base_dir = f"{os.path.dirname(__file__)}/static"
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             self.base_dir = sys._MEIPASS
-        self.closing = False
         self.mpv: mpv.MPV | None = None
         self.qr_overlay: mpv.ImageOverlay | None = None
         self.qr_box_size = 1 if config["qr_box_size"] < 1 else config["qr_box_size"]
@@ -88,6 +91,7 @@ class Player:
         self.mpv.observe_property("osd-height", self.osd_size_handler)
         self.mpv.observe_property("playtime-remaining", self.playtime_remaining_handler)
         self.mpv.register_event_callback(self.event_callback)
+        self.connection_state.set_mpv_state_no_lock(Lifecycle.STARTED)
 
     def playtime_remaining_handler(self, attribute: str, value: float) -> None:
         if self.mpv is None:
@@ -118,9 +122,7 @@ class Player:
     def event_callback(self, event: mpv.MpvEvent) -> None:
         e = event.as_dict()
         if e["event"] == b"shutdown":
-            if not self.closing:
-                self.closing = True
-                self.quit_callback()
+            self.quit_callback()
         elif (
             e["event"] == b"file-loaded"
             and self.callback_audio_load is not None

@@ -26,7 +26,6 @@ import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
 from functools import partial
 from logging import LogRecord
 from logging.handlers import QueueHandler
@@ -45,39 +44,9 @@ from syng import SYNG_VERSION, jsonencoder
 from syng.entry import Entry
 from syng.log import logger
 from syng.player_libmpv import Player
+from syng.runningstates import Lifecycle, RunningState
 from syng.sources import Source, configure_sources
 from syng.sources.source import MalformedSearchQueryException
-
-
-class RunningState(Enum):
-    ENDED = 0
-    STARTING = 1
-    STARTED = 2
-    ENDING = 3
-
-
-class ConnectionState:
-    __is_connected__ = False
-    __mpv_running__ = False
-    running_state = RunningState.ENDED
-
-    def is_connected(self) -> bool:
-        return self.__is_connected__
-
-    def is_mpv_running(self) -> bool:
-        return self.__mpv_running__
-
-    def set_disconnected(self) -> None:
-        self.__is_connected__ = False
-
-    def set_connected(self) -> None:
-        self.__is_connected__ = True
-
-    def set_mpv_running(self) -> None:
-        self.__mpv_running__ = True
-
-    def set_mpv_terminated(self) -> None:
-        self.__mpv_running__ = False
 
 
 def default_config() -> dict[str, int | str | None]:
@@ -173,7 +142,7 @@ class State:
 class Client:
     def __init__(self, config: dict[str, Any] | None = None):
         self.connection_event = asyncio.Event()
-        self.connection_state = ConnectionState()
+        self.connection_state = RunningState()
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
@@ -205,11 +174,10 @@ class Client:
         self.player = Player(
             config["config"],
             self.quit_callback,
+            self.connection_state,
             self.state.queue,
         )
-        self.connection_state.set_mpv_running()
         self.buffer_in_advance = config["config"]["buffer_in_advance"]
-        logger.debug(f"MPV running: {self.connection_state.is_mpv_running()} ")
         self.configured = True
 
     def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
@@ -273,7 +241,7 @@ class Client:
         logger.warning(f"Unknown message: {event} with data: {data}")
 
     async def handle_disconnect(self) -> None:
-        self.connection_state.set_disconnected()
+        await self.connection_state.set_connection_state(Lifecycle.ENDED)
         await self.ensure_disconnect()
 
     async def ensure_disconnect(self) -> None:
@@ -281,23 +249,22 @@ class Client:
         Ensure that the client is disconnected from the server and the player is
         terminated.
         """
-        if (
-            self.connection_state.running_state == RunningState.ENDING
-            or self.connection_state.running_state == RunningState.ENDED
-        ):
+        if await self.connection_state.client_is([Lifecycle.ENDING, Lifecycle.ENDED]):
             return
 
-        self.connection_state.running_state = RunningState.ENDING
+        await self.connection_state.set_client_state(Lifecycle.ENDING)
         logger.info("Disconnecting from server")
-        logger.debug(f"Connection: {self.connection_state.is_connected()}")
-        logger.debug(f"MPV running: {self.connection_state.is_mpv_running()}")
-        logger.debug(f"RunningState: {self.connection_state.running_state}")
-        if self.connection_state.is_connected():
+        if await self.connection_state.connection_is([Lifecycle.STARTED]):
+            await self.connection_state.set_connection_state(Lifecycle.ENDING)
             await self.sio.disconnect()
-        if self.connection_state.is_mpv_running() and self.player.mpv is not None:
-            self.connection_state.set_mpv_terminated()
+        if (
+            not await self.connection_state.mpv_is([Lifecycle.ENDED, Lifecycle.ENDING])
+            and self.player.mpv is not None
+        ):
+            await self.connection_state.set_mpv_state(Lifecycle.ENDING)
             self.player.mpv.terminate()
-        self.connection_state.running_state = RunningState.ENDED
+            await self.connection_state.set_mpv_state(Lifecycle.ENDED)
+        await self.connection_state.set_client_state(Lifecycle.ENDED)
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
         """
@@ -460,8 +427,8 @@ class Client:
         if self.state.current_source is None:  # A possible race condition can occur here
             await self.sio.emit("get-first")
         self.connection_event.set()
-        self.connection_state.set_connected()
-        self.connection_state.running_state = RunningState.STARTED
+        await self.connection_state.set_connection_state(Lifecycle.STARTED)
+        await self.connection_state.set_client_state(Lifecycle.STARTED)
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
         """
@@ -668,16 +635,6 @@ class Client:
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.ensure_disconnect(), self.loop)
 
-    async def kill_mpv(self) -> None:
-        """
-        Kill the mpv process. Needs to be called in a seperate thread, because of mpv...
-        See https://github.com/jaseg/python-mpv/issues/114#issuecomment-1214305952
-
-        :rtype: None
-        """
-        if self.player.mpv is not None:
-            self.player.mpv.terminate()
-
     async def remove_room(self) -> None:
         """
         Remove the room from the server.
@@ -748,7 +705,7 @@ class Client:
         if not self.configured:
             self.configure(config)
 
-        self.connection_state.running_state = RunningState.STARTING
+        await self.connection_state.set_client_state(Lifecycle.STARTING)
 
         self.loop = asyncio.get_running_loop()
 
@@ -780,6 +737,7 @@ class Client:
                 "config": self.state.config,
                 "version": SYNG_VERSION,
             }
+            await self.connection_state.set_connection_state(Lifecycle.STARTING)
             await self.sio.connect(self.state.config["server"], auth=data)
 
             # this is not supported under windows
