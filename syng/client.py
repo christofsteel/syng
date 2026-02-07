@@ -140,7 +140,10 @@ class State:
 
 
 class Client:
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(self, config: dict[str, Any]):
+        config["config"] = default_config() | config["config"]
+        self._config = config
+
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
@@ -148,27 +151,7 @@ class Client:
         self.skipped: list[UUID] = []
         self.sources: dict[str, Source] = {}
         self.state = State()
-        self.buffer_in_advance = 2
-        self.player: Player
         self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
-        self.register_handlers()
-        self.configured = False
-
-        if config is not None:
-            self.configure(config)
-
-    def configure(self, config: dict[str, Any]) -> None:
-        """
-        Configure the client with a given configuration.
-
-        This can be used to update the configuration of the client after it has
-        been initialized.
-
-        :param config: A dictionary with the new configuration.
-        :type config: dict[str, Any]
-        :rtype: None
-        """
-        config["config"] = default_config() | config["config"]
         self.set_log_level(config["config"]["log_level"])
         self.sources = configure_sources(config["sources"])
         self.player = Player(
@@ -178,7 +161,7 @@ class Client:
             self.state.queue,
         )
         self.buffer_in_advance = config["config"]["buffer_in_advance"]
-        self.configured = True
+        self.register_handlers()
 
     def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
         self.queue_callbacks.append(callback)
@@ -211,7 +194,7 @@ class Client:
         self.sio.on("*", self.handle_unknown_message)
         self.sio.on("connect_error", self.handle_connect_error)
 
-    async def handle_connect_error(self, data: dict[str, Any]) -> None:
+    async def handle_connect_error(self, data: str | dict[str, Any]) -> None:
         """
         Handle the "connect_error" message.
 
@@ -222,7 +205,8 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
-        logger.critical("Connection error: %s", data["message"])
+        message = data.get("message", data) if isinstance(data, dict) else data
+        logger.critical("Connection error: %s", message)
         await self.ensure_disconnect()
 
     async def handle_unknown_message(self, event: str, data: dict[str, Any]) -> None:
@@ -258,7 +242,8 @@ class Client:
             await self.connection_state.set_connection_state(Lifecycle.ENDING)
             await self.sio.disconnect()
         if (
-            not await self.connection_state.mpv_is([Lifecycle.ENDED, Lifecycle.ENDING])
+            self.player is not None
+            and not await self.connection_state.mpv_is([Lifecycle.ENDED, Lifecycle.ENDING])
             and self.player.mpv is not None
         ):
             await self.connection_state.set_mpv_state(Lifecycle.ENDING)
@@ -333,14 +318,13 @@ class Client:
             queue.
         :rtype: None
         """
-        logger.info("Skipping current")
         self.skipped.append(data["uuid"])
 
         entry = Entry(**data)
-        logger.info("Skipping: %s", entry.title)
+        logger.info("Skipping: %s", entry.short_str())
         source = self.sources[entry.source]
 
-        await source.skip_current(Entry(**data))
+        await source.skip_current(entry)
         self.player.skip_current()
 
     async def handle_state(self, data: dict[str, Any]) -> None:
@@ -694,7 +678,7 @@ class Client:
         """
         logger.info("Room removed: %s", data["room"])
 
-    async def start_client(self, config: dict[str, Any]) -> None:
+    async def start_client(self) -> None:
         """
         Initialize the client and connect to the server.
 
@@ -702,22 +686,17 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
-        if not self.configured:
-            self.configure(config)
 
         await self.connection_state.set_client_state(Lifecycle.STARTING)
 
         self.loop = asyncio.get_running_loop()
 
-        self.sources.update(configure_sources(config["sources"]))
-
-        if "config" in config:
-            last_song = (
-                datetime.datetime.fromisoformat(config["config"]["last_song"]).timestamp()
-                if "last_song" in config["config"] and config["config"]["last_song"]
-                else None
-            )
-            self.state.config |= config["config"] | {"last_song": last_song}
+        last_song = (
+            datetime.datetime.fromisoformat(self._config["config"]["last_song"]).timestamp()
+            if "last_song" in self._config["config"] and self._config["config"]["last_song"]
+            else None
+        )
+        self.state.config |= self._config["config"] | {"last_song": last_song}
 
         if not ("secret" in self.state.config and self.state.config["secret"]):
             self.state.config["secret"] = "".join(
@@ -747,7 +726,7 @@ class Client:
 
             await self.sio.wait()
         except ConnectionError as e:
-            logger.warning("Could not connect to server: %s", e.args[0])
+            logger.critical("Could not connect to server: %s", e)
         finally:
             await self.ensure_disconnect()
 
@@ -775,7 +754,7 @@ def create_async_and_start_client(
     if client is None:
         client = Client(config)
 
-    asyncio.run(client.start_client(config))
+    asyncio.run(client.start_client())
 
 
 def run_client(args: Namespace) -> None:

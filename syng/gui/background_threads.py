@@ -52,10 +52,7 @@ class SyngClientWorker(QThread):
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.client.remove_room(), self.loop)
 
-    def set_config(self, config: dict[str, Any]) -> None:
-        self.config = config
-
     def run(self) -> None:
         logger.debug("Create new event loop for client")
         self.loop = asyncio.new_event_loop()
-        self.loop.run_until_complete(self.client.start_client(self.config))
+        self.loop.run_until_complete(self.client.start_client())

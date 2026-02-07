@@ -29,6 +29,7 @@ dependencies = [
   "platformdirs>=4.0.0",
   "yt-dlp[default]>=2026.1.31",
   "packaging>=25.0",
+  "pydantic>=2.12.5",
 ]
 
 [project.optional-dependencies]

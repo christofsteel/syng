@@ -123,7 +123,7 @@ class SyngGui(QMainWindow):
             )
 
     def import_queue(self) -> None:
-        if self.client_thread.isRunning():
+        if self.client_thread and self.client_thread.isRunning():
             filename = QFileDialog.getOpenFileName(self, "Import Queue", "", "JSON Files (*.json)")[
                 0
             ]
@@ -159,7 +159,7 @@ class SyngGui(QMainWindow):
                 QMessageBox.information(self, "Cache Cleared", "The cache has been cleared.")
 
     def remove_room(self) -> None:
-        if self.client_thread.isRunning():
+        if self.client_thread and self.client_thread.isRunning():
             answer = QMessageBox.question(
                 self,
                 "Remove Room",
@@ -395,9 +395,7 @@ class SyngGui(QMainWindow):
         self.version_worker.data.connect(self.update_version_label)
         self.version_worker.start()
 
-        self.client_thread = SyngClientWorker(Client())
-        self.client_thread.finished.connect(self.set_client_button_start)
-        self.client_thread.started.connect(self.set_client_button_stop)
+        self.client_thread: SyngClientWorker | None = None
 
     def complete_config(self, config: dict[str, Any]) -> dict[str, Any]:
         output: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
@@ -511,20 +509,19 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Connect")
 
     def start_syng_client(self) -> None:
-        if self.client_thread.isRunning():
+        if self.client_thread is not None and self.client_thread.isRunning():
             logger.debug("Stopping client")
             self.client_thread.cleanup()
             self.set_client_button_start()
         else:
             logger.debug("Starting client")
-            if self.client_thread.isFinished():
-                self.client_thread = SyngClientWorker(Client())
-                self.client_thread.finished.connect(self.set_client_button_start)
-                self.client_thread.started.connect(self.set_client_button_stop)
-
             self.save_config()
             config = self.gather_config()
-            self.client_thread.set_config(config)
+
+            self.client_thread = SyngClientWorker(Client(config))
+            self.client_thread.finished.connect(self.set_client_button_start)
+            self.client_thread.started.connect(self.set_client_button_stop)
+
             self.client_thread.start()
             self.set_client_button_stop()
 
