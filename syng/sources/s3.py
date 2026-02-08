@@ -6,6 +6,7 @@ Adds it to the ``available_sources`` with the name ``s3``
 
 import asyncio
 import os
+from dataclasses import dataclass, field
 from json import dump, load
 from typing import TYPE_CHECKING, Any, cast
 
@@ -20,17 +21,28 @@ except ImportError:
         from minio import Minio
     MINIO_AVAILABE = False
 
-from syng.config import (
-    BoolOption,
-    ConfigOption,
-    FileOption,
-    FolderOption,
-    PasswordOption,
-    StrOption,
-)
 from syng.entry import Entry
-from syng.sources.filebased import FileBasedSource
+from syng.sources.filebased import FileBasedConfig, FileBasedSource
 from syng.sources.source import available_sources
+
+
+@dataclass
+class S3Config(FileBasedConfig):
+    endpoint: str = field(default="", metadata={"desc": "Endpoint of the s3"})
+    access_key: str = field(default="", metadata={"desc": "Access key of the s3 (username)"})
+    secret_key: str = field(
+        default="", metadata={"desc": "Secret key of the s3 (password)", "semantic": "password"}
+    )
+    secure: bool = field(default=True, metadata={"desc": "Use SSL"})
+    bucket: str = field(default="", metadata={"desc": "Bucket of the s3"})
+    tmp_dir: str = field(
+        default=user_cache_dir("syng"),
+        metadata={"desc": "Folder for\ntemporary download", "semantic": "folder"},
+    )
+    index_file: str = field(
+        default=os.path.join(user_cache_dir("syng"), "s3-index"),
+        metadata={"desc": "Index file", "semantic": "file"},
+    )
 
 
 class S3Source(FileBasedSource):
@@ -46,22 +58,9 @@ class S3Source(FileBasedSource):
           the list of files from this file.
     """
 
+    config_object: S3Config
+
     source_name = "s3"
-    config_schema = FileBasedSource.config_schema | {
-        "endpoint": ConfigOption(StrOption(), "Endpoint of the s3", ""),
-        "access_key": ConfigOption(StrOption(), "Access Key of the s3 (username)", ""),
-        "secret_key": ConfigOption(PasswordOption(), "Secret Key of the s3 (password)", ""),
-        "secure": ConfigOption(BoolOption(), "Use SSL", True),
-        "bucket": ConfigOption(StrOption(), "Bucket of the s3", ""),
-        "tmp_dir": ConfigOption(
-            FolderOption(), "Folder for\ntemporary download", user_cache_dir("syng")
-        ),
-        "index_file": ConfigOption(
-            FileOption(),
-            "Index file",
-            os.path.join(user_cache_dir("syng"), "s3-index"),
-        ),
-    }
 
     def apply_config(self, config: dict[str, Any]) -> None:
         super().apply_config(config)

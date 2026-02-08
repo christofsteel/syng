@@ -13,6 +13,8 @@ from syng.sources.source import Source as Source
 from syng.sources.source import available_sources as available_sources
 from syng.sources.youtube import YoutubeSource  # noqa: F401
 
+__all__ = ["FilesSource", "S3Source", "YoutubeSource"]
+
 
 def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
     """

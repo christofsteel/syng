@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from syng.entry import Entry
@@ -15,8 +16,15 @@ except ImportError:
         from pymediainfo import MediaInfo
     PYMEDIAINFO_AVAILABLE = False
 
-from syng.config import ConfigOption, ListStrOption
-from syng.sources.source import Source
+from syng.sources.source import Source, SourceConfig
+
+
+@dataclass
+class FileBasedConfig(SourceConfig):
+    extensions: list[str] = field(
+        default_factory=lambda: ["mp3+cdg"],
+        metadata={"desc": "List of filename extensions\n(mp3+cdg, mp4, ...)"},
+    )
 
 
 class FileBasedSource(Source):
@@ -27,13 +35,7 @@ class FileBasedSource(Source):
         -``extensions``, list of filename extensions
     """
 
-    config_schema = Source.config_schema | {
-        "extensions": ConfigOption(
-            ListStrOption(),
-            "List of filename extensions\n(mp3+cdg, mp4, ...)",
-            ["mp3+cdg"],
-        ),
-    }
+    config_object: FileBasedConfig
 
     def apply_config(self, config: dict[str, Any]) -> None:
         self.build_index = True

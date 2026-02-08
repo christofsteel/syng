@@ -11,26 +11,23 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import shlex
+from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlencode
 
 from platformdirs import user_cache_dir
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
-from syng.config import (
-    BoolOption,
-    ChoiceOption,
-    ConfigOption,
-    FolderOption,
-    IntOption,
-    ListStrOption,
-    StrOption,
-)
 from syng.entry import Entry
 from syng.result import Result
-from syng.sources.source import MalformedSearchQueryException, Source, available_sources
+from syng.sources.source import (
+    MalformedSearchQueryException,
+    Source,
+    SourceConfig,
+    available_sources,
+)
 
 
 class YouTube:
@@ -38,7 +35,7 @@ class YouTube:
     A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
     """
 
-    def __init__(self, url: str | None = None, info: dict[str, Any] | None = None):
+    def __init__(self, url: str | None = None, info: dict[str, Any] | None = None) -> None:
         """
         Construct a YouTube object from a url.
 
@@ -118,7 +115,7 @@ class Search:
     """
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, query: str, channel: str | None = None):
+    def __init__(self, query: str, channel: str | None = None) -> None:
         """
         Construct a Search object from a query and an optional channel.
 
@@ -162,6 +159,39 @@ class Search:
                     self.results.append(YouTube.from_result(r))
 
 
+@dataclass
+class YouTubeConfig(SourceConfig):
+    channels: list[str] = field(
+        default_factory=list, metadata={"desc": "A list of channels\nto search in"}
+    )
+    tmp_dir: str = field(
+        default=user_cache_dir("syng"),
+        metadata={"desc": "Folder for\ntemporary download", "semantic": "folder"},
+    )
+    max_res: (
+        Literal["144"]
+        | Literal["240"]
+        | Literal["360"]
+        | Literal["720"]
+        | Literal["1080"]
+        | Literal["2160"]
+    ) = field(default="144", metadata={"desc": "Maximum resolution\nto download"})
+    start_streaming: bool = field(
+        default=False, metadata={"desc": "Start streaming if\ndownload is not complete"}
+    )
+    search_suffix: str = field(
+        default="karaoke",
+        metadata={"desc": "A string that is appended\nto each search query", "server": True},
+    )
+    max_duration: int = field(
+        default=1800,
+        metadata={
+            "desc": "The maximum duration\nof a video in seconds\nA value of 0 disables this",
+            "server": True,
+        },
+    )
+
+
 class YoutubeSource(Source):
     """A source for playing karaoke files from YouTube.
 
@@ -182,38 +212,9 @@ class YoutubeSource(Source):
                             Default is 1800.
     """
 
+    config_object: YouTubeConfig
+
     source_name = "youtube"
-    config_schema = Source.config_schema | {
-        "enabled": ConfigOption(BoolOption(), "Enable this source", True),
-        "channels": ConfigOption(
-            ListStrOption(), "A list channels\nto search in", [], send_to_server=True
-        ),
-        "tmp_dir": ConfigOption(
-            FolderOption(), "Folder for\ntemporary download", user_cache_dir("syng")
-        ),
-        "max_res": ConfigOption(
-            ChoiceOption(["144", "240", "360", "480", "720", "1080", "2160"]),
-            "Maximum resolution\nto download",
-            "720",
-        ),
-        "start_streaming": ConfigOption(
-            BoolOption(),
-            "Start streaming if\ndownload is not complete",
-            False,
-        ),
-        "search_suffix": ConfigOption(
-            StrOption(),
-            "A string that is appended\nto each search query",
-            "karaoke",
-            send_to_server=True,
-        ),
-        "max_duration": ConfigOption(
-            IntOption(),
-            "The maximum duration\nof a video in seconds\nA value of 0 disables this",
-            1800,
-            send_to_server=True,
-        ),
-    }
 
     def apply_config(self, config: dict[str, Any]) -> None:
         self.channels: list[str] = config.get("channels", [])

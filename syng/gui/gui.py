@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import packaging.version
 
+from syng.config import generate_for_class
 from syng.gui.background_threads import SyngClientWorker, VersionCheckerWorker
 from syng.gui.tabs import GeneralConfig, SourceTab, UIConfig
 
@@ -419,7 +420,7 @@ class SyngGui(QMainWindow):
 
         for source_name, source in available_sources.items():
             source_config = {}
-            for name, option in source.config_schema.items():
+            for name, option in generate_for_class(source).items():
                 source_config[name] = option.default
 
             output["sources"][source_name] = source_config
@@ -565,10 +566,10 @@ class LoggingLabelHandler(logging.Handler):
     class LogSignalEmiter(QObject):
         log_signal = pyqtSignal(str, int)
 
-        def __init__(self, parent: QObject | None = None):
+        def __init__(self, parent: QObject | None = None) -> None:
             super().__init__(parent)
 
-    def __init__(self, parent: QObject | None = None):
+    def __init__(self, parent: QObject | None = None) -> None:
         super().__init__()
         self.log_signal_emiter = self.LogSignalEmiter(parent)
         self._cleanup = False

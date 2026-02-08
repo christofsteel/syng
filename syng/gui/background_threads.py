@@ -27,7 +27,7 @@ class VersionCheckerWorker(QThread):
 
 
 class SyngClientWorker(QThread):
-    def __init__(self, client: Client):
+    def __init__(self, client: Client) -> None:
         super().__init__()
         self.client = client
         self.config: dict[str, Any] = {}

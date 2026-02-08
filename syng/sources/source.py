@@ -17,7 +17,9 @@ from itertools import zip_longest
 from traceback import print_exc
 from typing import Any
 
-from syng.config import BoolOption, ConfigOption
+from syng.config import (
+    generate_for_class,
+)
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -68,6 +70,11 @@ class DLFilesEntry:
     buffer_task: asyncio.Task[tuple[str, str | None]] | None = None
 
 
+@dataclass
+class SourceConfig:
+    enabled: bool = field(default=False, metadata={"desc": "Enable this source"})
+
+
 class Source(ABC):
     """Parentclass for all sources.
 
@@ -106,11 +113,9 @@ class Source(ABC):
     """
 
     source_name: str = ""
-    config_schema: dict[str, ConfigOption[Any]] = {
-        "enabled": ConfigOption(BoolOption(), "Enable this source", False)
-    }
+    config_object: SourceConfig
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         """
         Create and initialize a new source.
 
@@ -412,6 +417,8 @@ class Source(ABC):
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
         packages = []
+        config_schema = generate_for_class(self.__class__)
+
         if self.build_index:
             if not self._index:
                 self._index = []
@@ -421,9 +428,7 @@ class Source(ABC):
             chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
             packages = [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
         first_package = {
-            key: value
-            for key, value in self.config.items()
-            if self.config_schema[key].send_to_server
+            key: value for key, value in self.config.items() if config_schema[key].send_to_server
         }
         if not packages:
             packages = [first_package]

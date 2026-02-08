@@ -12,6 +12,7 @@ from syng.config import (
     ListStrOption,
     PasswordOption,
     StrOption,
+    generate_for_class,
 )
 from syng.gui.option_frame import OptionFrame
 from syng.sources import available_sources
@@ -22,7 +23,7 @@ class SourceTab(OptionFrame):
         super().__init__(parent)
         source = available_sources[source_name]
         self.vars: dict[str, str | bool | list[str]] = {}
-        for name, option in source.config_schema.items():
+        for name, option in generate_for_class(source).items():
             value = config.get(name, option.default)
             match option.type:
                 case BoolOption():
@@ -44,7 +45,7 @@ class SourceTab(OptionFrame):
 
 
 class UIConfig(OptionFrame):
-    def __init__(self, parent: QWidget, config: dict[str, Any]):
+    def __init__(self, parent: QWidget, config: dict[str, Any]) -> None:
         super().__init__(parent)
 
         self.add_int_option(

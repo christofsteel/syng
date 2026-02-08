@@ -18,7 +18,7 @@ class Queue:
     :type initial_entries: list[Entry]
     """
 
-    def __init__(self, initial_entries: list[Entry]):
+    def __init__(self, initial_entries: list[Entry]) -> None:
         """
         Construct the queue. And initialize the internal lock and semaphore.
 

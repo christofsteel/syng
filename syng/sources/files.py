@@ -2,12 +2,17 @@
 
 import asyncio
 import os
+from dataclasses import dataclass, field
 from typing import Any
 
-from syng.config import ConfigOption, FolderOption
 from syng.entry import Entry
-from syng.sources.filebased import FileBasedSource
+from syng.sources.filebased import FileBasedConfig, FileBasedSource
 from syng.sources.source import available_sources
+
+
+@dataclass
+class FileSourceConfig(FileBasedConfig):
+    dir: str = field(default=".", metadata={"desc": "Directory to index", "semantic": "folder"})
 
 
 class FilesSource(FileBasedSource):
@@ -17,11 +22,9 @@ class FilesSource(FileBasedSource):
         -``dir``, dirctory to index and serve from.
     """
 
+    config_object: FileSourceConfig
+
     source_name = "files"
-    config_schema = FileBasedSource.config_schema | {
-        "dir": ConfigOption(FolderOption(), "Directory to index", "."),
-        # "index_file": ("file", "Index file", os.path.join(user_cache_dir("syng"), "files-index")),
-    }
 
     def apply_config(self, config: dict[str, Any]) -> None:
         super().apply_config(config)

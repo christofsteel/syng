@@ -6,33 +6,33 @@ license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 authors = [
-  { name = "Christoph Stahl", email = "christoph.stahl@tu-dortmund.de" }
+    { name = "Christoph Stahl", email = "christoph.stahl@tu-dortmund.de" }
 ]
 keywords = ["karaoke", "youtube", "web", "audio", "video", "player", "qt"]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
-  "Environment :: Web Environment",
-  "Environment :: X11 Applications :: Qt",
-  "Framework :: AsyncIO",
-  "Intended Audience :: End Users/Desktop",
-  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
-  "Operating System :: POSIX :: Linux",
-  "Programming Language :: Python :: 3.12",
-  "Topic :: Multimedia :: Sound/Audio :: Players",
-  "Topic :: Multimedia :: Video :: Display",
-  "Typing :: Typed"
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Environment :: X11 Applications :: Qt",
+    "Framework :: AsyncIO",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Players",
+    "Topic :: Multimedia :: Video :: Display",
+    "Typing :: Typed"
 ]
 
 dependencies = [
-  "python-socketio>=5.14.3",
-  "aiohttp>=3.9.1",
-  "platformdirs>=4.0.0",
-  "yt-dlp[default]>=2026.02.04",
-  "packaging>=25.0",
+    "python-socketio>=5.14.3",
+    "aiohttp>=3.9.1",
+    "platformdirs>=4.0.0",
+    "yt-dlp[default]>=2026.02.04",
+    "packaging>=25.0",
 ]
 
 [project.optional-dependencies]
-  client = [
+client = [
     "minio>=7.2.0",
     "pillow>=11.0.0",
     "qrcode>=8.2",
@@ -40,10 +40,10 @@ dependencies = [
     "pyyaml>=6.0.1",
     "pyqt6>=6.7.1",
     "mpv>=1.0.7",
-  ]
-  profanity = [
+]
+profanity = [
     "alt-profanity-check>=1.4.1",
-  ]
+]
 
 [project.urls]
 homepage = "https://syng.rocks"
@@ -82,17 +82,17 @@ mypy_path = "typings"
 
 [[tool.mypy.overrides]]
 module = [
-  "yt_dlp",
-  "yt_dlp.utils",
-  "pymediainfo",
-  "minio",
-  "qrcode",
-  "engineio",
-  "tkcalendar",
-  "customtkinter",
-  "aiohttp",
-  "tktimepicker",
-  "platformdirs"
+    "yt_dlp",
+    "yt_dlp.utils",
+    "pymediainfo",
+    "minio",
+    "qrcode",
+    "engineio",
+    "tkcalendar",
+    "customtkinter",
+    "aiohttp",
+    "tktimepicker",
+    "platformdirs"
 ]
 ignore_missing_imports = true
 
@@ -100,7 +100,15 @@ ignore_missing_imports = true
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "UP", "B", "SIM", "TID", "I"]
+select = ["E",
+    "F",
+    "UP",
+    "B",
+    "SIM",
+    "TID",
+    "I",
+    "ANN"]
+ignore = ["ANN401"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

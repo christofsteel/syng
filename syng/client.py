@@ -140,7 +140,7 @@ class State:
 
 
 class Client:
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
