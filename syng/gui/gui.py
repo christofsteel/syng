@@ -81,7 +81,7 @@ class SyngGui(QMainWindow):
         self.buttons_layout = QHBoxLayout()
         self.central_layout.addLayout(self.buttons_layout)
 
-        self.resetbutton = QPushButton("Set Config to Default")
+        self.resetbutton = QPushButton("Reset all to Default")
         self.exportbutton = QPushButton("Export Config")
         self.importbutton = QPushButton("Import Config")
         self.buttons_layout.addWidget(self.resetbutton)
@@ -433,7 +433,7 @@ class SyngGui(QMainWindow):
     def clear_config(self) -> None:
         answer = QMessageBox.question(
             self,
-            "Set to Config to Default",
+            "Reset all to Default",
             "Are you sure you want to clear the config?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
