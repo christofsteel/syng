@@ -236,12 +236,12 @@ class OptionFrame(QWidget):
         container_layout.addWidget(plus_button)
 
     def add_choose_option(
-        self, name: str, description: str, values: list[str], value: str = ""
+        self, name: str, description: str, values: list[Any], value: str = ""
     ) -> None:
         label = QLabel(description, self)
 
         self.choose_options[name] = QComboBox(self)
-        self.choose_options[name].addItems(values)
+        self.choose_options[name].addItems([str(v) for v in values])
         self.choose_options[name].setCurrentText(str(value))
         self.form_layout.addRow(label, self.choose_options[name])
         self.rows[name] = (label, self.choose_options[name])

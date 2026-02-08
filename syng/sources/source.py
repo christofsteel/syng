@@ -15,7 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field, fields
 from itertools import zip_longest
 from traceback import print_exc
-from typing import Any, get_type_hints
+from typing import Any
 
 from syng.entry import Entry
 from syng.log import logger
@@ -448,11 +448,6 @@ class Source(ABC):
         if running_number == 0:
             self._index = []
         self._index += config["index"]
-
-    @classmethod
-    def generate_config_from_dict(cls, config: dict[str, Any]) -> SourceConfig:
-        config_class: type[SourceConfig] = get_type_hints(cls)["config"]
-        return config_class(**config)
 
 
 available_sources: dict[str, type[Source]] = {}

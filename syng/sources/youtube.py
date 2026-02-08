@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import enum
 import shlex
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Literal
+from typing import Any
 from urllib.parse import urlencode
 
 from platformdirs import user_cache_dir
@@ -159,6 +160,14 @@ class Search:
                     self.results.append(YouTube.from_result(r))
 
 
+class Resolution(enum.Enum):
+    RES144 = 144
+    RES360 = 360
+    RES720 = 720
+    RES1080 = 1080
+    RES2160 = 2160
+
+
 @dataclass
 class YouTubeConfig(SourceConfig):
     channels: list[str] = field(
@@ -168,14 +177,9 @@ class YouTubeConfig(SourceConfig):
         default=user_cache_dir("syng"),
         metadata={"desc": "Folder for\ntemporary download", "semantic": "folder"},
     )
-    max_res: (
-        Literal["144"]
-        | Literal["240"]
-        | Literal["360"]
-        | Literal["720"]
-        | Literal["1080"]
-        | Literal["2160"]
-    ) = field(default="144", metadata={"desc": "Maximum resolution\nto download"})
+    max_res: Resolution = field(
+        default=Resolution.RES720, metadata={"desc": "Maximum resolution\nto download"}
+    )
     start_streaming: bool = field(
         default=False, metadata={"desc": "Start streaming if\ndownload is not complete"}
     )
@@ -221,8 +225,8 @@ class YoutubeSource(Source):
         super().__post_init__()
 
         self.formatstring = (
-            f"bestvideo[height<={self.config.max_res}]+"
-            f"bestaudio/best[height<={self.config.max_res}]"
+            f"bestvideo[height<={self.config.max_res.value}]+"
+            f"bestaudio/best[height<={self.config.max_res.value}]"
         )
         self.extra_mpv_options = {"ytdl-format": self.formatstring}
         self._yt_dlp = YoutubeDL(
