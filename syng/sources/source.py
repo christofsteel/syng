@@ -451,7 +451,7 @@ class Source(ABC):
 
     @classmethod
     def generate_config_from_dict(cls, config: dict[str, Any]) -> SourceConfig:
-        config_class = get_type_hints(cls)["config"]
+        config_class: type[SourceConfig] = get_type_hints(cls)["config"]
         return config_class(**config)
 
 
