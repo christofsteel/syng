@@ -15,6 +15,7 @@ class FileSourceConfig(FileBasedConfig):
     dir: str = field(default=".", metadata={"desc": "Directory to index", "semantic": "folder"})
 
 
+@dataclass
 class FilesSource(FileBasedSource):
     """A source for indexing and playing songs from a local folder.
 
@@ -22,23 +23,18 @@ class FilesSource(FileBasedSource):
         -``dir``, dirctory to index and serve from.
     """
 
-    config_object: FileSourceConfig
-
+    config: FileSourceConfig
     source_name = "files"
-
-    def apply_config(self, config: dict[str, Any]) -> None:
-        super().apply_config(config)
-        self.dir = config.get("dir", ".")
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension"""
 
         def _get_file_list() -> list[str]:
             file_list = []
-            for path, _, files in os.walk(self.dir):
+            for path, _, files in os.walk(self.config.dir):
                 for file in files:
                     if self.has_correct_extension(file):
-                        file_list.append(os.path.join(path, file)[len(self.dir) :])
+                        file_list.append(os.path.join(path, file)[len(self.config.dir) :])
             return file_list
 
         return await asyncio.to_thread(_get_file_list)
@@ -54,7 +50,7 @@ class FilesSource(FileBasedSource):
         :rtype: dict[str, Any]
         """
 
-        duration = await self.get_duration(os.path.join(self.dir, entry.ident))
+        duration = await self.get_duration(os.path.join(self.config.dir, entry.ident))
 
         return {"duration": duration}
 
@@ -65,7 +61,7 @@ class FilesSource(FileBasedSource):
         We just return the file names.
         """
 
-        return self.get_video_audio_split(os.path.join(self.dir, entry.ident))
+        return self.get_video_audio_split(os.path.join(self.config.dir, entry.ident))
 
 
 available_sources["files"] = FilesSource

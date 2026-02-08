@@ -28,6 +28,10 @@ def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
     """
     configured_sources = {}
     for source, config in configs.items():
-        if source in available_sources and "enabled" in config and config["enabled"]:
-            configured_sources[source] = available_sources[source](config)
+        source_class = available_sources.get(source, None)
+        if source_class is None:
+            raise RuntimeError(f"Could not find source '{source}'")
+        config_object = source_class.generate_config_from_dict(config)
+        if config_object.enabled:
+            configured_sources[source] = source_class(config_object)
     return configured_sources

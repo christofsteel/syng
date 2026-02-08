@@ -45,6 +45,7 @@ class S3Config(FileBasedConfig):
     )
 
 
+@dataclass
 class S3Source(FileBasedSource):
     """A source for playing songs from a s3 compatible storage.
 
@@ -58,28 +59,18 @@ class S3Source(FileBasedSource):
           the list of files from this file.
     """
 
-    config_object: S3Config
-
+    config: S3Config
     source_name = "s3"
 
-    def apply_config(self, config: dict[str, Any]) -> None:
-        super().apply_config(config)
-        if (
-            MINIO_AVAILABE
-            and "endpoint" in config
-            and "access_key" in config
-            and "secret_key" in config
-        ):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if MINIO_AVAILABE:
             self.minio: Minio = Minio(
-                config["endpoint"],
-                access_key=config["access_key"],
-                secret_key=config["secret_key"],
-                secure=(config.get("secure", True)),
+                self.config.endpoint,
+                access_key=self.config.access_key,
+                secret_key=self.config.secret_key,
+                secure=self.config.secure,
             )
-            self.bucket: str = config["bucket"]
-            self.tmp_dir: str = config.get("tmp_dir", "/tmp/syng")
-
-        self.index_file: str | None = config.get("index_file")
 
     def load_file_list_from_server(self) -> list[str]:
         """
@@ -91,20 +82,17 @@ class S3Source(FileBasedSource):
 
         file_list = [
             obj.object_name
-            for obj in self.minio.list_objects(self.bucket, recursive=True)
+            for obj in self.minio.list_objects(self.config.bucket, recursive=True)
             if obj.object_name is not None and self.has_correct_extension(obj.object_name)
         ]
         return file_list
 
     def write_index(self, file_list: list[str]) -> None:
-        if self.index_file is None:
-            return
-
-        index_dir = os.path.dirname(self.index_file)
+        index_dir = os.path.dirname(self.config.index_file)
         if index_dir:
-            os.makedirs(os.path.dirname(self.index_file), exist_ok=True)
+            os.makedirs(os.path.dirname(self.config.index_file), exist_ok=True)
 
-        with open(self.index_file, "w", encoding="utf8") as index_file_handle:
+        with open(self.config.index_file, "w", encoding="utf8") as index_file_handle:
             dump(file_list, index_file_handle)
 
     async def get_file_list(self) -> list[str]:
@@ -120,12 +108,12 @@ class S3Source(FileBasedSource):
         """
 
         def _get_file_list() -> list[str]:
-            if self.index_file is not None and os.path.isfile(self.index_file):
-                with open(self.index_file, encoding="utf8") as index_file_handle:
+            if os.path.isfile(self.config.index_file):
+                with open(self.config.index_file, encoding="utf8") as index_file_handle:
                     return cast(list[str], load(index_file_handle))
 
             file_list = self.load_file_list_from_server()
-            if self.index_file is not None and not os.path.isfile(self.index_file):
+            if not os.path.isfile(self.config.index_file):
                 self.write_index(file_list)
 
             return file_list
@@ -181,18 +169,22 @@ class S3Source(FileBasedSource):
         """
 
         video_path, audio_path = self.get_video_audio_split(entry.ident)
-        video_dl_path: str = os.path.join(self.tmp_dir, video_path)
+        video_dl_path: str = os.path.join(self.config.tmp_dir, video_path)
         os.makedirs(os.path.dirname(video_dl_path), exist_ok=True)
         video_dl_task: asyncio.Task[Any] = asyncio.create_task(
-            asyncio.to_thread(self.minio.fget_object, self.bucket, entry.ident, video_dl_path)
+            asyncio.to_thread(
+                self.minio.fget_object, self.config.bucket, entry.ident, video_dl_path
+            )
         )
 
         audio_dl_path: str | None
         if audio_path is not None:
-            audio_dl_path = os.path.join(self.tmp_dir, audio_path)
+            audio_dl_path = os.path.join(self.config.tmp_dir, audio_path)
 
             audio_dl_task: asyncio.Task[Any] = asyncio.create_task(
-                asyncio.to_thread(self.minio.fget_object, self.bucket, audio_path, audio_dl_path)
+                asyncio.to_thread(
+                    self.minio.fget_object, self.config.bucket, audio_path, audio_dl_path
+                )
             )
         else:
             audio_dl_path = None

@@ -2,8 +2,9 @@
 
 import asyncio
 import os
+from abc import ABC
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from syng.entry import Entry
 
@@ -27,7 +28,8 @@ class FileBasedConfig(SourceConfig):
     )
 
 
-class FileBasedSource(Source):
+@dataclass
+class FileBasedSource(Source, ABC):
     """
     A abstract source for indexing and playing songs based on files.
 
@@ -35,11 +37,11 @@ class FileBasedSource(Source):
         -``extensions``, list of filename extensions
     """
 
-    config_object: FileBasedConfig
+    config: FileBasedConfig
 
-    def apply_config(self, config: dict[str, Any]) -> None:
+    def __post_init__(self) -> None:
+        super().__post_init__()
         self.build_index = True
-        self.extensions: list[str] = config.get("extensions", ["mp3+cdg"])
         self.extra_mpv_options = {"scale": "oversample"}
 
     def is_valid(self, entry: Entry) -> bool:
@@ -49,7 +51,7 @@ class FileBasedSource(Source):
         """
         Check if a `path` has a correct extension.
 
-        For A+B type extensions (like mp3+cdg) only the latter halve is checked
+        For A+B type extensions (like mp3+cdg) only the latter half is checked
 
         :param path: The path to check.
         :type path: Optional[str]
@@ -57,7 +59,7 @@ class FileBasedSource(Source):
         :rtype: bool
         """
         return path is not None and os.path.splitext(path)[1][1:] in [
-            ext.rsplit("+", maxsplit=1)[-1] for ext in self.extensions
+            ext.rsplit("+", maxsplit=1)[-1] for ext in self.config.extensions
         ]
 
     def get_video_audio_split(self, path: str) -> tuple[str, str | None]:
@@ -72,7 +74,7 @@ class FileBasedSource(Source):
         :rtype: tuple[str, Optional[str]]
         """
         extension_of_path = os.path.splitext(path)[1][1:]
-        splitted_extensions = [ext.split("+") for ext in self.extensions if "+" in ext]
+        splitted_extensions = [ext.split("+") for ext in self.config.extensions if "+" in ext]
         splitted_extensions_dict = {video: audio for [audio, video] in splitted_extensions}
 
         if extension_of_path in splitted_extensions_dict:

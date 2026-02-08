@@ -50,7 +50,7 @@ class ChoiceOption(Option[str]):
 
 
 def generate_for_class(clas: type) -> dict[str, ConfigOption[Any]]:
-    config_class = get_type_hints(clas)["config_object"]
+    config_class = get_type_hints(clas)["config"]
     config_options = {}
 
     for field in fields(config_class):

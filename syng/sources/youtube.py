@@ -192,6 +192,7 @@ class YouTubeConfig(SourceConfig):
     )
 
 
+@dataclass
 class YoutubeSource(Source):
     """A source for playing karaoke files from YouTube.
 
@@ -212,31 +213,25 @@ class YoutubeSource(Source):
                             Default is 1800.
     """
 
-    config_object: YouTubeConfig
+    config: YouTubeConfig
 
     source_name = "youtube"
 
-    def apply_config(self, config: dict[str, Any]) -> None:
-        self.channels: list[str] = config.get("channels", [])
-        self.tmp_dir: str = config.get("tmp_dir", "/tmp/syng")
-        try:
-            self.max_res: int = int(config["max_res"])
-        except (ValueError, KeyError):
-            self.max_res = 720
-        self.start_streaming: bool = config.get("start_streaming", False)
+    def __post_init__(self) -> None:
+        super().__post_init__()
+
         self.formatstring = (
-            f"bestvideo[height<={self.max_res}]+bestaudio/best[height<={self.max_res}]"
+            f"bestvideo[height<={self.config.max_res}]+"
+            f"bestaudio/best[height<={self.config.max_res}]"
         )
-        self.search_suffix = config.get("search_suffix", "karaoke")
         self.extra_mpv_options = {"ytdl-format": self.formatstring}
         self._yt_dlp = YoutubeDL(
             params={
-                "paths": {"home": self.tmp_dir},
+                "paths": {"home": self.config.tmp_dir},
                 "format": self.formatstring,
                 "quiet": True,
             }
         )
-        self.max_duration: int = config.get("max_duration", 1800)
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
         """
@@ -254,11 +249,11 @@ class YoutubeSource(Source):
             meta_info = await self.get_missing_metadata(entry)
             entry.update(**meta_info)
 
-        if self.max_duration > 0 and entry.duration > self.max_duration:
+        if 0 < self.config.max_duration < entry.duration:
             raise ValueError(f"Video {entry.ident} too long.")
 
-        if self.start_streaming and not self.downloaded_files[entry.ident].complete:
-            return (entry.ident, None)
+        if self.config.start_streaming and not self.downloaded_files[entry.ident].complete:
+            return entry.ident, None
 
         return await super().ensure_playable(entry)
 
@@ -281,6 +276,8 @@ class YoutubeSource(Source):
         :type performer: str
         :param ident: A url to a YouTube video.
         :type ident: str
+        :param collab_mode: The collaboration mode
+        :type collab_mode: str | None
         :return: An entry with the data.
         :rtype: Optional[Entry]
         """
@@ -342,9 +339,11 @@ class YoutubeSource(Source):
         except ValueError as err:
             raise MalformedSearchQueryException from err
 
-        results: list[YouTube] = []
         results_lists: list[list[YouTube]] = await asyncio.gather(
-            *[asyncio.to_thread(self._channel_search, query, channel) for channel in self.channels],
+            *[
+                asyncio.to_thread(self._channel_search, query, channel)
+                for channel in self.config.channels
+            ],
             asyncio.to_thread(self._yt_search, query),
         )
         results = [search_result for yt_result in results_lists for search_result in yt_result]
@@ -361,7 +360,7 @@ class YoutubeSource(Source):
                 duration=str(result.length),
             )
             for result in results
-            if self.max_duration == 0 or result.length <= self.max_duration
+            if self.config.max_duration == 0 or result.length <= self.config.max_duration
         ]
 
     def is_valid(self, entry: Entry) -> bool:
@@ -375,14 +374,14 @@ class YoutubeSource(Source):
         :return: True if the entry is valid, False otherwise.
         :rtype: bool
         """
-        return self.max_duration == 0 or entry.duration <= self.max_duration
+        return self.config.max_duration == 0 or entry.duration <= self.config.max_duration
 
     def _yt_search(self, query: str) -> list[YouTube]:
         """Search youtube as a whole.
 
         Adds a configurable suffix to the query. Default is "karaoke".
         """
-        suffix = f" {self.search_suffix}" if self.search_suffix else ""
+        suffix = f" {self.config.search_suffix}" if self.config.search_suffix else ""
         return Search(f"{query}{suffix}").results
 
     def _channel_search(self, query: str, channel: str) -> list[YouTube]:
@@ -429,12 +428,12 @@ class YoutubeSource(Source):
         :rtype: Tuple[str, Optional[str]]
         """
 
-        if self.max_duration > 0 and entry.duration > self.max_duration:
+        if 0 < self.config.max_duration < entry.duration:
             raise ValueError(
-                f"Video {entry.ident} too long: {entry.duration} > {self.max_duration}"
+                f"Video {entry.ident} too long: {entry.duration} > {self.config.max_duration}"
             )
 
-        if pos == 0 and self.start_streaming:
+        if pos == 0 and self.config.start_streaming:
             return entry.ident, None
 
         info: Any = await asyncio.to_thread(self._yt_dlp.extract_info, entry.ident)

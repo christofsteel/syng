@@ -12,14 +12,11 @@ import os.path
 import shlex
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from itertools import zip_longest
 from traceback import print_exc
-from typing import Any
+from typing import Any, get_type_hints
 
-from syng.config import (
-    generate_for_class,
-)
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -75,6 +72,7 @@ class SourceConfig:
     enabled: bool = field(default=False, metadata={"desc": "Enable this source"})
 
 
+@dataclass
 class Source(ABC):
     """Parentclass for all sources.
 
@@ -112,28 +110,17 @@ class Source(ABC):
                  - ``source_name``, the string used to identify the source
     """
 
+    config: SourceConfig
     source_name: str = ""
-    config_object: SourceConfig
 
-    def __init__(self, config: dict[str, Any]) -> None:
-        """
-        Create and initialize a new source.
-
-        You should never try to instantiate the Source class directly, rather
-        you should instantiate a subclass.
-
-        :param config: Specific configuration for a source. See the respective
-          source for documentation.
-        :type config: dict[str, Any]
-        """
-        self.config: dict[str, Any] = config
+    def __post_init__(self) -> None:
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
-        self._index: list[str] = config.get("index", [])
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
+
         self.build_index = False
-        self.apply_config(config)
+        self._index: list[str] = []
 
     def is_valid(self, entry: Entry) -> bool:
         """
@@ -400,24 +387,23 @@ class Source(ABC):
 
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """
-        Return the part of the config, that should be send to the server.
+        Return the part of the config, that should be sent to the server.
 
         Can be either a dictionary or a list of dictionaries. If it is a
-        dictionary, a single message will be send. If it is a list, one message
-        will be send for each entry in the list.
+        dictionary, a single message will be sent. If it is a list, one message
+        will be sent for each entry in the list.
 
-        By default this is the list of files handled by the source, split into
+        By default, this is the list of files handled by the source, split into
         chunks of 1000 filenames. This list is cached internally, so it does
-        not need to be rebuild, when the client reconnects.
+        not need to be rebuilt, when the client reconnects.
 
         But this can be any other values, as long as the respective source can
         handle that data.
 
-        :return: The part of the config, that should be sended to the server.
+        :return: The part of the config, that should be sent to the server.
         :rtype: dict[str, Any] | list[dict[str, Any]]
         """
         packages = []
-        config_schema = generate_for_class(self.__class__)
 
         if self.build_index:
             if not self._index:
@@ -427,8 +413,11 @@ class Source(ABC):
                 logger.warning(f"{self.source_name}: done")
             chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
             packages = [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
+
         first_package = {
-            key: value for key, value in self.config.items() if config_schema[key].send_to_server
+            field.name: getattr(self.config, field.name)
+            for field in fields(self.config)
+            if field.metadata.get("server", False)
         }
         if not packages:
             packages = [first_package]
@@ -460,18 +449,10 @@ class Source(ABC):
             self._index = []
         self._index += config["index"]
 
-    @abstractmethod
-    def apply_config(self, config: dict[str, Any]) -> None:
-        """
-        Apply the a config to the source.
-
-        This should be implemented by each source individually.
-
-        :param config: The part of the config to apply.
-        :type config: dict[str, Any]
-        :rtype: None
-        """
-        pass
+    @classmethod
+    def generate_config_from_dict(cls, config: dict[str, Any]) -> SourceConfig:
+        config_class = get_type_hints(cls)["config"]
+        return config_class(**config)
 
 
 available_sources: dict[str, type[Source]] = {}
