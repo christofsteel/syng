@@ -60,7 +60,7 @@ jobs:
           rm wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/ffmpeg-x86_64-git-${{ env.FFMPEG_HASH }}.7z -O ffmpeg.7z
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/mpv-dev-x86_64-${{ env.MPV_NIGHTLY }}-git-${{ env.MPV_HASH }}.7z -O mpv.7z
-          7zz x ffmpeg.7z
+          7z x ffmpeg.7z
           7zz x mpv.7z
           rm ffmpeg.7z mpv.7z
           wget https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-amd64.exe -O python-installer.exe
