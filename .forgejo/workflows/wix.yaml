@@ -125,7 +125,7 @@ jobs:
       - name: install syng
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: Test Qt installation
-        run: ${{ env.wine }} ${{ python }} -c "from PyQt6 import QtCore"
+        run: ${{ env.wine }} ${{ env.python }} -c "from PyQt6 import QtCore"
       - name: run PyInstaller (folder)
         run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
