@@ -39,7 +39,7 @@ dependencies = [
     "qrcode>=8.2",
     "pymediainfo>=6.1.0",
     "pyyaml>=6.0.1",
-    "pyqt6>=6.7.1",
+    "pyqt6>=6.7.1,<6.10",
     "mpv>=1.0.7",
     "qasync>=0.27.1"
   ]
