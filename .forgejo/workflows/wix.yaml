@@ -83,7 +83,6 @@ jobs:
           echo "msiexec=$MSIEXEC" >> $GITHUB_ENV
         working-directory: downloads
       - name: Create wineprefix
-        if: steps.cache-dl.outputs.cache-hit != 'true'
         run: ${{ env.winecfg }}
 
 
