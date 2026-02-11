@@ -86,16 +86,8 @@ jobs:
         if: steps.cache-dl.outputs.cache-hit != 'true'
         run: ${{ env.winecfg }}
 
-      - name: Cache syng build
-        id: cache-syng
-        uses: actions/cache@v4
-        with:
-          path: work/dist
-          key: Xsyng-${{ env.synghash }}
-
 
       - name: Run python installer
-        if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
           xvfb-run ${{ env.wine }} python-installer.exe /quiet Include_pip=1
         working-directory: downloads
@@ -106,7 +98,6 @@ jobs:
         working-directory: downloads
 
       - name: Install pyinstaller
-        if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
           ${{ env.wine }} ${{ env.python }} -m pip install pyinstaller
       - name: Find pyinstaller
@@ -114,12 +105,10 @@ jobs:
           PYINSTALLER=$(find /wineprefix -iname "pyinstaller.exe" -exec readlink -f {} \;)
           echo "pyinstaller=$PYINSTALLER" >> $GITHUB_ENV
       - name: Install wine-mono
-        if: steps.cache-dl.outputs.cache-hit != 'true'
         run: |
           xvfb-run ${{ env.msiexec }} /i wine-mono.msi
         working-directory: downloads
       - name: preparing workdir
-        if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
           ls
           cp -r syng work/syng
@@ -137,11 +126,9 @@ jobs:
       - name: install syng
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
-        if: steps.cache-syng.outputs.cache-hit != 'true'
         run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
       - name: run PyInstaller (standalone)
-        if: steps.cache-syng.outputs.cache-hit != 'true'
         run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
       - name: Find wix binaries
