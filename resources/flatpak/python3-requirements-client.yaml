@@ -93,12 +93,12 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "astroid==4.0.3" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "astroid==4.0.4" --no-build-isolation
   sources:
   - &id014
     type: file
-    url: https://files.pythonhosted.org/packages/ce/66/686ac4fc6ef48f5bacde625adac698f41d5316a9753c2b20bb0931c9d4e2/astroid-4.0.3-py3-none-any.whl
-    sha256: 864a0a34af1bd70e1049ba1e61cee843a7252c826d97825fcee9b2fcbd9e1b14
+    url: https://files.pythonhosted.org/packages/b0/cf/1c5f42b110e57bc5502eb80dbc3b03d256926062519224835ef08134f1f9/astroid-4.0.4-py3-none-any.whl
+    sha256: 52f39653876c7dec3e3afd4c2696920e05c83832b9737afc21928f2d2eb7a753
 - name: python3-attrs
   buildsystem: simple
   build-commands:
@@ -356,13 +356,13 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "python-engineio==4.13.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "python-engineio==4.13.1" --no-build-isolation
   sources:
   - *id019
   - &id021
     type: file
-    url: https://files.pythonhosted.org/packages/50/74/c655a6eda0fd188d490c14142a0f0380655ac7099604e1fbf8fa1a97f0a1/python_engineio-4.13.0-py3-none-any.whl
-    sha256: 57b94eac094fa07b050c6da59f48b12250ab1cd920765f4849963e3d89ad9de3
+    url: https://files.pythonhosted.org/packages/aa/54/0cce26da03a981f949bb8449c9778537f75f5917c172e1d2992ff25cb57d/python_engineio-4.13.1-py3-none-any.whl
+    sha256: f32ad10589859c11053ad7d9bb3c9695cdf862113bfb0d20bc4d890198287399
   - &id022
     type: file
     url: https://files.pythonhosted.org/packages/52/59/0782e51887ac6b07ffd1570e0364cf901ebc36345fea669969d2084baebb/simple_websocket-1.1.0-py3-none-any.whl
@@ -375,14 +375,14 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "python-socketio==5.16.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "python-socketio==5.16.1" --no-build-isolation
   sources:
   - *id020
   - *id019
   - *id021
   - type: file
-    url: https://files.pythonhosted.org/packages/28/d2/2ccc2b69a187b80fda3152745670cfba936704f296a9fa54c6c8ac694d12/python_socketio-5.16.0-py3-none-any.whl
-    sha256: d95802961e15c7bd54ecf884c6e7644f81be8460f0a02ee66b473df58088ee8a
+    url: https://files.pythonhosted.org/packages/07/c7/deb8c5e604404dbf10a3808a858946ca3547692ff6316b698945bb72177e/python_socketio-5.16.1-py3-none-any.whl
+    sha256: a3eb1702e92aa2f2b5d3ba00261b61f062cce51f1cfb6900bf3ab4d1934d2d35
   - *id022
   - *id023
 - name: python3-pyyaml
@@ -394,15 +394,6 @@ modules:
   - type: file
     url: https://files.pythonhosted.org/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz
     sha256: d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f
-- name: python3-qasync
-  buildsystem: simple
-  build-commands:
-  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "qasync==0.28.0" --no-build-isolation
-  sources:
-  - type: file
-    url: https://files.pythonhosted.org/packages/e5/84/0ce4cd946f6e958428c87d5accac35df70f81607e45ba4919947d0762d63/qasync-0.28.0-py3-none-any.whl
-    sha256: 21faba8d047c717008378f5ac29ea58c32a8128528629e4afd57c59b768dba0f
 - name: python3-qrcode
   buildsystem: simple
   build-commands:
@@ -513,11 +504,11 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "yt-dlp==2026.1.29" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "yt-dlp==2026.2.4" --no-build-isolation
   sources:
   - type: file
-    url: https://files.pythonhosted.org/packages/0f/1d/696538eb18a9da3dd4b7772162cb3a6537723a56426a7452b98201c04bfd/yt_dlp-2026.1.29-py3-none-any.whl
-    sha256: 08d0a25aead160c4787cbd0d2e82a269c75c8dbcfbfa729ce45ad52a8375fa1d
+    url: https://files.pythonhosted.org/packages/96/38/b17cbeaf6712a4c1b97f7f9ec3a55f3a8ddee678cc88742af47dca0315b7/yt_dlp-2026.2.4-py3-none-any.whl
+    sha256: d6ea83257e8127a0097b1d37ee36201f99a292067e4616b2e5d51ab153b3dbb9
 - name: python3-yt-dlp-ejs
   buildsystem: simple
   build-commands:
