@@ -3,7 +3,7 @@ from typing import Any
 from urllib.request import urlopen
 
 import packaging.version
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 from yaml import Loader, load
 
 from syng.client import Client
@@ -11,8 +11,8 @@ from syng.log import logger
 
 
 class VersionCheckerWorker(QThread):
-    data = pyqtSignal(packaging.version.Version)
-    finished = pyqtSignal()
+    data = Signal(packaging.version.Version)
+    finished = Signal()
 
     def run(self) -> None:
         with urlopen("https://pypi.org/pypi/syng/json") as response:

@@ -29,14 +29,14 @@ except ImportError:
 import contextlib
 
 import platformdirs
-from PyQt6.QtCore import (
+from PySide6.QtCore import (
     QObject,
     Qt,
-    pyqtSignal,
-    pyqtSlot,
+    Signal,
+    Slot,
 )
-from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
+from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QFileDialog,
@@ -529,7 +529,7 @@ class SyngGui(QMainWindow):
             self.client_thread.start()
             self.set_client_button_stop()
 
-    @pyqtSlot(str, int)
+    @Slot(str, int)
     def print_log(self, log: str, level: int) -> None:
         if level == logging.CRITICAL:
             log_msg_box = QMessageBox(self)
@@ -564,7 +564,7 @@ class SyngGui(QMainWindow):
 
 class LoggingLabelHandler(logging.Handler):
     class LogSignalEmiter(QObject):
-        log_signal = pyqtSignal(str, int)
+        log_signal = Signal(str, int)
 
         def __init__(self, parent: QObject | None = None) -> None:
             super().__init__(parent)

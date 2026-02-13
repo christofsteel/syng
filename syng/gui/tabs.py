@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget
 
 from syng.config import (
     BoolOption,

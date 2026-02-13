@@ -4,8 +4,8 @@ from datetime import datetime
 from functools import partial
 from typing import Any
 
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import (
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
