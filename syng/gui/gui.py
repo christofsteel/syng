@@ -547,7 +547,7 @@ class SyngGui(QMainWindow):
         buf = BytesIO()
         image.save(buf, "PNG")
         qr_pixmap = QPixmap()
-        qr_pixmap.loadFromData(buf.getvalue(), "PNG")
+        qr_pixmap.loadFromData(buf.getvalue())
         self.qr_label.setPixmap(qr_pixmap)
 
     def update_qr(self) -> None:
