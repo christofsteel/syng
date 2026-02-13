@@ -3,9 +3,9 @@ image: python:3.12
 mypy:
     stage: test
     script:
-        - pip install poetry
-        - poetry install --all-extras
-        - poetry run mypy syng --strict
+        - pip install uv
+        - uv install --all-extras
+        - uv run mypy --strict syng
 
 ruff:
     stage: test
