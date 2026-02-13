@@ -68,14 +68,13 @@ class QueueView(QListView):
 
 
 class SyngGui(QMainWindow):
-    def closeEvent(self, a0: QCloseEvent | None) -> None:
+    def closeEvent(self, event: QCloseEvent) -> None:
+        QMainWindow.closeEvent(self, event)
+        self.destroy()
         if self.client_thread is not None and self.client_thread.isRunning():
             self.client_thread.cleanup()
 
         self.log_label_handler.cleanup()
-
-        self.destroy()
-        sys.exit(0)
 
     def add_buttons(self, show_advanced: bool) -> None:
         self.buttons_layout = QHBoxLayout()

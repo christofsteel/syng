@@ -38,7 +38,8 @@ class SyngClientWorker(QThread):
         if self.loop is not None:
             logger.debug("Closing the client: Found event loop")
             future = asyncio.run_coroutine_threadsafe(self.client.ensure_disconnect(), self.loop)
-            future.result(timeout=10)
+            future.result(timeout=5)
+            self.wait(1000)
             logger.debug("Client closed")
 
     def export_queue(self, filename: str) -> None:
