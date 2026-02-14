@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING, Any
 
 import packaging.version
 
-from syng.config import generate_for_class
 from syng.gui.background_threads import SyngClientWorker, VersionCheckerWorker
-from syng.gui.tabs import GeneralConfig, SourceTab, UIConfig
+from syng.gui.tabs import GeneralConfigTab, SourceTab, UIConfigTab
+from syng.sources.source import SourceConfig
 
 try:
     if not TYPE_CHECKING:
@@ -26,7 +26,6 @@ try:
 except ImportError:
     pass
 
-import contextlib
 
 import platformdirs
 from PyQt6.QtCore import (
@@ -60,7 +59,7 @@ from yaml import Dumper, Loader, dump, load
 from syng import __version__, resources  # noqa
 from syng.client import Client, default_config
 from syng.log import logger
-from syng.sources import available_sources
+from syng.sources import available_sources, configure_source
 
 
 class QueueView(QListView):
@@ -251,15 +250,15 @@ class SyngGui(QMainWindow):
             self.frm.addWidget(self.qr_widget)
 
     def add_general_config(self, config: dict[str, Any]) -> None:
-        self.general_config = GeneralConfig(self, config, self.update_qr)
+        self.general_config = GeneralConfigTab(self, config, self.update_qr)
         self.tabview.addTab(self.general_config, "General")
 
     def add_ui_config(self, config: dict[str, Any]) -> None:
-        self.ui_config = UIConfig(self, config)
+        self.ui_config = UIConfigTab(self, config)
         self.tabview.addTab(self.ui_config, "UI")
 
-    def add_source_config(self, source_name: str, source_config: dict[str, Any]) -> None:
-        self.tabs[source_name] = SourceTab(self, source_name, source_config)
+    def add_source_config(self, source_name: str, source_config: SourceConfig) -> None:
+        self.tabs[source_name] = SourceTab(self, source_config)
         self.tabview.addTab(self.tabs[source_name], source_name)
 
     def add_log_tab(self) -> None:
@@ -419,14 +418,8 @@ class SyngGui(QMainWindow):
             ).upper()
 
         for source_name, source in available_sources.items():
-            source_config = {}
-            for name, option in generate_for_class(source).items():
-                source_config[name] = option.default
-
+            source_config: SourceConfig = configure_source(config["sources"][source_name], source)
             output["sources"][source_name] = source_config
-
-            with contextlib.suppress(KeyError, TypeError):
-                output["sources"][source_name] |= config["sources"][source_name]
 
         return output
 

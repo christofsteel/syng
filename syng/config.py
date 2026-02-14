@@ -1,108 +1,16 @@
-from dataclasses import _MISSING_TYPE, dataclass, fields, is_dataclass
+from dataclasses import dataclass, is_dataclass
 from enum import Enum
 from typing import (
-    Any,
-    TypeVar,
     get_args,
     get_origin,
     get_type_hints,
     overload,
 )
 
-T = TypeVar("T")
-
-
-class Option[T]:
-    pass
-
 
 @dataclass
-class ConfigOption[T]:
-    type: Option[T]
-    description: str
-    default: T
-    send_to_server: bool = False
-
-
-class BoolOption(Option[bool]):
+class Config:
     pass
-
-
-class IntOption(Option[int]):
-    pass
-
-
-class StrOption(Option[str]):
-    pass
-
-
-class PasswordOption(Option[str]):
-    pass
-
-
-class FolderOption(Option[str]):
-    pass
-
-
-class FileOption(Option[str]):
-    pass
-
-
-class ListStrOption(Option[list[str]]):
-    pass
-
-
-@dataclass
-class ChoiceOption[T](Option[T]):
-    choices: list[T]
-
-
-def generate_for_class(clas: type) -> dict[str, ConfigOption[Any]]:
-    config_class = get_type_hints(clas)["config"]
-    config_types = get_type_hints(config_class)
-
-    config_options = {}
-
-    for field in fields(config_class):
-        description: str = field.metadata.get("desc", "")
-        semantic: str | None = field.metadata.get("semantic", None)
-        server: bool = field.metadata.get("server", False)
-        field_type = config_types[field.name]
-
-        config_option_type: Option[Any] | None = None
-        if field_type is bool:
-            config_option_type = BoolOption()
-        elif field_type is int:
-            config_option_type = IntOption()
-        elif field_type is str:
-            if semantic == "password":
-                config_option_type = PasswordOption()
-            elif semantic == "folder":
-                config_option_type = FolderOption()
-            elif semantic == "file":
-                config_option_type = FileOption()
-            elif semantic is None:
-                config_option_type = StrOption()
-        elif str(field.type) == "list[str]":
-            config_option_type = ListStrOption()
-        elif issubclass(field_type, Enum):
-            config_option_type = ChoiceOption([a.value for a in field_type.__members__.values()])
-
-        if config_option_type is None:
-            raise RuntimeError(f"Could not match {field.type}, {semantic}")
-
-        default = None
-        if not isinstance(field.default, _MISSING_TYPE):
-            default = field.default
-        elif not isinstance(field.default_factory, _MISSING_TYPE):
-            default = field.default_factory()
-
-        config_option = ConfigOption(
-            config_option_type, description, default, send_to_server=server
-        )
-        config_options[field.name] = config_option
-
-    return config_options
 
 
 type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None

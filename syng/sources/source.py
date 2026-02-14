@@ -15,8 +15,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field, fields
 from itertools import zip_longest
 from traceback import print_exc
-from typing import Any
+from typing import Any, get_type_hints
 
+from syng.config import Config
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -62,7 +63,7 @@ class DLFilesEntry:
 
 
 @dataclass
-class SourceConfig:
+class SourceConfig(Config):
     enabled: bool = field(default=False, metadata={"desc": "Enable this source"})
 
 
@@ -115,6 +116,13 @@ class Source(ABC):
 
         self.build_index = False
         self._index: list[str] = []
+
+    @classmethod
+    def get_config_type(cls) -> type[SourceConfig]:
+        config_type: type[SourceConfig] = get_type_hints(cls)["config"]
+        if not issubclass(config_type, SourceConfig):
+            raise TypeError
+        return config_type
 
     def is_valid(self, entry: Entry) -> bool:
         """

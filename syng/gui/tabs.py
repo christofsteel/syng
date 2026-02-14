@@ -1,50 +1,37 @@
 from collections.abc import Callable
-from typing import Any
+from dataclasses import fields
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from PyQt6.QtWidgets import QWidget
 
-from syng.config import (
-    BoolOption,
-    ChoiceOption,
-    FileOption,
-    FolderOption,
-    IntOption,
-    ListStrOption,
-    PasswordOption,
-    StrOption,
-    generate_for_class,
-)
 from syng.gui.option_frame import OptionFrame
-from syng.sources import available_sources
+from syng.sources.source import SourceConfig
 
 
 class SourceTab(OptionFrame):
-    def __init__(self, parent: QWidget, source_name: str, config: dict[str, Any]) -> None:
+    def __init__(self, parent: QWidget, config: SourceConfig) -> None:
         super().__init__(parent)
-        source = available_sources[source_name]
-        self.vars: dict[str, str | bool | list[str]] = {}
-        for name, option in generate_for_class(source).items():
-            value = config.get(name, option.default)
-            match option.type:
-                case BoolOption():
-                    self.add_bool_option(name, option.description, value=value)
-                case ListStrOption():
-                    self.add_list_option(name, option.description, value=value)
-                case StrOption():
-                    self.add_string_option(name, option.description, value=value)
-                case IntOption():
-                    self.add_int_option(name, option.description, value=value)
-                case PasswordOption():
-                    self.add_string_option(name, option.description, value=value, is_password=True)
-                case FolderOption():
-                    self.add_folder_option(name, option.description, value=value)
-                case FileOption():
-                    self.add_file_option(name, option.description, value=value)
-                case ChoiceOption(choices):
-                    self.add_choose_option(name, option.description, choices, value)
+        config_types = get_type_hints(config.__class__)
+        values = config.__dict__
+
+        for field in fields(config):
+            name = field.name
+            description: str = field.metadata.get("desc", "")
+            semantic: str | None = field.metadata.get("semantic", None)
+            field_type = config_types[name]
+            value = values[name]
+            if get_origin(field_type) in (Union, UnionType):
+                args = get_args(field_type)
+                if NoneType in args:
+                    parts = [ty for ty in args if ty is not NoneType]
+                    if len(parts) == 1:
+                        field_type = parts[0]
+
+            self.add_option(field_type, name, description, value, semantic)
 
 
-class UIConfig(OptionFrame):
+class UIConfigTab(OptionFrame):
     def __init__(self, parent: QWidget, config: dict[str, Any]) -> None:
         super().__init__(parent)
 
@@ -65,7 +52,7 @@ class UIConfig(OptionFrame):
         )
 
 
-class GeneralConfig(OptionFrame):
+class GeneralConfigTab(OptionFrame):
     def __init__(
         self,
         parent: QWidget,
