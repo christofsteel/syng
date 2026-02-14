@@ -16,10 +16,9 @@ jobs:
           python-version: '3.13'
       - name: Install and poetry and all dependencies
         run: |
-          pip install poetry --quiet
-          poetry install --all-extras
+          pip install uv --quiet
       - name: Run mypy
-        run: poetry run mypy syng --strict
+        run: uv run --extra client mypy syng --strict
 
   ruff:
     runs-on: ubuntu-latest

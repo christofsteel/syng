@@ -2,13 +2,14 @@ id: rocks.syng.Syng
 runtime: org.kde.Platform
 runtime-version: '6.10'
 sdk: org.kde.Sdk
-base: com.riverbankcomputing.PyQt.BaseApp
+base: io.qt.PySide.BaseApp
 base-version: '6.10'
 cleanup-commands:
   - /app/cleanup-BaseApp.sh
 build-options:
   env:
     - BASEAPP_REMOVE_WEBENGINE=1
+    - BASEAPP_DISABLE_NUMPY=1
 finish-args:
   - --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess
   # X11 + XShm access
@@ -240,6 +241,7 @@ modules:
   - python3-cffi.yaml
   - python3-pdm-backend.yaml
   - python3-pybind11.yaml
+  - python3-setuptools_scm.yaml
   - python3-requirements-client.yaml
   - name: syng
     buildsystem: simple
@@ -257,4 +259,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/christofsteel/syng.git
-        commit: 2d0752bd00dcf0aa6356b0879fd05ab33ab19c10
+        commit: fedf5b0010764f9e4d051e660057f7a4f889f023

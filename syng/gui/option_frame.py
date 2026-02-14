@@ -3,10 +3,11 @@ from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
 from functools import partial
-from typing import Any, get_args, get_origin
+from typing import Any, cast, get_args, get_origin
 
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QDateTime, Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
@@ -122,7 +123,7 @@ class OptionFrame(QWidget):
             lambda: self.path_setter(
                 file_name_widget,
                 QFileDialog.getOpenFileName(
-                    self, "Select File", directory=os.path.dirname(file_name_widget.text())
+                    self, "Select File", dir=os.path.dirname(file_name_widget.text())
                 )[0],
             )
         )
@@ -156,7 +157,7 @@ class OptionFrame(QWidget):
             lambda: self.path_setter(
                 folder_name_widget,
                 QFileDialog.getExistingDirectory(
-                    self, "Select Folder", directory=folder_name_widget.text()
+                    self, "Select Folder", dir=folder_name_widget.text()
                 ),
             )
         )
@@ -283,10 +284,10 @@ class OptionFrame(QWidget):
         self.date_time_options[name] = (date_time_widget, date_time_enabled)
         date_time_widget.setCalendarPopup(True)
         try:
-            date_time_widget.setDateTime(datetime.fromisoformat(value))
+            date_time_widget.setDateTime(QDateTime.fromString(value, Qt.DateFormat.ISODate))
             date_time_enabled.setChecked(True)
         except (TypeError, ValueError):
-            date_time_widget.setDateTime(datetime.now())
+            date_time_widget.setDateTime(QDateTime.currentDateTime())
             date_time_widget.setEnabled(False)
             date_time_enabled.setChecked(False)
 
@@ -343,7 +344,7 @@ class OptionFrame(QWidget):
                 config[name] = None
                 continue
             try:
-                config[name] = picker.dateTime().toPyDateTime().isoformat()
+                config[name] = cast(datetime, picker.dateTime().toPython()).isoformat()
             except ValueError:
                 config[name] = None
 
@@ -371,9 +372,9 @@ class OptionFrame(QWidget):
 
         for name, (picker, checkbox) in self.date_time_options.items():
             if config[name] is not None:
-                picker.setDateTime(datetime.fromisoformat(config[name]))
+                picker.setDateTime(QDateTime.fromString(config[name], Qt.DateFormat.ISODate))
                 checkbox.setChecked(True)
             else:
-                picker.setDateTime(datetime.now())
+                picker.setDateTime(QDateTime.currentDateTime())
                 picker.setEnabled(False)
                 checkbox.setChecked(False)

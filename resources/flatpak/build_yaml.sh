@@ -4,6 +4,7 @@
 ./flatpak-pip-generator --yaml cffi
 ./flatpak-pip-generator --yaml pdm-backend
 ./flatpak-pip-generator --yaml pybind11
+./flatpak-pip-generator --yaml setuptools_scm[toml]
 
 AWK_PROG='
     BEGIN { inside_block = 0 }
@@ -18,7 +19,8 @@ AWK_PROG='
       if (inside_block == 0 && $0 ~ package) { next }
       print
     }'
-awk -v package="pyqt6" "$AWK_PROG" "../../requirements-client.txt" \
+awk -v package="pyside6" "$AWK_PROG" "../../requirements-client.txt" \
+  | awk -v package="shiboken6" "$AWK_PROG" \
   | awk -v package="brotlicffi" "$AWK_PROG" \
   | awk -v package="colorama" "$AWK_PROG" \
   | awk -v package="ruff" "$AWK_PROG" \

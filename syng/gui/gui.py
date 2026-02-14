@@ -28,14 +28,14 @@ except ImportError:
 
 
 import platformdirs
-from PyQt6.QtCore import (
+from PySide6.QtCore import (
     QObject,
     Qt,
-    pyqtSignal,
-    pyqtSlot,
+    Signal,
+    Slot,
 )
-from PyQt6.QtGui import QCloseEvent, QIcon, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
+from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QFileDialog,
@@ -67,14 +67,13 @@ class QueueView(QListView):
 
 
 class SyngGui(QMainWindow):
-    def closeEvent(self, a0: QCloseEvent | None) -> None:
+    def closeEvent(self, event: QCloseEvent) -> None:
+        QMainWindow.closeEvent(self, event)
+        self.destroy()
         if self.client_thread is not None and self.client_thread.isRunning():
             self.client_thread.cleanup()
 
         self.log_label_handler.cleanup()
-
-        self.destroy()
-        sys.exit(0)
 
     def add_buttons(self, show_advanced: bool) -> None:
         self.buttons_layout = QHBoxLayout()
@@ -522,7 +521,7 @@ class SyngGui(QMainWindow):
             self.client_thread.start()
             self.set_client_button_stop()
 
-    @pyqtSlot(str, int)
+    @Slot(str, int)
     def print_log(self, log: str, level: int) -> None:
         if level == logging.CRITICAL:
             log_msg_box = QMessageBox(self)
@@ -540,7 +539,7 @@ class SyngGui(QMainWindow):
         buf = BytesIO()
         image.save(buf, "PNG")
         qr_pixmap = QPixmap()
-        qr_pixmap.loadFromData(buf.getvalue(), "PNG")
+        qr_pixmap.loadFromData(buf.getvalue())
         self.qr_label.setPixmap(qr_pixmap)
 
     def update_qr(self) -> None:
@@ -557,7 +556,7 @@ class SyngGui(QMainWindow):
 
 class LoggingLabelHandler(logging.Handler):
     class LogSignalEmiter(QObject):
-        log_signal = pyqtSignal(str, int)
+        log_signal = Signal(str, int)
 
         def __init__(self, parent: QObject | None = None) -> None:
             super().__init__(parent)

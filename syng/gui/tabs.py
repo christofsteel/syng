@@ -3,7 +3,7 @@ from dataclasses import fields
 from types import NoneType, UnionType
 from typing import Any, Union, get_args, get_origin, get_type_hints
 
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget
 
 from syng.gui.option_frame import OptionFrame
 from syng.sources.source import SourceConfig
