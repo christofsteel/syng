@@ -16,6 +16,19 @@ from syng.sources.youtube import YoutubeSource
 __all__ = ["FilesSource", "S3Source", "YoutubeSource"]
 
 
+def configure_source(config: dict[str, Any], source_type: type[Source]) -> SourceConfig:
+    """
+    Create a source configuration object for a given dict configuration
+
+    :param configs: Configuration for the source
+    :param source_type: Type of the source object for which to create a config object
+    :return: An instance of the source config object for the source type
+    """
+    config_class: type[SourceConfig] = get_type_hints(source_type)["config"]
+    config_object: SourceConfig = generate_class_from_dict(config_class, config)
+    return config_object
+
+
 def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
     """
     Create a Source object for each entry in the given configs dictionary.
@@ -31,8 +44,7 @@ def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
         source_class = available_sources.get(source, None)
         if source_class is None:
             raise RuntimeError(f"Could not find source '{source}'")
-        config_class: type[SourceConfig] = get_type_hints(source_class)["config"]
-        config_object: SourceConfig = generate_class_from_dict(config_class, config)
+        config_object = configure_source(config, source_class)
         if config_object.enabled:
             configured_sources[source] = source_class(config_object)
     return configured_sources

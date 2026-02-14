@@ -1,8 +1,9 @@
 import os
 from collections.abc import Callable
 from datetime import datetime
+from enum import Enum
 from functools import partial
-from typing import Any, cast
+from typing import Any, cast, get_args, get_origin
 
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtGui import QIcon
@@ -25,6 +26,30 @@ from PySide6.QtWidgets import (
 
 
 class OptionFrame(QWidget):
+    def add_option[T](
+        self, ty: type[T], name: str, description: str, value: T, semantic: str | None
+    ) -> None:
+        if ty is bool and isinstance(value, bool):
+            self.add_bool_option(name, description, value=value)
+        elif ty is int and isinstance(value, int):
+            self.add_int_option(name, description, value=value)
+        elif ty is str and isinstance(value, str):
+            if semantic == "password":
+                self.add_string_option(name, description, value=value, is_password=True)
+            elif semantic == "folder":
+                self.add_folder_option(name, description, value=value)
+            elif semantic == "file":
+                self.add_file_option(name, description, value=value)
+            elif semantic is None:
+                self.add_string_option(name, description, value=value)
+        elif get_origin(ty) is list and get_args(ty) == (str,) and isinstance(value, list):
+            self.add_list_option(name, description, value=value)
+        elif ty is datetime and isinstance(value, str):
+            self.add_date_time_option(name, description, value)
+        elif issubclass(ty, Enum) and hasattr(value, "value"):
+            values = [a.value for a in ty.__members__.values()]
+            self.add_choose_option(name, description, values, value.value)
+
     def add_bool_option(self, name: str, description: str, value: bool = False) -> None:
         label = QLabel(description, self)
 

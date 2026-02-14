@@ -44,8 +44,8 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source, available_sources
-from syng.sources.source import EntryNotValid, MalformedSearchQueryException
+from syng.sources import Source, available_sources, configure_source
+from syng.sources.source import EntryNotValid
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -1113,7 +1113,9 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
+        source_to_configure = available_sources[data["source"]]
+        source_config = configure_source(data["config"], source_to_configure)
+        state.client.sources[data["source"]] = source_to_configure(source_config)
 
     async def handle_connect(
         self, sid: str, environ: dict[str, Any], auth: None | dict[str, Any] = None
@@ -1472,20 +1474,14 @@ class Server:
         :rtype: list[Result]
         """
 
-        try:
-            results_list = await asyncio.gather(
-                *[
-                    state.client.sources[source].search(query)
-                    for source in state.client.sources_prio
-                ]
-            )
+        results_list = await asyncio.gather(
+            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
+        )
 
-            results = [
-                search_result for source_result in results_list for search_result in source_result
-            ]
-            await self.send_search_results(sid, results, search_id)
-        except MalformedSearchQueryException as e:
-            await self.sio.emit("msg", {"msg": e.msg}, room=sid)
+        results = [
+            search_result for source_result in results_list for search_result in source_result
+        ]
+        await self.send_search_results(sid, results, search_id)
 
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:

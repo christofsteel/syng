@@ -15,8 +15,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field, fields
 from itertools import zip_longest
 from traceback import print_exc
-from typing import Any
+from typing import Any, get_type_hints
 
+from syng.config import Config
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -24,12 +25,6 @@ from syng.result import Result
 
 class EntryNotValid(Exception):
     """Raised when an entry is not valid for a source."""
-
-
-class MalformedSearchQueryException(Exception):
-    """Raised when a search query is malformed"""
-
-    msg = "Your search expression is malformed. Maybe you have unmatched double or single quotes?"
 
 
 @dataclass
@@ -68,7 +63,7 @@ class DLFilesEntry:
 
 
 @dataclass
-class SourceConfig:
+class SourceConfig(Config):
     enabled: bool = field(default=False, metadata={"desc": "Enable this source"})
 
 
@@ -121,6 +116,13 @@ class Source(ABC):
 
         self.build_index = False
         self._index: list[str] = []
+
+    @classmethod
+    def get_config_type(cls) -> type[SourceConfig]:
+        config_type: type[SourceConfig] = get_type_hints(cls)["config"]
+        if not issubclass(config_type, SourceConfig):
+            raise TypeError
+        return config_type
 
     def is_valid(self, entry: Entry) -> bool:
         """
@@ -311,6 +313,20 @@ class Source(ABC):
         """
         return {}
 
+    @staticmethod
+    def split_search_term(search_term: str) -> list[str]:
+        """
+        Split a search term, respecting quoted spaces
+
+        If quotation is not deterministic, fall back to splitting at each space
+        """
+        try:
+            return shlex.split(search_term)
+        except ValueError:
+            splits = search_term.split(" ")
+            logger.debug(f"Failed to split '{search_term}', falling back to {splits}")
+            return splits
+
     def filter_data_by_query(self, query: str, data: list[str]) -> list[str]:
         """
         Filter the ``data``-list by the ``query``.
@@ -327,10 +343,8 @@ class Source(ABC):
         def contains_all_words(words: list[str], element: str) -> bool:
             return all(word.lower() in os.path.basename(element).lower() for word in words)
 
-        try:
-            splitquery = shlex.split(query)
-        except ValueError as err:
-            raise MalformedSearchQueryException from err
+        splitquery = Source.split_search_term(query)
+
         return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:
