@@ -44,7 +44,7 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source, available_sources
+from syng.sources import Source, available_sources, configure_source
 from syng.sources.source import EntryNotValid, MalformedSearchQueryException
 
 DEFAULT_CONFIG = {
@@ -1113,7 +1113,9 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-        state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
+        source_to_configure = available_sources[data["source"]]
+        source_config = configure_source(data["config"], source_to_configure)
+        state.client.sources[data["source"]] = source_to_configure(source_config)
 
     async def handle_connect(
         self, sid: str, environ: dict[str, Any], auth: None | dict[str, Any] = None
