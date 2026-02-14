@@ -45,7 +45,7 @@ from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
 from syng.sources import Source, available_sources, configure_source
-from syng.sources.source import EntryNotValid, MalformedSearchQueryException
+from syng.sources.source import EntryNotValid
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -1474,20 +1474,14 @@ class Server:
         :rtype: list[Result]
         """
 
-        try:
-            results_list = await asyncio.gather(
-                *[
-                    state.client.sources[source].search(query)
-                    for source in state.client.sources_prio
-                ]
-            )
+        results_list = await asyncio.gather(
+            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
+        )
 
-            results = [
-                search_result for source_result in results_list for search_result in source_result
-            ]
-            await self.send_search_results(sid, results, search_id)
-        except MalformedSearchQueryException as e:
-            await self.sio.emit("msg", {"msg": e.msg}, room=sid)
+        results = [
+            search_result for source_result in results_list for search_result in source_result
+        ]
+        await self.send_search_results(sid, results, search_id)
 
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:

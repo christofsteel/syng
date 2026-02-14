@@ -11,7 +11,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import enum
-import shlex
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any
@@ -24,7 +23,6 @@ from yt_dlp.utils import DownloadError
 from syng.entry import Entry
 from syng.result import Result
 from syng.sources.source import (
-    MalformedSearchQueryException,
     Source,
     SourceConfig,
     available_sources,
@@ -338,10 +336,7 @@ class YoutubeSource(Source):
 
             return 1 - (hits / len(queries))
 
-        try:
-            queries: list[str] = shlex.split(query.lower())
-        except ValueError as err:
-            raise MalformedSearchQueryException from err
+        queries = Source.split_search_term(query)
 
         results_lists: list[list[YouTube]] = await asyncio.gather(
             *[
