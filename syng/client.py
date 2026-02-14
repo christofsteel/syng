@@ -26,6 +26,7 @@ import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
 from functools import partial
 from logging import LogRecord
 from logging.handlers import QueueHandler
@@ -41,6 +42,7 @@ from socketio.exceptions import BadNamespaceError, ConnectionError
 from yaml import Loader, load
 
 from syng import SYNG_VERSION, jsonencoder
+from syng.config import Config
 from syng.entry import Entry
 from syng.log import logger
 from syng.player_libmpv import Player
@@ -71,6 +73,66 @@ def default_config() -> dict[str, int | str | None]:
         "next_up_time": 20,
         "allow_collab_mode": True,
     }
+
+
+class WaitingRoomPolicy(Enum):
+    FORCED = "forced"
+    OPTIONAL = "optional"
+    NONE = "none"
+
+
+class QrPosition(Enum):
+    TOP_RIGHT = "top-right"
+    TOP_LEFT = "top-left"
+    BOTTOM_RIGHT = "bottom-right"
+    BOTTOM_LEFT = "bottom-left"
+
+
+class LogLevel(Enum):
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+@dataclass
+class ClientConfig(Config):
+    general: GeneralConfig
+    ui: UIConfig
+
+
+@dataclass
+class GeneralConfig(Config):
+    server: str = field(
+        default="https://syng.rocks", metadata={"update_qr": True, "desc": "Server", "simple": True}
+    )
+    room: str = field(default="", metadata={"update_qr": True, "desc": "Room", "simple": True})
+    secret: str = field(
+        default="", metadata={"semantics": "password", "desc": "Admin Password", "simple": True}
+    )
+    waiting_room_policy: WaitingRoomPolicy = field(
+        default=WaitingRoomPolicy.NONE, metadata={"desc": "Waiting room policy"}
+    )
+    allow_collab_mode: bool = field(
+        default=True, metadata={"desc": "Allow performers to add collaboration tags"}
+    )
+    last_song: datetime.datetime | None = field(
+        default=None, metadata={"desc": "Last song ends at"}
+    )
+    key: str = field(
+        default="", metadata={"semantics": "password", "desc": "Key for server (if necessary)"}
+    )
+    buffer_in_advance: int = field(default=2, metadata={"desc": "Buffer the next songs in advance"})
+    log_level: LogLevel = field(default=LogLevel.INFO, metadata={"desc": "Log Level"})
+
+
+@dataclass
+class UIConfig(Config):
+    preview_duration: int = field(default=3, metadata={"desc": "Preview duration in seconds"})
+    qr_box_size: int = 7
+    show_advanced: bool = False
+    next_up_time: int = 20
 
 
 @dataclass
@@ -139,6 +201,8 @@ class State:
 
 
 class Client:
+    config: ClientConfig
+
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
@@ -152,6 +216,7 @@ class Client:
         self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
         self.register_handlers()
         self.configured = False
+        self.config = ClientConfig(GeneralConfig(), UIConfig())
 
         if config is not None:
             self.configure(config)
