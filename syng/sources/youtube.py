@@ -171,7 +171,7 @@ class Resolution(enum.Enum):
 @dataclass
 class YouTubeConfig(SourceConfig):
     channels: list[str] = field(
-        default_factory=list, metadata={"desc": "A list of channels\nto search in"}
+        default_factory=list, metadata={"desc": "A list of channels\nto search in", "server": True}
     )
     tmp_dir: str = field(
         default=user_cache_dir("syng"),
