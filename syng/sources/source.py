@@ -315,7 +315,9 @@ class Source(ABC):
         try:
             return shlex.split(search_term)
         except ValueError:
-            return search_term.split(" ")
+            splits = search_term.split(" ")
+            logger.debug(f"Failed to split '{search_term}', falling back to {splits}")
+            return splits
 
     def filter_data_by_query(self, query: str, data: list[str]) -> list[str]:
         """
