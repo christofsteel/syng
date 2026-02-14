@@ -4,8 +4,7 @@ mypy:
     stage: test
     script:
         - pip install uv
-        - uv install --all-extras
-        - uv run mypy --strict syng
+        - uv run --extra client mypy --strict syng
 
 ruff:
     stage: test
