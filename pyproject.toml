@@ -39,7 +39,7 @@ client = [
     "pymediainfo>=6.1.0",
     "pyyaml>=6.0.1",
     "mpv>=1.0.7",
-    "pyside6>=6.7.0",
+    "pyside6==6.9.2",
 ]
 profanity = [
     "alt-profanity-check>=1.4.1",
