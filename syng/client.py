@@ -275,18 +275,19 @@ class Client:
         self.sio.on("*", self.handle_unknown_message)
         self.sio.on("connect_error", self.handle_connect_error)
 
-    async def handle_connect_error(self, data: dict[str, Any]) -> None:
+    async def handle_connect_error(self, data: dict[str, Any] | str) -> None:
         """
         Handle the "connect_error" message.
 
         This function is called when the client fails to connect to the server.
         It will log the error and disconnect from the server.
 
-        :param data: A dictionary with the error message.
-        :type data: dict[str, Any]
+        :param data: A dictionary with the error message, or the error message
+          directly.
+        :type data: dict[str, Any] | str
         :rtype: None
         """
-        logger.critical("Connection error: %s", data["message"])
+        logger.critical("Connection error: %s", data)
         await self.ensure_disconnect()
 
     async def handle_unknown_message(self, event: str, data: dict[str, Any]) -> None:
