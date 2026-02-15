@@ -417,7 +417,8 @@ class SyngGui(QMainWindow):
             ).upper()
 
         for source_name, source in available_sources.items():
-            source_config: SourceConfig = configure_source(config["sources"][source_name], source)
+            source_dict_config = config.get("sources", {}).get(source_name, {})
+            source_config: SourceConfig = configure_source(source_dict_config, source)
             output["sources"][source_name] = source_config
 
         return output
