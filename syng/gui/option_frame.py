@@ -24,6 +24,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from syng.config import Config
+
 
 class OptionFrame(QWidget):
     def add_option[T](
@@ -48,7 +50,12 @@ class OptionFrame(QWidget):
             self.add_date_time_option(name, description, value)
         elif issubclass(ty, Enum) and hasattr(value, "value"):
             values = [a.value for a in ty.__members__.values()]
-            self.add_choose_option(name, description, values, value.value)
+            self.add_choose_option(name, description, values, value.value, ty)
+
+    def set_config_field(self, name: str, value: Any) -> None:
+        if hasattr(self.config, name):
+            setattr(self.config, name, value)
+            print(self.config)
 
     def add_bool_option(self, name: str, description: str, value: bool = False) -> None:
         label = QLabel(description, self)
@@ -57,6 +64,9 @@ class OptionFrame(QWidget):
         self.bool_options[name].setChecked(value)
         self.form_layout.addRow(label, self.bool_options[name])
         self.rows[name] = (label, self.bool_options[name])
+        self.bool_options[name].checkStateChanged.connect(
+            lambda state: self.set_config_field(name, state == Qt.CheckState.Checked)
+        )
 
     def add_string_option(
         self,
@@ -72,6 +82,7 @@ class OptionFrame(QWidget):
         label = QLabel(description, self)
 
         self.string_options[name] = QLineEdit(self)
+        self.string_options[name].textChanged.connect(partial(self.set_config_field, name))
         if is_password:
             self.string_options[name].setEchoMode(QLineEdit.EchoMode.Password)
             action = self.string_options[name].addAction(
@@ -135,6 +146,7 @@ class OptionFrame(QWidget):
         file_layout.addWidget(file_button)
 
         self.string_options[name] = file_name_widget
+        self.string_options[name].textChanged.connect(partial(self.set_config_field, name))
         self.rows[name] = (label, file_name_widget)
         self.form_layout.addRow(label, file_layout)
 
@@ -169,6 +181,7 @@ class OptionFrame(QWidget):
         folder_layout.addWidget(folder_button)
 
         self.string_options[name] = folder_name_widget
+        self.string_options[name].textChanged.connect(partial(self.set_config_field, name))
         self.rows[name] = (label, folder_name_widget)
         self.form_layout.addRow(label, folder_layout)
 
@@ -185,12 +198,17 @@ class OptionFrame(QWidget):
         label = QLabel(description, self)
 
         self.int_options[name] = QSpinBox(self)
+        self.int_options[name].textChanged.connect(partial(self.set_config_field, name))
         self.int_options[name].setMaximum(9999)
         self.int_options[name].setValue(value)
         self.form_layout.addRow(label, self.int_options[name])
         self.rows[name] = (label, self.int_options[name])
         if callback is not None:
             self.int_options[name].textChanged.connect(callback)
+
+    def update_model_list(self, name: str) -> None:
+        options = [option.text().strip() for option in self.list_options[name]]
+        self.set_config_field(name, options)
 
     def del_list_element(
         self,
@@ -203,6 +221,7 @@ class OptionFrame(QWidget):
 
         layout.removeWidget(line)
         line.deleteLater()
+        self.update_model_list(name)
 
     def add_list_element(
         self,
@@ -211,6 +230,7 @@ class OptionFrame(QWidget):
         init: str,
         callback: Callable[..., None] | None,
     ) -> None:
+
         input_and_minus = QWidget()
         input_and_minus_layout = QHBoxLayout(input_and_minus)
         input_and_minus.setLayout(input_and_minus_layout)
@@ -223,6 +243,7 @@ class OptionFrame(QWidget):
         input_and_minus_layout.addWidget(input_field)
         if callback is not None:
             input_field.textChanged.connect(callback)
+        input_field.textChanged.connect(lambda _: self.update_model_list(name))
 
         minus_button = QPushButton(QIcon.fromTheme("list-remove"), "", input_and_minus)
         minus_button.clicked.connect(
@@ -262,23 +283,50 @@ class OptionFrame(QWidget):
         container_layout.addWidget(plus_button)
 
     def add_choose_option(
-        self, name: str, description: str, values: list[Any], value: str = ""
+        self,
+        name: str,
+        description: str,
+        values: list[Any],
+        value: str = "",
+        enum: type[Enum] | None = None,
     ) -> None:
+        def change_choose_callback(value: str) -> None:
+            if enum is None:
+                return
+            try:
+                enum_value = enum(value)
+            except ValueError:
+                enum_value = enum(int(value))
+
+            self.set_config_field(name, enum_value)
+
         label = QLabel(description, self)
 
         self.choose_options[name] = QComboBox(self)
         self.choose_options[name].addItems([str(v) for v in values])
         self.choose_options[name].setCurrentText(str(value))
+        self.choose_options[name].currentTextChanged.connect(change_choose_callback)
         self.form_layout.addRow(label, self.choose_options[name])
         self.rows[name] = (label, self.choose_options[name])
 
     def add_date_time_option(self, name: str, description: str, value: str | None) -> None:
+        def enabled_slot(date_time_widget: QDateTimeEdit, value: Qt.CheckState) -> None:
+            if value == Qt.CheckState.Checked:
+                date_time = date_time_widget.dateTime().toPython()
+                self.set_config_field(name, date_time)
+            else:
+                self.set_config_field(name, None)
+
         label = QLabel(description, self)
         date_time_layout = QHBoxLayout()
         date_time_widget = QDateTimeEdit(self)
         date_time_enabled = QCheckBox("Enabled", self)
         date_time_enabled.stateChanged.connect(
             lambda: date_time_widget.setEnabled(date_time_enabled.isChecked())
+        )
+        date_time_enabled.checkStateChanged.connect(partial(enabled_slot, date_time_widget))
+        date_time_widget.dateTimeChanged.connect(
+            lambda qt_value: self.set_config_field(name, qt_value.toPython())
         )
 
         self.date_time_options[name] = (date_time_widget, date_time_enabled)
@@ -299,7 +347,7 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, date_time_layout)
         self.rows[name] = (label, date_time_layout)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.form_layout = QFormLayout(self)
         self.setLayout(self.form_layout)
@@ -310,6 +358,8 @@ class OptionFrame(QWidget):
         self.list_options: dict[str, list[QLineEdit]] = {}
         self.date_time_options: dict[str, tuple[QDateTimeEdit, QCheckBox]] = {}
         self.rows: dict[str, tuple[QLabel, QWidget | QLayout]] = {}
+
+        self.config = config
 
     @property
     def option_names(self) -> set[str]:

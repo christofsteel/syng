@@ -11,7 +11,7 @@ from syng.sources.source import SourceConfig
 
 class SourceTab(OptionFrame):
     def __init__(self, parent: QWidget, config: SourceConfig) -> None:
-        super().__init__(parent)
+        super().__init__(config, parent)
         config_types = get_type_hints(config.__class__)
         values = config.__dict__
 
@@ -33,7 +33,7 @@ class SourceTab(OptionFrame):
 
 class UIConfigTab(OptionFrame):
     def __init__(self, parent: QWidget, config: dict[str, Any]) -> None:
-        super().__init__(parent)
+        super().__init__(config, parent)
 
         self.add_int_option(
             "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
@@ -59,7 +59,7 @@ class GeneralConfigTab(OptionFrame):
         config: dict[str, Any],
         callback: Callable[..., None],
     ) -> None:
-        super().__init__(parent)
+        super().__init__(config, parent)
 
         self.add_string_option("server", "Server", config["server"], callback)
         self.add_string_option("room", "Room", config["room"], callback)
