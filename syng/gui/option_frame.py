@@ -44,7 +44,7 @@ class OptionFrame(QWidget):
                 self.add_string_option(name, description, value=value)
         elif get_origin(ty) is list and get_args(ty) == (str,) and isinstance(value, list):
             self.add_list_option(name, description, value=value)
-        elif ty is datetime and isinstance(value, str):
+        elif ty is datetime and (value is None or isinstance(value, str)):
             self.add_date_time_option(name, description, value)
         elif issubclass(ty, Enum) and hasattr(value, "value"):
             values = [a.value for a in ty.__members__.values()]
@@ -284,6 +284,8 @@ class OptionFrame(QWidget):
         self.date_time_options[name] = (date_time_widget, date_time_enabled)
         date_time_widget.setCalendarPopup(True)
         try:
+            if value is None:
+                raise ValueError
             date_time_widget.setDateTime(QDateTime.fromString(value, Qt.DateFormat.ISODate))
             date_time_enabled.setChecked(True)
         except (TypeError, ValueError):
