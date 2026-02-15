@@ -55,7 +55,6 @@ class OptionFrame(QWidget):
     def set_config_field(self, name: str, value: Any) -> None:
         if hasattr(self.config, name):
             setattr(self.config, name, value)
-            print(self.config)
 
     def add_bool_option(self, name: str, description: str, value: bool = False) -> None:
         label = QLabel(description, self)
