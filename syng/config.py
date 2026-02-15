@@ -1,11 +1,19 @@
-from dataclasses import dataclass, is_dataclass
+import os
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, is_dataclass
+from datetime import datetime
 from enum import Enum
+from types import UnionType
 from typing import (
+    Any,
+    Union,
     get_args,
     get_origin,
     get_type_hints,
     overload,
 )
+
+from yaml import Dumper, Loader, dump, load
 
 
 @dataclass
@@ -47,13 +55,25 @@ def generate_enum_from_data[T: Enum](clas: type[T], data: str | int) -> T:
     return enum_value
 
 
+def generate_datetime_or_None_from_data(data: _Parsable) -> datetime | None:
+    if type(data) is str:
+        return datetime.fromisoformat(data)
+    elif data is None:
+        return None
+    raise TypeError(f"cannot convert '{data}' of type '{type(data)}' to 'datetime | None'")
+
+
+@overload
+def generate_class_from_dict(
+    clas: type[datetime] | type[None], data: _Parsable
+) -> datetime | None: ...
 @overload
 def generate_class_from_dict[T](clas: type[list[T]], data: _Parsable) -> list[T]: ...
 @overload
 def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T: ...
 
 
-def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T | list[T]:
+def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T | list[T] | datetime | None:
     if is_dataclass(clas):
         if not isinstance(data, dict):
             raise TypeError(
@@ -69,13 +89,112 @@ def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T | list[T]:
         return generate_list_from_list(inner_class, data)
     if any([clas is t for t in [str, int, bool]]):
         if not isinstance(data, clas):
-            raise TypeError(f"got '{data} of type '{type(data)}', expected '{clas}'")
+            raise TypeError(f"got '{data}' of type '{type(data)}', expected '{clas}'")
         return data
+    if get_origin(clas) in (Union, UnionType) and set(get_args(clas)) == set(
+        get_args(None | datetime)
+    ):
+        return generate_datetime_or_None_from_data(data)
     if issubclass(clas, Enum):
-        if not isinstance(data, str) or isinstance(data, int):
+        if not isinstance(data, str) and not isinstance(data, int):
             raise TypeError(
-                f"got '{data} of type '{type(data)}, expected 'str' or 'int' to create {clas}"
+                f"got '{data}' of type '{type(data)}, expected 'str' or 'int' to create {clas}"
             )
         return generate_enum_from_data(clas, data)
 
     raise TypeError(f"unsupported field type '{clas}'")
+
+
+def default_config() -> dict[str, int | str | None]:
+    """
+    Return a default configuration for the client.
+
+    :returns: A dictionary with the default configuration.
+    :rtype: dict[str, Optional[int | str]]
+    """
+    return {
+        "server": "https://syng.rocks",
+        "room": "",
+        "preview_duration": 3,
+        "secret": None,
+        "last_song": None,
+        "waiting_room_policy": None,
+        "key": None,
+        "buffer_in_advance": 2,
+        "qr_box_size": 7,
+        "qr_position": "top-right",
+        "show_advanced": False,
+        "log_level": "info",
+        "next_up_time": 20,
+        "allow_collab_mode": True,
+    }
+
+
+type _Serializable = Config | int | str | datetime | None | Enum | list[_Serializable]
+
+
+@overload
+def serialize_config(inp: Config) -> dict[str, _Parsable]: ...
+@overload
+def serialize_config(inp: datetime) -> str: ...
+@overload
+def serialize_config(inp: list[_Serializable]) -> list[_Parsable]: ...
+@overload
+def serialize_config(inp: str) -> str: ...
+@overload
+def serialize_config(inp: int) -> int: ...
+@overload
+def serialize_config(inp: None) -> None: ...
+@overload
+def serialize_config(inp: Enum) -> int: ...
+
+
+def serialize_config(inp: _Serializable) -> _Parsable:
+    if isinstance(inp, Config):
+        return generate_dict_from_class(inp)
+    if isinstance(inp, datetime):
+        return inp.isoformat()
+    if isinstance(inp, str):
+        return inp
+    if isinstance(inp, int):
+        return inp
+    if isinstance(inp, list):
+        return [serialize_config(element) for element in inp]
+    if inp is None:
+        return None
+    if isinstance(inp, Enum) and isinstance(inp.value, int):
+        return inp.value
+    raise ValueError(f"Could not serialize {inp} of type {type(inp)}")
+
+
+def generate_dict_from_class(config: Config) -> _Parsable:
+    output = {}
+    for name, field in asdict(config).items():
+        output[name] = serialize_config(field)
+    return output
+
+
+def load_config(filename: str, source_config_types: Mapping[str, type[Config]]) -> dict[str, Any]:
+    try:
+        with open(filename, encoding="utf8") as cfile:
+            loaded_config = load(cfile, Loader=Loader)
+    except FileNotFoundError:
+        print("No config found, using default values")
+        loaded_config = {"config": default_config(), "sources": {}}
+    config = {"config": loaded_config["config"], "sources": {}}
+    for source_name, source_config_type in source_config_types.items():
+        source_config = loaded_config.get("sources", {}).get(source_name, {})
+        config["sources"][source_name] = generate_class_from_dict(source_config_type, source_config)
+    return config
+
+
+def save_config(filename: str, config: dict[str, Any]) -> None:
+    general = config["config"]
+    sources = {
+        source_name: generate_dict_from_class(source_config)
+        for source_name, source_config in config["sources"].items()
+    }
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+    with open(filename, "w", encoding="utf-8") as f:
+        dump({"config": general, "sources": sources}, f, Dumper=Dumper)

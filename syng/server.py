@@ -31,6 +31,8 @@ import socketio
 from aiohttp import web
 from socketio.exceptions import ConnectionRefusedError
 
+from syng.config import generate_class_from_dict
+
 try:
     from profanity_check import predict
 except ImportError:
@@ -44,7 +46,7 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source, available_sources, configure_source
+from syng.sources import Source, available_sources, get_source_config_type
 from syng.sources.source import EntryNotValid
 
 DEFAULT_CONFIG = {
@@ -1114,7 +1116,8 @@ class Server:
         :rtype: None
         """
         source_to_configure = available_sources[data["source"]]
-        source_config = configure_source(data["config"], source_to_configure)
+        source_config_type = get_source_config_type(source_to_configure)
+        source_config = generate_class_from_dict(source_config_type, data["config"])
         state.client.sources[data["source"]] = source_to_configure(source_config)
 
     async def handle_connect(

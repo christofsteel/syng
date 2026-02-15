@@ -31,23 +31,23 @@ class OptionFrame(QWidget):
     def add_option[T](
         self, ty: type[T], name: str, description: str, value: T, semantic: str | None
     ) -> None:
-        if ty is bool and isinstance(value, bool):
-            self.add_bool_option(name, description, value=value)
-        elif ty is int and isinstance(value, int):
-            self.add_int_option(name, description, value=value)
-        elif ty is str and isinstance(value, str):
+        if ty is bool:
+            self.add_bool_option(name, description, value=cast(bool, value))
+        elif ty is int:
+            self.add_int_option(name, description, value=cast(int, value))
+        elif ty is str:
             if semantic == "password":
-                self.add_string_option(name, description, value=value, is_password=True)
+                self.add_string_option(name, description, value=cast(str, value), is_password=True)
             elif semantic == "folder":
-                self.add_folder_option(name, description, value=value)
+                self.add_folder_option(name, description, value=cast(str, value))
             elif semantic == "file":
-                self.add_file_option(name, description, value=value)
+                self.add_file_option(name, description, value=cast(str, value))
             elif semantic is None:
-                self.add_string_option(name, description, value=value)
-        elif get_origin(ty) is list and get_args(ty) == (str,) and isinstance(value, list):
-            self.add_list_option(name, description, value=value)
-        elif ty is datetime and (value is None or isinstance(value, str)):
-            self.add_date_time_option(name, description, value)
+                self.add_string_option(name, description, value=cast(str, value))
+        elif get_origin(ty) is list and get_args(ty) == (str,):
+            self.add_list_option(name, description, value=cast(list[str], value))
+        elif ty is datetime:
+            self.add_date_time_option(name, description, cast(datetime | None, value))
         elif issubclass(ty, Enum) and hasattr(value, "value"):
             values = [a.value for a in ty.__members__.values()]
             self.add_choose_option(name, description, values, value.value, ty)
@@ -197,7 +197,9 @@ class OptionFrame(QWidget):
         label = QLabel(description, self)
 
         self.int_options[name] = QSpinBox(self)
-        self.int_options[name].textChanged.connect(partial(self.set_config_field, name))
+        self.int_options[name].textChanged.connect(
+            lambda value: self.set_config_field(name, int(value))
+        )
         self.int_options[name].setMaximum(9999)
         self.int_options[name].setValue(value)
         self.form_layout.addRow(label, self.int_options[name])
@@ -308,13 +310,18 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, self.choose_options[name])
         self.rows[name] = (label, self.choose_options[name])
 
-    def add_date_time_option(self, name: str, description: str, value: str | None) -> None:
+    def add_date_time_option(
+        self, name: str, description: str, value: str | datetime | None
+    ) -> None:
         def enabled_slot(date_time_widget: QDateTimeEdit, value: Qt.CheckState) -> None:
             if value == Qt.CheckState.Checked:
                 date_time = date_time_widget.dateTime().toPython()
                 self.set_config_field(name, date_time)
             else:
                 self.set_config_field(name, None)
+
+        if isinstance(value, datetime):
+            value = value.isoformat()
 
         label = QLabel(description, self)
         date_time_layout = QHBoxLayout()

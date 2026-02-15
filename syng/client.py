@@ -42,37 +42,12 @@ from socketio.exceptions import BadNamespaceError, ConnectionError
 from yaml import Loader, load
 
 from syng import SYNG_VERSION, jsonencoder
-from syng.config import Config
+from syng.config import Config, default_config
 from syng.entry import Entry
 from syng.log import logger
 from syng.player_libmpv import Player
 from syng.runningstates import Lifecycle, RunningState
 from syng.sources import Source, configure_sources
-
-
-def default_config() -> dict[str, int | str | None]:
-    """
-    Return a default configuration for the client.
-
-    :returns: A dictionary with the default configuration.
-    :rtype: dict[str, Optional[int | str]]
-    """
-    return {
-        "server": "https://syng.rocks",
-        "room": "",
-        "preview_duration": 3,
-        "secret": None,
-        "last_song": None,
-        "waiting_room_policy": None,
-        "key": None,
-        "buffer_in_advance": 2,
-        "qr_box_size": 7,
-        "qr_position": "top-right",
-        "show_advanced": False,
-        "log_level": "info",
-        "next_up_time": 20,
-        "allow_collab_mode": True,
-    }
 
 
 class WaitingRoomPolicy(Enum):

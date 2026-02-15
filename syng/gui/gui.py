@@ -54,12 +54,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from qrcode.main import QRCode
-from yaml import Dumper, Loader, dump, load
+from yaml import Dumper, dump
 
 from syng import __version__, resources  # noqa
-from syng.client import Client, default_config
+from syng.client import Client
+from syng.config import default_config, load_config, save_config
 from syng.log import logger
-from syng.sources import available_sources, configure_source
+from syng.sources import available_sources, get_source_config_type
 
 
 class QueueView(QListView):
@@ -349,8 +350,6 @@ class SyngGui(QMainWindow):
         if os.name != "nt":
             self.setWindowIcon(QIcon(":/icons/syng.ico"))
 
-        # self.loop = asyncio.get_event_loop()
-
         self.pypi_version: str | None = None
 
         self.syng_client_logging_listener: QueueListener | None = None
@@ -373,7 +372,6 @@ class SyngGui(QMainWindow):
         for source_name in available_sources:
             self.add_source_config(source_name, config["sources"][source_name])
 
-        # self.add_queue_tab()
         self.add_admin_tab()
         self.add_log_tab()
 
@@ -406,6 +404,7 @@ class SyngGui(QMainWindow):
         except (KeyError, TypeError):
             print("Could not load config")
 
+        print(output)
         if not output["config"]["secret"]:
             output["config"]["secret"] = "".join(
                 secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
@@ -416,10 +415,8 @@ class SyngGui(QMainWindow):
                 [random.choice(string.ascii_letters) for _ in range(6)]
             ).upper()
 
-        for source_name, source in available_sources.items():
-            source_dict_config = config.get("sources", {}).get(source_name, {})
-            source_config: SourceConfig = configure_source(source_dict_config, source)
-            output["sources"][source_name] = source_config
+        for source_name, source_tab in self.tabs.items():
+            output["sources"][source_name] = source_tab.config
 
         return output
 
@@ -434,14 +431,21 @@ class SyngGui(QMainWindow):
             self.update_config(self.complete_config({"config": {}, "sources": {}}))
 
     def load_config(self, filename: str) -> dict[str, Any]:
-        try:
-            with open(filename, encoding="utf8") as cfile:
-                loaded_config = load(cfile, Loader=Loader)
-        except FileNotFoundError:
-            print("No config found, using default values")
-            loaded_config = {}
+        source_config_types = {
+            source_name: get_source_config_type(source)
+            for source_name, source in available_sources.items()
+        }
+        config = load_config(filename, source_config_types)
+        if not config["config"]["secret"]:
+            config["config"]["secret"] = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+            )
 
-        return self.complete_config(loaded_config)
+        if config["config"]["room"] == "":
+            config["config"]["room"] = "".join(
+                [random.choice(string.ascii_letters) for _ in range(6)]
+            ).upper()
+        return config
 
     def update_config(self, config: dict[str, Any]) -> None:
         self.general_config.load_config(config["config"])
@@ -452,15 +456,12 @@ class SyngGui(QMainWindow):
         self.update_qr()
 
     def save_config(self) -> None:
-        os.makedirs(os.path.dirname(self.configfile), exist_ok=True)
-
-        with open(self.configfile, "w", encoding="utf-8") as f:
-            dump(self.gather_config(), f, Dumper=Dumper)
+        save_config(self.configfile, self.gather_config())
 
     def gather_config(self) -> dict[str, Any]:
         sources = {}
         for source, tab in self.tabs.items():
-            sources[source] = tab.get_config()
+            sources[source] = tab.config
 
         general_config = self.general_config.get_config() | {
             "show_advanced": self.show_advanced_toggle.isChecked()
