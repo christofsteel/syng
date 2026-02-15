@@ -272,7 +272,7 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, self.choose_options[name])
         self.rows[name] = (label, self.choose_options[name])
 
-    def add_date_time_option(self, name: str, description: str, value: str) -> None:
+    def add_date_time_option(self, name: str, description: str, value: str | None) -> None:
         label = QLabel(description, self)
         date_time_layout = QHBoxLayout()
         date_time_widget = QDateTimeEdit(self)
