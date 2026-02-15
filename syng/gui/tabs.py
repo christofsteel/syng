@@ -5,6 +5,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from PySide6.QtWidgets import QWidget
 
+from syng.client import GeneralConfig, UIConfig
 from syng.gui.option_frame import OptionFrame
 from syng.sources.source import SourceConfig
 
@@ -33,7 +34,7 @@ class SourceTab(OptionFrame):
 
 class UIConfigTab(OptionFrame):
     def __init__(self, parent: QWidget, config: dict[str, Any]) -> None:
-        super().__init__(config, parent)
+        super().__init__(UIConfig(), parent)
 
         self.add_int_option(
             "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
@@ -59,7 +60,7 @@ class GeneralConfigTab(OptionFrame):
         config: dict[str, Any],
         callback: Callable[..., None],
     ) -> None:
-        super().__init__(config, parent)
+        super().__init__(GeneralConfig(), parent)
 
         self.add_string_option("server", "Server", config["server"], callback)
         self.add_string_option("room", "Room", config["room"], callback)
