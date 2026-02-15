@@ -4,7 +4,7 @@ version = "2.3.0"
 description = "Easily host karaoke events"
 license = "AGPL-3.0-or-later"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.12"
 authors = [
     { name = "Christoph Stahl", email = "christoph.stahl@tu-dortmund.de" }
 ]
@@ -39,7 +39,7 @@ client = [
     "pymediainfo>=6.1.0",
     "pyyaml>=6.0.1",
     "mpv>=1.0.7",
-    "pyside6==6.9.2",
+    "pyside6>=6.7.0",
 ]
 profanity = [
     "alt-profanity-check>=1.4.1",
