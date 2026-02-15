@@ -168,6 +168,7 @@ class Resolution(enum.Enum):
 
 @dataclass
 class YouTubeConfig(SourceConfig):
+    enabled: bool = field(default=True, metadata={"desc": "Enable this source"})
     channels: list[str] = field(
         default_factory=list, metadata={"desc": "A list of channels\nto search in", "server": True}
     )
