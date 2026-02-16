@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import os
+import secrets
+import string
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
 from types import UnionType
 from typing import (
-    Any,
     Union,
     get_args,
     get_origin,
@@ -21,16 +24,110 @@ class Config:
     pass
 
 
+class WaitingRoomPolicy(Enum):
+    FORCED = "forced"
+    OPTIONAL = "optional"
+    NONE = "none"
+
+
+class QrPosition(Enum):
+    TOP_RIGHT = "top-right"
+    TOP_LEFT = "top-left"
+    BOTTOM_RIGHT = "bottom-right"
+    BOTTOM_LEFT = "bottom-left"
+
+
+class LogLevel(Enum):
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+@dataclass
+class GeneralConfig(Config):
+    server: str = field(
+        default="https://syng.rocks", metadata={"update_qr": True, "desc": "Server", "simple": True}
+    )
+    room: str = field(
+        default_factory=lambda: "".join(secrets.choice(string.ascii_letters) for _ in range(6)),
+        metadata={"update_qr": True, "desc": "Room", "simple": True},
+    )
+    secret: str = field(
+        default_factory=lambda: "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+        ),
+        metadata={"semantics": "password", "desc": "Admin Password", "simple": True},
+    )
+    waiting_room_policy: WaitingRoomPolicy = field(
+        default=WaitingRoomPolicy.NONE, metadata={"desc": "Waiting room policy"}
+    )
+    allow_collab_mode: bool = field(
+        default=True, metadata={"desc": "Allow performers to add collaboration tags"}
+    )
+    last_song: datetime | None = field(default=None, metadata={"desc": "Last song ends at"})
+    key: str = field(
+        default="", metadata={"semantics": "password", "desc": "Key for server (if necessary)"}
+    )
+    buffer_in_advance: int = field(default=2, metadata={"desc": "Buffer the next songs in advance"})
+    log_level: LogLevel = field(default=LogLevel.INFO, metadata={"desc": "Log Level"})
+    show_advanced: bool = False
+
+
+class QRPosition(Enum):
+    TOP_LEFT = "top-left"
+    TOP_RIGHT = "top-right"
+    BOTTOM_LEFT = "bottom-left"
+    BOTTOM_RIGHT = "bottom-right"
+
+
+@dataclass
+class UIConfig(Config):
+    preview_duration: int = field(default=3, metadata={"desc": "Preview duration in seconds"})
+    qr_box_size: int = 7
+    show_advanced: bool = False
+    next_up_time: int = 20
+    qr_position: QRPosition = QRPosition.BOTTOM_RIGHT
+
+
+@dataclass
+class ClientConfig(Config):
+    general: GeneralConfig = field(default_factory=GeneralConfig, metadata={"flatten": True})
+    ui: UIConfig = field(default_factory=UIConfig, metadata={"flatten": True})
+
+
+@dataclass
+class SourceConfig(Config):
+    enabled: bool = field(default=False, metadata={"desc": "Enable this source"})
+
+
+@dataclass
+class SyngConfig(Config):
+    config: ClientConfig
+    source_configs: dict[str, SourceConfig]
+
+
 type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None
 
 
 def deserialize_dataclass[T](clas: type[T], data: dict[str, _Parsable]) -> T:
+    if not is_dataclass(clas):
+        raise TypeError(f"got '{data}' of type '{type(data)}, expected 'dict' to create '{clas}'")
     field_types = get_type_hints(clas)
-    dataclass_arguments = {
-        attribute: deserialize_config(field_types[attribute], value)
-        for attribute, value in data.items()
-        if attribute in field_types
-    }
+    dataclass_arguments = {}
+
+    for data_field in fields(clas):
+        if data_field.metadata.get("flatten", False):
+            dataclass_arguments[data_field.name] = deserialize_config(
+                field_types[data_field.name], data
+            )
+        else:
+            if data_field.name in data:
+                dataclass_arguments[data_field.name] = deserialize_config(
+                    field_types[data_field.name], data[data_field.name]
+                )
+
     return clas(**dataclass_arguments)
 
 
@@ -72,11 +169,7 @@ def deserialize_config[T](clas: type[T], data: _Parsable) -> T: ...
 
 
 def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datetime | None:
-    if is_dataclass(clas):
-        if not isinstance(data, dict):
-            raise TypeError(
-                f"got '{data}' of type '{type(data)}, expected 'dict' to create '{clas}'"
-            )
+    if isinstance(data, dict):
         return deserialize_dataclass(clas, data)
     if get_origin(clas) is list:
         if not isinstance(data, list):
@@ -162,35 +255,43 @@ def serialize_config(inp: _Serializable) -> _Parsable:
         return None
     if isinstance(inp, Enum) and isinstance(inp.value, int):
         return inp.value
+    if isinstance(inp, Enum) and isinstance(inp.value, str):
+        return inp.value
     raise ValueError(f"Could not serialize {inp} of type {type(inp)}")
 
 
 def serialize_dataclass(config: Config) -> _Parsable:
-    output = {}
-    for name, field in asdict(config).items():
-        output[name] = serialize_config(field)
+    output: dict[str, _Parsable] = {}
+    for data_field in fields(config):
+        if data_field.metadata.get("flatten", False):
+            output |= serialize_config(getattr(config, data_field.name))
+        else:
+            output[data_field.name] = serialize_config(getattr(config, data_field.name))
     return output
 
 
-def load_config(filename: str, source_config_types: Mapping[str, type[Config]]) -> dict[str, Any]:
+def load_config(filename: str, source_config_types: Mapping[str, type[SourceConfig]]) -> SyngConfig:
     try:
         with open(filename, encoding="utf8") as cfile:
             loaded_config = load(cfile, Loader=Loader)
     except FileNotFoundError:
         print("No config found, using default values")
-        loaded_config = {"config": default_config(), "sources": {}}
-    config = {"config": loaded_config["config"], "sources": {}}
+        loaded_config = {"config": {}, "sources": {}}
+
+    sources_config: dict[str, SourceConfig] = {}
+
     for source_name, source_config_type in source_config_types.items():
-        source_config = loaded_config.get("sources", {}).get(source_name, {})
-        config["sources"][source_name] = deserialize_config(source_config_type, source_config)
-    return config
+        source_config_dict = loaded_config.get("sources", {}).get(source_name, {})
+        sources_config[source_name] = deserialize_config(source_config_type, source_config_dict)
+    client_config = deserialize_config(ClientConfig, loaded_config["config"])
+    return SyngConfig(client_config, sources_config)
 
 
-def save_config(filename: str, config: dict[str, Any]) -> None:
-    general = config["config"]
+def save_config(filename: str, config: SyngConfig) -> None:
+    general = serialize_dataclass(config.config)
     sources = {
         source_name: serialize_dataclass(source_config)
-        for source_name, source_config in config["sources"].items()
+        for source_name, source_config in config.source_configs.items()
     }
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 

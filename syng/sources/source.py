@@ -17,7 +17,7 @@ from itertools import zip_longest
 from traceback import print_exc
 from typing import Any, get_type_hints
 
-from syng.config import Config
+from syng.config import SourceConfig
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -60,11 +60,6 @@ class DLFilesEntry:
     complete: bool = False
     skip: bool = False
     buffer_task: asyncio.Task[tuple[str, str | None]] | None = None
-
-
-@dataclass
-class SourceConfig(Config):
-    enabled: bool = field(default=False, metadata={"desc": "Enable this source"})
 
 
 @dataclass

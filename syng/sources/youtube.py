@@ -20,11 +20,11 @@ from platformdirs import user_cache_dir
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
+from syng.config import SourceConfig
 from syng.entry import Entry
 from syng.result import Result
 from syng.sources.source import (
     Source,
-    SourceConfig,
     available_sources,
 )
 

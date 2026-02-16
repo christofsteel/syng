@@ -19,18 +19,12 @@ import contextlib
 import datetime
 import logging
 import os
-import secrets
 import signal
-import string
 import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
 from functools import partial
-from logging import LogRecord
-from logging.handlers import QueueHandler
-from multiprocessing import Queue
 from traceback import print_exc
 from typing import Any
 from uuid import UUID
@@ -39,75 +33,14 @@ import engineio
 import socketio
 from qrcode.main import QRCode
 from socketio.exceptions import BadNamespaceError, ConnectionError
-from yaml import Loader, load
 
 from syng import SYNG_VERSION, jsonencoder
-from syng.config import Config, default_config
+from syng.config import ClientConfig, LogLevel, SyngConfig, load_config
 from syng.entry import Entry
 from syng.log import logger
 from syng.player_libmpv import Player
 from syng.runningstates import Lifecycle, RunningState
-from syng.sources import Source, configure_sources
-
-
-class WaitingRoomPolicy(Enum):
-    FORCED = "forced"
-    OPTIONAL = "optional"
-    NONE = "none"
-
-
-class QrPosition(Enum):
-    TOP_RIGHT = "top-right"
-    TOP_LEFT = "top-left"
-    BOTTOM_RIGHT = "bottom-right"
-    BOTTOM_LEFT = "bottom-left"
-
-
-class LogLevel(Enum):
-    DEBUG = "debug"
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    CRITICAL = "critical"
-
-
-@dataclass
-class ClientConfig(Config):
-    general: GeneralConfig
-    ui: UIConfig
-
-
-@dataclass
-class GeneralConfig(Config):
-    server: str = field(
-        default="https://syng.rocks", metadata={"update_qr": True, "desc": "Server", "simple": True}
-    )
-    room: str = field(default="", metadata={"update_qr": True, "desc": "Room", "simple": True})
-    secret: str = field(
-        default="", metadata={"semantics": "password", "desc": "Admin Password", "simple": True}
-    )
-    waiting_room_policy: WaitingRoomPolicy = field(
-        default=WaitingRoomPolicy.NONE, metadata={"desc": "Waiting room policy"}
-    )
-    allow_collab_mode: bool = field(
-        default=True, metadata={"desc": "Allow performers to add collaboration tags"}
-    )
-    last_song: datetime.datetime | None = field(
-        default=None, metadata={"desc": "Last song ends at"}
-    )
-    key: str = field(
-        default="", metadata={"semantics": "password", "desc": "Key for server (if necessary)"}
-    )
-    buffer_in_advance: int = field(default=2, metadata={"desc": "Buffer the next songs in advance"})
-    log_level: LogLevel = field(default=LogLevel.INFO, metadata={"desc": "Log Level"})
-
-
-@dataclass
-class UIConfig(Config):
-    preview_duration: int = field(default=3, metadata={"desc": "Preview duration in seconds"})
-    qr_box_size: int = 7
-    show_advanced: bool = False
-    next_up_time: int = 20
+from syng.sources import Source, available_sources, configure_sources, get_source_config_type
 
 
 @dataclass
@@ -171,68 +104,50 @@ class State:
     queue: list[Entry] = field(default_factory=list)
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
-    config: dict[str, Any] = field(default_factory=default_config)
-    old_config: dict[str, Any] = field(default_factory=default_config)
+    # config: Client
+    # config: dict[str, Any] = field(default_factory=default_config)
+    # old_config: dict[str, Any] = field(default_factory=default_config)
 
 
 class Client:
     config: ClientConfig
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: SyngConfig) -> None:
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
-        self.sources: dict[str, Source] = {}
         self.state = State()
-        self.buffer_in_advance = 2
         self.player: Player
         self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
         self.register_handlers()
         self.configured = False
-        self.config = ClientConfig(GeneralConfig(), UIConfig())
+        self.config = config.config
 
-        if config is not None:
-            self.configure(config)
-
-    def configure(self, config: dict[str, Any]) -> None:
-        """
-        Configure the client with a given configuration.
-
-        This can be used to update the configuration of the client after it has
-        been initialized.
-
-        :param config: A dictionary with the new configuration.
-        :type config: dict[str, Any]
-        :rtype: None
-        """
-        config["config"] = default_config() | config["config"]
-        self.set_log_level(config["config"]["log_level"])
-        self.sources = configure_sources(config["sources"])
+        self.set_log_level(self.config.general.log_level)
+        self.sources = configure_sources(config.source_configs)
         self.player = Player(
-            config["config"],
+            self.config,
             self.quit_callback,
             self.connection_state,
             self.state.queue,
         )
-        self.buffer_in_advance = config["config"]["buffer_in_advance"]
-        self.configured = True
 
     def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
         self.queue_callbacks.append(callback)
 
-    def set_log_level(self, level: str) -> None:
+    def set_log_level(self, level: LogLevel) -> None:
         match level:
-            case "debug":
+            case LogLevel.DEBUG:
                 logger.setLevel(logging.DEBUG)
-            case "info":
+            case LogLevel.INFO:
                 logger.setLevel(logging.INFO)
-            case "warning":
+            case LogLevel.WARNING:
                 logger.setLevel(logging.WARNING)
-            case "error":
+            case LogLevel.ERROR:
                 logger.setLevel(logging.ERROR)
-            case "critical":
+            case LogLevel.CRITICAL:
                 logger.setLevel(logging.CRITICAL)
 
     def register_handlers(self) -> None:
@@ -340,24 +255,8 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
-        self.state.config = default_config() | data
-
-    async def send_update_config(self) -> None:
-        """
-        Send the current configuration to the server.
-
-        This is used to update the server with the current configuration of the
-        client. This is done by sending a "update_config" message to the server.
-
-        :rtype: None
-        """
-
-        changes = dict()
-        for key, value in self.state.config.items():
-            if key in default_config() and default_config()[key] != value:
-                changes[key] = value
-
-        await self.sio.emit("update_config", self.state.config)
+        raise NotImplementedError
+        # self.state.config = default_config() | data
 
     async def handle_skip_current(self, data: dict[str, Any]) -> None:
         """
@@ -404,7 +303,7 @@ class Client:
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
 
-        for pos, entry in enumerate(self.state.queue[0 : self.buffer_in_advance]):
+        for pos, entry in enumerate(self.state.queue[0 : self.config.general.buffer_in_advance]):
             source = self.sources[entry.source]
             if entry.incomplete_data:
                 meta_info = await source.get_missing_metadata(entry)
@@ -446,10 +345,10 @@ class Client:
 
         :rtype: None
         """
-        logger.info("Connected to server: %s", self.state.config["server"])
+        logger.info("Connected to server: %s", self.config.general.server)
         self.player.start()
-        room = self.state.config["room"]
-        server = self.state.config["server"]
+        room = self.config.general.room
+        server = self.config.general.server
 
         logger.info("Connected to room: %s", room)
         qr_string = f"{server}/{room}"
@@ -537,7 +436,7 @@ class Client:
         )
         if entry.uuid not in self.skipped:
             try:
-                if self.state.config["preview_duration"] > 0:
+                if self.config.ui.preview_duration > 0:
                     await self.preview(entry)
                 video, audio = await source.ensure_playable(entry)
                 if entry.uuid not in self.skipped:
@@ -674,9 +573,10 @@ class Client:
         Remove the room from the server.
         """
 
-        if self.state.config["room"] is not None:
-            logger.info("Removing room %s from server", self.state.config["room"])
-            await self.sio.emit("remove-room", {"room": self.state.config["room"]})
+        room = self.config.general.room
+        if room:
+            logger.info("Removing room %s from server", room)
+            await self.sio.emit("remove-room", {"room": room})
 
     def export_queue(self, filename: str) -> None:
         """
@@ -728,7 +628,7 @@ class Client:
         """
         logger.info("Room removed: %s", data["room"])
 
-    async def start_client(self, config: dict[str, Any]) -> None:
+    async def start_client(self) -> None:
         """
         Initialize the client and connect to the server.
 
@@ -736,31 +636,26 @@ class Client:
         :type config: dict[str, Any]
         :rtype: None
         """
-        if not self.configured:
-            self.configure(config)
 
         await self.connection_state.set_client_state(Lifecycle.STARTING)
 
         self.loop = asyncio.get_running_loop()
 
-        self.sources.update(configure_sources(config["sources"]))
+        # self.sources.update(configure_sources(source_configs))
 
-        if "config" in config:
-            last_song = (
-                datetime.datetime.fromisoformat(config["config"]["last_song"]).timestamp()
-                if "last_song" in config["config"] and config["config"]["last_song"]
-                else None
-            )
-            self.state.config |= config["config"] | {"last_song": last_song}
+        # if "config" in config:
+        #     last_song = (
+        #         datetime.datetime.fromisoformat(config["config"]["last_song"]).timestamp()
+        #         if "last_song" in config["config"] and config["config"]["last_song"]
+        #         else None
+        #     )
+        #     self.state.config |= config["config"] | {"last_song": last_song}
 
-        if not ("secret" in self.state.config and self.state.config["secret"]):
-            self.state.config["secret"] = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-            )
-            print(f"Generated secret: {self.state.config['secret']}")
-
-        if not ("key" in self.state.config and self.state.config["key"]):
-            self.state.config["key"] = ""
+        # if not ("secret" in self.state.config and self.state.config["secret"]):
+        #     self.state.config["secret"] = "".join(
+        #         secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
+        #     )
+        print(f"Secret: {self.config.general.secret}")
 
         try:
             data = {
@@ -768,11 +663,11 @@ class Client:
                 "queue": self.state.queue,
                 "waiting_room": self.state.waiting_room,
                 "recent": self.state.recent,
-                "config": self.state.config,
+                "config": self.config,
                 "version": SYNG_VERSION,
             }
             await self.connection_state.set_connection_state(Lifecycle.STARTING)
-            await self.sio.connect(self.state.config["server"], auth=data)
+            await self.sio.connect(self.config.general.server, auth=data)
 
             # this is not supported under windows
             if os.name != "nt" and threading.current_thread() == threading.main_thread():
@@ -786,11 +681,7 @@ class Client:
             await self.ensure_disconnect()
 
 
-def create_async_and_start_client(
-    config: dict[str, Any],
-    queue: Queue[LogRecord] | None = None,
-    client: Client | None = None,
-) -> None:
+def create_async_and_start_client(config: SyngConfig) -> None:
     """
     Create an asyncio event loop and start the client.
 
@@ -803,13 +694,10 @@ def create_async_and_start_client(
     :rtype: None
     """
 
-    if queue is not None:
-        logger.addHandler(QueueHandler(queue))
+    # logger.addHandler(QueueHandler(queue))
+    client = Client(config)
 
-    if client is None:
-        client = Client(config)
-
-    asyncio.run(client.start_client(config))
+    asyncio.run(client.start_client())
 
 
 def run_client(args: Namespace) -> None:
@@ -827,23 +715,17 @@ def run_client(args: Namespace) -> None:
     :type args: Namespace
     :rtype: None
     """
-    try:
-        with open(args.config_file, encoding="utf8") as file:
-            config = load(file, Loader=Loader)
-    except FileNotFoundError:
-        config = {}
-
-    if "config" not in config:
-        config["config"] = {}
-
-    if "sources" not in config:
-        config["sources"] = {"youtube": {"enabled": True}}
+    source_config_types = {
+        source_name: get_source_config_type(source)
+        for source_name, source in available_sources.items()
+    }
+    config = load_config(args.config_file, source_config_types)
 
     if args.room:
-        config["config"] |= {"room": args.room}
+        config.config.general.room = args.room
     if args.secret:
-        config["config"] |= {"secret": args.secret}
+        config.config.general.secret = args.secret
     if args.server:
-        config["config"] |= {"server": args.server}
+        config.config.general.server = args.server
 
     create_async_and_start_client(config)

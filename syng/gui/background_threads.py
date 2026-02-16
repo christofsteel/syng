@@ -1,5 +1,4 @@
 import asyncio
-from typing import Any
 from urllib.request import urlopen
 
 import packaging.version
@@ -27,15 +26,14 @@ class VersionCheckerWorker(QThread):
 
 
 class SyngClientWorker(QThread):
-    def __init__(self, client: Client) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.client = client
-        self.config: dict[str, Any] = {}
+        self.client: Client | None = None
         self.loop: asyncio.AbstractEventLoop | None = None
 
     def cleanup(self) -> None:
         logger.debug("Closing the client")
-        if self.loop is not None:
+        if self.loop and self.client:
             logger.debug("Closing the client: Found event loop")
             future = asyncio.run_coroutine_threadsafe(self.client.ensure_disconnect(), self.loop)
             future.result(timeout=5)
@@ -43,20 +41,22 @@ class SyngClientWorker(QThread):
             logger.debug("Client closed")
 
     def export_queue(self, filename: str) -> None:
-        self.client.export_queue(filename)
+        if self.client:
+            self.client.export_queue(filename)
 
     def import_queue(self, filename: str) -> None:
-        if self.loop is not None:
+        if self.loop and self.client:
             asyncio.run_coroutine_threadsafe(self.client.import_queue(filename), self.loop)
 
     def remove_room(self) -> None:
-        if self.loop is not None:
+        if self.loop and self.client:
             asyncio.run_coroutine_threadsafe(self.client.remove_room(), self.loop)
 
-    def set_config(self, config: dict[str, Any]) -> None:
-        self.config = config
+    def set_client(self, client: Client) -> None:
+        self.client = client
 
     def run(self) -> None:
-        logger.debug("Create new event loop for client")
-        self.loop = asyncio.new_event_loop()
-        self.loop.run_until_complete(self.client.start_client(self.config))
+        if self.client:
+            logger.debug("Create new event loop for client")
+            self.loop = asyncio.new_event_loop()
+            self.loop.run_until_complete(self.client.start_client())

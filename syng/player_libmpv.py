@@ -4,11 +4,12 @@ import os
 import sys
 from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import Any, cast
+from typing import cast
 
 import mpv
 from qrcode.main import QRCode
 
+from syng.config import ClientConfig
 from syng.entry import Entry
 from syng.runningstates import Lifecycle, RunningState
 
@@ -37,13 +38,13 @@ class QRPosition(Enum):
 class Player:
     def __init__(
         self,
-        config: dict[str, Any],
+        config: ClientConfig,
         quit_callback: Callable[[], None],
         connection_state: RunningState,
         queue: list[Entry] | None = None,
     ) -> None:
         locale.setlocale(locale.LC_ALL, "C")
-        qr_string = f"{config['server']}/{config['room']}"
+        qr_string = f"{config.general.server}/{config.general.room}"
         self.connection_state = connection_state
         self.connection_state.set_mpv_state_no_lock(Lifecycle.STARTING)
 
@@ -53,9 +54,9 @@ class Player:
             self.base_dir = sys._MEIPASS
         self.mpv: mpv.MPV | None = None
         self.qr_overlay: mpv.ImageOverlay | None = None
-        self.qr_box_size = 1 if config["qr_box_size"] < 1 else config["qr_box_size"]
-        self.qr_position = QRPosition.from_string(config["qr_position"])
-        self.next_up_time = config.get("next_up_time", 20)
+        self.qr_box_size = 1 if config.ui.qr_box_size < 1 else config.ui.qr_box_size
+        self.qr_position = config.ui.qr_position
+        self.next_up_time = config.ui.next_up_time
         self.update_qr(
             qr_string,
         )
@@ -160,6 +161,9 @@ class Player:
             case QRPosition.TOP_LEFT:
                 x_pos = 10
                 y_pos = 10
+            case _:
+                x_pos = osd_width - self.qr.width - 10
+                y_pos = osd_height - self.qr.height - 10
 
         self.qr_overlay = self.mpv.create_image_overlay(self.qr, pos=(x_pos, y_pos))
 

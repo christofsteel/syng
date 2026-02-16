@@ -17,7 +17,8 @@ except ImportError:
         from pymediainfo import MediaInfo
     PYMEDIAINFO_AVAILABLE = False
 
-from syng.sources.source import Source, SourceConfig
+from syng.config import SourceConfig
+from syng.sources.source import Source
 
 
 @dataclass

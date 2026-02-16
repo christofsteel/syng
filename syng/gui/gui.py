@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING, Any
 
 import packaging.version
 
+from syng.config import SourceConfig
 from syng.gui.background_threads import SyngClientWorker, VersionCheckerWorker
 from syng.gui.tabs import GeneralConfigTab, SourceTab, UIConfigTab
-from syng.sources.source import SourceConfig
 
 try:
     if not TYPE_CHECKING:
@@ -54,13 +54,21 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from qrcode.main import QRCode
-from yaml import Dumper, dump
 
 from syng import __version__, resources  # noqa
 from syng.client import Client
-from syng.config import default_config, load_config, save_config
+from syng.config import (
+    ClientConfig,
+    GeneralConfig,
+    SyngConfig,
+    UIConfig,
+    default_config,
+    deserialize_config,
+    load_config,
+    save_config,
+)
 from syng.log import logger
-from syng.sources import available_sources, get_source_config_type
+from syng.sources import available_source_configs, available_sources
 
 
 class QueueView(QListView):
@@ -249,11 +257,11 @@ class SyngGui(QMainWindow):
         else:
             self.frm.addWidget(self.qr_widget)
 
-    def add_general_config(self, config: dict[str, Any]) -> None:
+    def add_general_config(self, config: GeneralConfig) -> None:
         self.general_config = GeneralConfigTab(self, config, self.update_qr)
         self.tabview.addTab(self.general_config, "General")
 
-    def add_ui_config(self, config: dict[str, Any]) -> None:
+    def add_ui_config(self, config: UIConfig) -> None:
         self.ui_config = UIConfigTab(self, config)
         self.tabview.addTab(self.ui_config, "UI")
 
@@ -362,15 +370,15 @@ class SyngGui(QMainWindow):
         config = self.load_config(self.configfile)
 
         self.init_frame()
-        self.init_tabs(config["config"]["show_advanced"])
-        self.add_buttons(config["config"]["show_advanced"])
-        self.add_general_config(config["config"])
-        self.add_ui_config(config["config"])
-        self.add_qr(config["config"]["show_advanced"])
+        self.init_tabs(config.config.general.show_advanced)
+        self.add_buttons(config.config.general.show_advanced)
+        self.add_general_config(config.config.general)
+        self.add_ui_config(config.config.ui)
+        self.add_qr(config.config.general.show_advanced)
         self.tabs: dict[str, SourceTab] = {}
 
-        for source_name in available_sources:
-            self.add_source_config(source_name, config["sources"][source_name])
+        for source_name, source_config in config.source_configs.items():
+            self.add_source_config(source_name, source_config)
 
         self.add_admin_tab()
         self.add_log_tab()
@@ -392,7 +400,7 @@ class SyngGui(QMainWindow):
         self.version_worker.data.connect(self.update_version_label)
         self.version_worker.start()
 
-        self.client_thread = SyngClientWorker(Client())
+        self.client_thread = SyngClientWorker()
         self.client_thread.finished.connect(self.set_client_button_start)
         self.client_thread.started.connect(self.set_client_button_stop)
 
@@ -404,7 +412,6 @@ class SyngGui(QMainWindow):
         except (KeyError, TypeError):
             print("Could not load config")
 
-        print(output)
         if not output["config"]["secret"]:
             output["config"]["secret"] = "".join(
                 secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
@@ -428,29 +435,19 @@ class SyngGui(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer == QMessageBox.StandardButton.Yes:
-            self.update_config(self.complete_config({"config": {}, "sources": {}}))
+            source_config_types = available_source_configs()
+            default_source_configs = {
+                source_name: config() for source_name, config in source_config_types.items()
+            }
+            self.update_config(SyngConfig(ClientConfig(), default_source_configs))
 
-    def load_config(self, filename: str) -> dict[str, Any]:
-        source_config_types = {
-            source_name: get_source_config_type(source)
-            for source_name, source in available_sources.items()
-        }
-        config = load_config(filename, source_config_types)
-        if not config["config"]["secret"]:
-            config["config"]["secret"] = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-            )
+    def load_config(self, filename: str) -> SyngConfig:
+        return load_config(filename, available_source_configs())
 
-        if config["config"]["room"] == "":
-            config["config"]["room"] = "".join(
-                [random.choice(string.ascii_letters) for _ in range(6)]
-            ).upper()
-        return config
-
-    def update_config(self, config: dict[str, Any]) -> None:
-        self.general_config.load_config(config["config"])
-        self.ui_config.load_config(config["config"])
-        for source_name, source_config in config["sources"].items():
+    def update_config(self, config: SyngConfig) -> None:
+        self.general_config.load_config(config.config.general)
+        self.ui_config.load_config(config.config.ui)
+        for source_name, source_config in config.source_configs.items():
             self.tabs[source_name].load_config(source_config)
 
         self.update_qr()
@@ -458,8 +455,8 @@ class SyngGui(QMainWindow):
     def save_config(self) -> None:
         save_config(self.configfile, self.gather_config())
 
-    def gather_config(self) -> dict[str, Any]:
-        sources = {}
+    def gather_config(self) -> SyngConfig:
+        sources: dict[str, SourceConfig] = {}
         for source, tab in self.tabs.items():
             sources[source] = tab.config
 
@@ -468,7 +465,9 @@ class SyngGui(QMainWindow):
         }
         ui_config = self.ui_config.get_config()
 
-        return {"sources": sources, "config": general_config | ui_config}
+        client_config = deserialize_config(ClientConfig, general_config | ui_config)
+
+        return SyngConfig(client_config, sources)
 
     def import_config(self) -> None:
         filename = QFileDialog.getOpenFileName(self, "Open File", "", "YAML Files (*.yaml)")[0]
@@ -481,9 +480,7 @@ class SyngGui(QMainWindow):
         filename = QFileDialog.getSaveFileName(self, "Save File", "", "YAML Files (*.yaml)")[0]
         if filename:
             config = self.gather_config()
-
-            with open(filename, "w", encoding="utf-8") as f:
-                dump(config, f, Dumper=Dumper)
+            save_config(filename, config)
 
     def set_client_button_stop(self) -> None:
         self.general_config.string_options["server"].setEnabled(False)
@@ -513,13 +510,16 @@ class SyngGui(QMainWindow):
         else:
             logger.debug("Starting client")
             if self.client_thread.isFinished():
-                self.client_thread = SyngClientWorker(Client())
+                self.client_thread = SyngClientWorker()
                 self.client_thread.finished.connect(self.set_client_button_start)
                 self.client_thread.started.connect(self.set_client_button_stop)
 
             self.save_config()
             config = self.gather_config()
-            self.client_thread.set_config(config)
+
+            client = Client(config)
+
+            self.client_thread.set_client(client)
             self.client_thread.start()
             self.set_client_button_stop()
 

@@ -1,5 +1,6 @@
 import os
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
 from functools import partial
@@ -231,7 +232,6 @@ class OptionFrame(QWidget):
         init: str,
         callback: Callable[..., None] | None,
     ) -> None:
-
         input_and_minus = QWidget()
         input_and_minus_layout = QHBoxLayout(input_and_minus)
         input_and_minus.setLayout(input_and_minus_layout)
@@ -408,29 +408,30 @@ class OptionFrame(QWidget):
 
         return config
 
-    def load_config(self, config: dict[str, Any]) -> None:
+    def load_config(self, config: Config) -> None:
+        config_dict = asdict(config)
         for name, textbox in self.string_options.items():
-            textbox.setText(config[name])
+            textbox.setText(config_dict[name])
 
         for name, spinner in self.int_options.items():
             try:
-                spinner.setValue(config[name])
+                spinner.setValue(config_dict[name])
             except ValueError:
                 spinner.setValue(0)
 
         for name, optionmenu in self.choose_options.items():
-            optionmenu.setCurrentText(str(config[name]))
+            optionmenu.setCurrentText(str(config_dict[name].value))
 
         for name, checkbox in self.bool_options.items():
-            checkbox.setChecked(config[name])
+            checkbox.setChecked(config_dict[name])
 
         for name, textboxes in self.list_options.items():
             for i, textbox in enumerate(textboxes):
-                textbox.setText(config[name][i])
+                textbox.setText(config_dict[name][i])
 
         for name, (picker, checkbox) in self.date_time_options.items():
-            if config[name] is not None:
-                picker.setDateTime(QDateTime.fromString(config[name], Qt.DateFormat.ISODate))
+            if config_dict[name] is not None:
+                picker.setDateTime(QDateTime.fromString(config_dict[name], Qt.DateFormat.ISODate))
                 checkbox.setChecked(True)
             else:
                 picker.setDateTime(QDateTime.currentDateTime())

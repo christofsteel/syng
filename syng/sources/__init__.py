@@ -3,16 +3,23 @@ Imports all sources, so that they add themselves to the
 ``available_sources`` dictionary.
 """
 
-from typing import Any, get_type_hints
+from typing import get_type_hints
 
+from syng.config import SourceConfig
 from syng.sources.files import FilesSource
 from syng.sources.s3 import S3Source
 from syng.sources.source import Source as Source
-from syng.sources.source import SourceConfig
 from syng.sources.source import available_sources as available_sources
 from syng.sources.youtube import YoutubeSource
 
 __all__ = ["FilesSource", "S3Source", "YoutubeSource"]
+
+
+def available_source_configs() -> dict[str, type[SourceConfig]]:
+    return {
+        source: get_source_config_type(source_type)
+        for source, source_type in available_sources.items()
+    }
 
 
 def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
@@ -20,7 +27,7 @@ def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
     return config_class
 
 
-def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
+def configure_sources(configs: dict[str, SourceConfig]) -> dict[str, Source]:
     """
     Create a Source object for each entry in the given configs dictionary.
 
@@ -35,10 +42,7 @@ def configure_sources(configs: dict[str, Any]) -> dict[str, Source]:
         source_class = available_sources.get(source, None)
         if source_class is None:
             raise RuntimeError(f"Could not find source '{source}'")
-        if isinstance(config, SourceConfig):
-            config_object = config
-        else:
-            raise TypeError()
+        config_object = config
         if config_object.enabled:
             configured_sources[source] = source_class(config_object)
     return configured_sources

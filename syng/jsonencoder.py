@@ -5,6 +5,7 @@ from dataclasses import asdict
 from typing import Any
 from uuid import UUID
 
+from syng.config import Config, serialize_config
 from syng.entry import Entry
 from syng.result import Result
 from syng.song_queue import Queue
@@ -22,6 +23,8 @@ class SyngEncoder(json.JSONEncoder):
 
     def default(self, o: Any) -> Any:
         """Implement the encoding."""
+        if isinstance(o, Config):
+            return serialize_config(o)
         if isinstance(o, Entry):
             return asdict(o)
         if isinstance(o, UUID):

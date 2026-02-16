@@ -5,12 +5,13 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from PySide6.QtWidgets import QWidget
 
-from syng.client import GeneralConfig, UIConfig
+from syng.config import GeneralConfig, SourceConfig, UIConfig
 from syng.gui.option_frame import OptionFrame
-from syng.sources.source import SourceConfig
 
 
 class SourceTab(OptionFrame):
+    config: SourceConfig
+
     def __init__(self, parent: QWidget, config: SourceConfig) -> None:
         super().__init__(config, parent)
         config_types = get_type_hints(config.__class__)
@@ -33,23 +34,21 @@ class SourceTab(OptionFrame):
 
 
 class UIConfigTab(OptionFrame):
-    def __init__(self, parent: QWidget, config: dict[str, Any]) -> None:
-        super().__init__(UIConfig(), parent)
+    def __init__(self, parent: QWidget, config: UIConfig) -> None:
+        super().__init__(config, parent)
 
         self.add_int_option(
-            "preview_duration", "Preview duration in seconds", int(config["preview_duration"])
+            "preview_duration", "Preview duration in seconds", config.preview_duration
         )
         self.add_int_option(
-            "next_up_time",
-            "Time remaining before Next Up Box is shown",
-            int(config["next_up_time"]),
+            "next_up_time", "Time remaining before Next Up Box is shown", config.next_up_time
         )
-        self.add_int_option("qr_box_size", "QR Code Box Size", int(config["qr_box_size"]))
+        self.add_int_option("qr_box_size", "QR Code Box Size", config.qr_box_size)
         self.add_choose_option(
             "qr_position",
             "QR Code Position",
             ["top-left", "top-right", "bottom-left", "bottom-right"],
-            config["qr_position"],
+            config.qr_position.value,
         )
 
 
@@ -57,44 +56,42 @@ class GeneralConfigTab(OptionFrame):
     def __init__(
         self,
         parent: QWidget,
-        config: dict[str, Any],
+        config: GeneralConfig,
         callback: Callable[..., None],
     ) -> None:
-        super().__init__(GeneralConfig(), parent)
+        super().__init__(config, parent)
 
-        self.add_string_option("server", "Server", config["server"], callback)
-        self.add_string_option("room", "Room", config["room"], callback)
-        self.add_string_option("secret", "Admin Password", config["secret"], is_password=True)
+        self.add_string_option("server", "Server", config.server, callback)
+        self.add_string_option("room", "Room", config.room, callback)
+        self.add_string_option("secret", "Admin Password", config.secret, is_password=True)
         self.add_choose_option(
             "waiting_room_policy",
             "Waiting room policy",
             ["forced", "optional", "none"],
-            str(config["waiting_room_policy"]).lower(),
+            config.waiting_room_policy.value.lower(),
         )
         self.add_bool_option(
             "allow_collab_mode",
             "Allow performers to add collaboration tags",
-            config["allow_collab_mode"],
+            config.allow_collab_mode,
         )
-        self.add_date_time_option("last_song", "Last song ends at", config["last_song"])
-        self.add_string_option(
-            "key", "Key for server (if necessary)", config["key"], is_password=True
-        )
+        self.add_date_time_option("last_song", "Last song ends at", config.last_song)
+        self.add_string_option("key", "Key for server (if necessary)", config.key, is_password=True)
         self.add_int_option(
             "buffer_in_advance",
             "Buffer the next songs in advance",
-            int(config["buffer_in_advance"]),
+            int(config.buffer_in_advance),
         )
         self.add_choose_option(
             "log_level",
             "Log Level",
             ["debug", "info", "warning", "error", "critical"],
-            config["log_level"],
+            config.log_level.value,
         )
 
         self.simple_options = ["server", "room", "secret"]
 
-        if not config["show_advanced"]:
+        if not config.show_advanced:
             for option in self.option_names.difference(self.simple_options):
                 self.rows[option][0].setVisible(False)
                 widget_or_layout = self.rows[option][1]

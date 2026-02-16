@@ -823,7 +823,6 @@ class Server:
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
             performer_entries = list(state.queue.find_all_by_name(entry.performer))
-            print(performer_entries)
             if len(performer_entries) == 1:
                 return
             await state.queue.remove(entry)
@@ -1115,9 +1114,11 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
+        logger.debug("handle_config: %s", data)
         source_to_configure = available_sources[data["source"]]
         source_config_type = get_source_config_type(source_to_configure)
         source_config = deserialize_config(source_config_type, data["config"])
+        logger.debug("Source config %s: %s", data["source"], source_config)
         state.client.sources[data["source"]] = source_to_configure(source_config)
 
     async def handle_connect(
