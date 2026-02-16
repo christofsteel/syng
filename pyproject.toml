@@ -109,7 +109,7 @@ select = ["E",
     "TID",
     "I",
     "ANN"]
-ignore = ["ANN401"]
+ignore = ["ANN401", "D203", "D213"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
