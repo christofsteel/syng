@@ -24,21 +24,21 @@ class Config:
 type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None
 
 
-def generate_dataclass_from_dict[T](clas: type[T], data: dict[str, _Parsable]) -> T:
+def deserialize_dataclass[T](clas: type[T], data: dict[str, _Parsable]) -> T:
     field_types = get_type_hints(clas)
     dataclass_arguments = {
-        attribute: generate_class_from_dict(field_types[attribute], value)
+        attribute: deserialize_config(field_types[attribute], value)
         for attribute, value in data.items()
         if attribute in field_types
     }
     return clas(**dataclass_arguments)
 
 
-def generate_list_from_list[T](clas: type[T], data: list[_Parsable]) -> list[T]:
-    return [generate_class_from_dict(clas, item) for item in data]
+def deserialize_list[T](clas: type[T], data: list[_Parsable]) -> list[T]:
+    return [deserialize_config(clas, item) for item in data]
 
 
-def generate_enum_from_data[T: Enum](clas: type[T], data: str | int) -> T:
+def deserialize_enum[T: Enum](clas: type[T], data: str | int) -> T:
     try:
         enum_value = clas(data)
     except ValueError:
@@ -55,7 +55,7 @@ def generate_enum_from_data[T: Enum](clas: type[T], data: str | int) -> T:
     return enum_value
 
 
-def generate_datetime_or_None_from_data(data: _Parsable) -> datetime | None:
+def deserialize_datetime_or_None(data: _Parsable) -> datetime | None:
     if type(data) is str:
         return datetime.fromisoformat(data)
     elif data is None:
@@ -64,29 +64,27 @@ def generate_datetime_or_None_from_data(data: _Parsable) -> datetime | None:
 
 
 @overload
-def generate_class_from_dict(
-    clas: type[datetime] | type[None], data: _Parsable
-) -> datetime | None: ...
+def deserialize_config(clas: type[datetime] | type[None], data: _Parsable) -> datetime | None: ...
 @overload
-def generate_class_from_dict[T](clas: type[list[T]], data: _Parsable) -> list[T]: ...
+def deserialize_config[T](clas: type[list[T]], data: _Parsable) -> list[T]: ...
 @overload
-def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T: ...
+def deserialize_config[T](clas: type[T], data: _Parsable) -> T: ...
 
 
-def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T | list[T] | datetime | None:
+def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datetime | None:
     if is_dataclass(clas):
         if not isinstance(data, dict):
             raise TypeError(
                 f"got '{data}' of type '{type(data)}, expected 'dict' to create '{clas}'"
             )
-        return generate_dataclass_from_dict(clas, data)
+        return deserialize_dataclass(clas, data)
     if get_origin(clas) is list:
         if not isinstance(data, list):
             raise TypeError(
                 f"got '{data}' of type '{type(data)}, expected 'list' to create '{clas}'"
             )
         inner_class = get_args(clas)[0]
-        return generate_list_from_list(inner_class, data)
+        return deserialize_list(inner_class, data)
     if any([clas is t for t in [str, int, bool]]):
         if not isinstance(data, clas):
             raise TypeError(f"got '{data}' of type '{type(data)}', expected '{clas}'")
@@ -94,13 +92,13 @@ def generate_class_from_dict[T](clas: type[T], data: _Parsable) -> T | list[T] |
     if get_origin(clas) in (Union, UnionType) and set(get_args(clas)) == set(
         get_args(None | datetime)
     ):
-        return generate_datetime_or_None_from_data(data)
+        return deserialize_datetime_or_None(data)
     if issubclass(clas, Enum):
         if not isinstance(data, str) and not isinstance(data, int):
             raise TypeError(
                 f"got '{data}' of type '{type(data)}, expected 'str' or 'int' to create {clas}"
             )
-        return generate_enum_from_data(clas, data)
+        return deserialize_enum(clas, data)
 
     raise TypeError(f"unsupported field type '{clas}'")
 
@@ -151,7 +149,7 @@ def serialize_config(inp: Enum) -> int: ...
 
 def serialize_config(inp: _Serializable) -> _Parsable:
     if isinstance(inp, Config):
-        return generate_dict_from_class(inp)
+        return serialize_dataclass(inp)
     if isinstance(inp, datetime):
         return inp.isoformat()
     if isinstance(inp, str):
@@ -167,7 +165,7 @@ def serialize_config(inp: _Serializable) -> _Parsable:
     raise ValueError(f"Could not serialize {inp} of type {type(inp)}")
 
 
-def generate_dict_from_class(config: Config) -> _Parsable:
+def serialize_dataclass(config: Config) -> _Parsable:
     output = {}
     for name, field in asdict(config).items():
         output[name] = serialize_config(field)
@@ -184,14 +182,14 @@ def load_config(filename: str, source_config_types: Mapping[str, type[Config]]) 
     config = {"config": loaded_config["config"], "sources": {}}
     for source_name, source_config_type in source_config_types.items():
         source_config = loaded_config.get("sources", {}).get(source_name, {})
-        config["sources"][source_name] = generate_class_from_dict(source_config_type, source_config)
+        config["sources"][source_name] = deserialize_config(source_config_type, source_config)
     return config
 
 
 def save_config(filename: str, config: dict[str, Any]) -> None:
     general = config["config"]
     sources = {
-        source_name: generate_dict_from_class(source_config)
+        source_name: serialize_dataclass(source_config)
         for source_name, source_config in config["sources"].items()
     }
     os.makedirs(os.path.dirname(filename), exist_ok=True)

@@ -31,7 +31,7 @@ import socketio
 from aiohttp import web
 from socketio.exceptions import ConnectionRefusedError
 
-from syng.config import generate_class_from_dict
+from syng.config import deserialize_config
 
 try:
     from profanity_check import predict
@@ -1117,7 +1117,7 @@ class Server:
         """
         source_to_configure = available_sources[data["source"]]
         source_config_type = get_source_config_type(source_to_configure)
-        source_config = generate_class_from_dict(source_config_type, data["config"])
+        source_config = deserialize_config(source_config_type, data["config"])
         state.client.sources[data["source"]] = source_to_configure(source_config)
 
     async def handle_connect(
