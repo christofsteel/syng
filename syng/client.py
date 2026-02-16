@@ -1,5 +1,4 @@
-"""
-Module for the playback client.
+"""Module for the playback client.
 
 The client connects to the server via the socket.io protocol, and plays the
 songs, that are sent by the server.
@@ -163,8 +162,7 @@ class Client:
         self.sio.on("connect_error", self.handle_connect_error)
 
     async def handle_connect_error(self, data: dict[str, Any] | str) -> None:
-        """
-        Handle the "connect_error" message.
+        """Handle the "connect_error" message.
 
         This function is called when the client fails to connect to the server.
         It will log the error and disconnect from the server.
@@ -178,8 +176,7 @@ class Client:
         await self.ensure_disconnect()
 
     async def handle_unknown_message(self, event: str, data: dict[str, Any]) -> None:
-        """
-        Handle unknown messages.
+        """Handle unknown messages.
 
         This function is called when the client receives a message, that is not
         handled by any of the other handlers. It will log the event and data.
@@ -197,8 +194,7 @@ class Client:
         await self.ensure_disconnect()
 
     async def ensure_disconnect(self) -> None:
-        """
-        Ensure that the client is disconnected from the server and the player is
+        """Ensure that the client is disconnected from the server and the player is
         terminated.
         """
         if await self.connection_state.client_is([Lifecycle.ENDING, Lifecycle.ENDED]):
@@ -219,8 +215,7 @@ class Client:
         await self.connection_state.set_client_state(Lifecycle.ENDED)
 
     async def handle_msg(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "msg" message.
+        """Handle the "msg" message.
 
         This function is used to print messages from the server to the console.
 
@@ -228,7 +223,6 @@ class Client:
         :type data: dict[str, Any]
         :rtype: None
         """
-
         msg_type = data.get("type", "info")
         match msg_type:
             case "debug":
@@ -243,8 +237,7 @@ class Client:
                 logger.critical(data["msg"])
 
     async def handle_update_config(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "update_config" message.
+        """Handle the "update_config" message.
 
         Currently, this function is untested and should be considered dangerous.
 
@@ -256,8 +249,7 @@ class Client:
         # self.state.config = default_config() | data
 
     async def handle_skip_current(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "skip-current" message.
+        """Handle the "skip-current" message.
 
         Skips the song, that is currently played. If playback currently waits for
         buffering, the buffering is also aborted.
@@ -280,8 +272,7 @@ class Client:
         self.player.skip_current()
 
     async def handle_state(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "state" message.
+        """Handle the "state" message.
 
         The "state" message forwards the current queue and recent list from the
         server. This function saves a copy of both in the global
@@ -325,8 +316,7 @@ class Client:
             callback(self.state.queue)
 
     async def handle_connect(self) -> None:
-        """
-        Handle the "connect" message.
+        """Handle the "connect" message.
 
         This is called when the client successfully connects to the server
         and starts the player.
@@ -367,8 +357,7 @@ class Client:
         await self.connection_state.set_client_state(Lifecycle.STARTED)
 
     async def handle_get_meta_info(self, data: dict[str, Any]) -> None:
-        """
-        Handle a "get-meta-info" message.
+        """Handle a "get-meta-info" message.
 
         Collects the metadata for a given :py:class:`Entry`, from its source, and
         sends them back to the server in a "meta-info" message. On the server side
@@ -383,8 +372,7 @@ class Client:
         await self.sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
 
     async def preview(self, entry: Entry) -> None:
-        """
-        Generate and play a preview for a given :py:class:`Entry`.
+        """Generate and play a preview for a given :py:class:`Entry`.
 
         This function shows a black screen and prints the artist, title and
         performer of the entry for a duration.
@@ -399,8 +387,7 @@ class Client:
         await self.player.queue_next(entry)
 
     async def handle_play(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "play" message.
+        """Handle the "play" message.
 
         Plays the :py:class:`Entry`, that is encoded in the `data` parameter. If a
         :py:attr:`State.preview_duration` is set, it shows a small preview before
@@ -452,8 +439,7 @@ class Client:
                 await self.sio.emit("pop-then-get-next")
 
     async def handle_search(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "search" message.
+        """Handle the "search" message.
 
         This handles client side search requests. It sends a search request to all
         configured :py:class:`syng.sources.source.Source` and collects the results.
@@ -486,8 +472,7 @@ class Client:
         )
 
     async def handle_request_config(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "request-config" message.
+        """Handle the "request-config" message.
 
         Sends the specific server side configuration for a given
         :py:class:`syng.sources.source.Source`.
@@ -542,8 +527,7 @@ class Client:
                 await self.sio.emit("config", {"source": data["source"], "config": updated_config})
 
     def signal_handler(self, loop: asyncio.AbstractEventLoop) -> None:
-        """
-        Signal handler for the client.
+        """Signal handler for the client.
 
         This function is called when the client receives a signal to terminate. It
         will disconnect from the server and kill the current player.
@@ -557,8 +541,7 @@ class Client:
         asyncio.ensure_future(self.ensure_disconnect(), loop=loop)
 
     def quit_callback(self) -> None:
-        """
-        Callback function for the player, terminating the player and disconnecting
+        """Callback function for the player, terminating the player and disconnecting.
 
         :rtype: None
         """
@@ -566,18 +549,14 @@ class Client:
             asyncio.run_coroutine_threadsafe(self.ensure_disconnect(), self.loop)
 
     async def remove_room(self) -> None:
-        """
-        Remove the room from the server.
-        """
-
+        """Remove the room from the server."""
         room = self.config.general.room
         if room:
             logger.info("Removing room %s from server", room)
             await self.sio.emit("remove-room", {"room": room})
 
     def export_queue(self, filename: str) -> None:
-        """
-        Export the current queue to a file.
+        """Export the current queue to a file.
 
         :param filename: The name of the file to export the queue to.
         :type filename: str
@@ -596,8 +575,7 @@ class Client:
             )
 
     async def import_queue(self, filename: str) -> None:
-        """
-        Import a queue from a file.
+        """Import a queue from a file.
 
         :param filename: The name of the file to import the queue from.
         :type filename: str
@@ -613,8 +591,7 @@ class Client:
             )
 
     async def handle_room_removed(self, data: dict[str, Any]) -> None:
-        """
-        Handle the "room-removed" message.
+        """Handle the "room-removed" message.
 
         This is called when the server removes the room, that this client is
         connected to. We simply log this event.
@@ -626,14 +603,12 @@ class Client:
         logger.info("Room removed: %s", data["room"])
 
     async def start_client(self) -> None:
-        """
-        Initialize the client and connect to the server.
+        """Initialize the client and connect to the server.
 
         :param config: Config options for the client
         :type config: dict[str, Any]
         :rtype: None
         """
-
         await self.connection_state.set_client_state(Lifecycle.STARTING)
 
         self.loop = asyncio.get_running_loop()
@@ -665,8 +640,7 @@ class Client:
 
 
 def create_async_and_start_client(config: SyngConfig) -> None:
-    """
-    Create an asyncio event loop and start the client.
+    """Create an asyncio event loop and start the client.
 
     If a multiprocessing queue is given, the client will log to the queue.
 
@@ -676,15 +650,13 @@ def create_async_and_start_client(config: SyngConfig) -> None:
     :type queue: Optional[Queue[LogRecord]]
     :rtype: None
     """
-
     client = Client(config)
 
     asyncio.run(client.start_client())
 
 
 def run_client(args: Namespace) -> None:
-    """
-    Run the client with the given arguments.
+    """Run the client with the given arguments.
 
     Namespace contains the following attributes:
         - room: The room code to connect to

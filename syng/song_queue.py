@@ -19,8 +19,7 @@ class Queue:
     """
 
     def __init__(self, initial_entries: list[Entry]) -> None:
-        """
-        Construct the queue. And initialize the internal lock and semaphore.
+        """Construct the queue. And initialize the internal lock and semaphore.
 
         :param initial_entries: Initial list of entries to add to the queue
         :type initial_entries: list[Entry]
@@ -31,8 +30,7 @@ class Queue:
         self.readlock = asyncio.Lock()
 
     def extend(self, entries: Iterable[Entry]) -> None:
-        """
-        Extend the queue with a list of entries and increase the semaphore.
+        """Extend the queue with a list of entries and increase the semaphore.
 
         :param entries: The entries to add
         :type entries: Iterable[Entry]
@@ -42,8 +40,7 @@ class Queue:
             self.append(entry)
 
     def append(self, entry: Entry) -> None:
-        """
-        Append an entry to the queue, increase the semaphore.
+        """Append an entry to the queue, increase the semaphore.
 
         :param entry: The entry to add
         :type entry: Entry
@@ -59,8 +56,7 @@ class Queue:
         return None
 
     async def peek(self) -> Entry:
-        """
-        Return the first entry in the queue.
+        """Return the first entry in the queue.
 
         If the queue is empty, wait until the queue has at least one entry.
 
@@ -74,8 +70,7 @@ class Queue:
         return item
 
     async def popleft(self) -> Entry:
-        """
-        Remove the first entry in the queue and return it.
+        """Remove the first entry in the queue and return it.
 
         Decreases the semaphore. If the queue is empty, wait until the queue
         has at least one entry.
@@ -89,8 +84,7 @@ class Queue:
         return item
 
     def to_list(self) -> list[Entry]:
-        """
-        Return all entries in a list.
+        """Return all entries in a list.
 
         This is done, so that the entries can be converted to a JSON object,
         when sending it to the web or playback client.
@@ -101,8 +95,7 @@ class Queue:
         return list(self._queue)  # [item for item in self._queue]
 
     def update(self, uuid: UUID | str, updater: Callable[[Entry], None]) -> None:
-        """
-        Update entries in the queue, identified by their uuid.
+        """Update entries in the queue, identified by their uuid.
 
         If an entry with that uuid is not in the queue, nothing happens.
 
@@ -117,8 +110,7 @@ class Queue:
                 updater(item)
 
     def find_by_name(self, name: str) -> Entry | None:
-        """
-        Find the first entry by its performer and return it.
+        """Find the first entry by its performer and return it.
 
         :param name: The name of the performer to search for.
         :type name: str
@@ -131,22 +123,19 @@ class Queue:
         return None
 
     def find_all_by_name(self, name: str) -> Iterable[Entry]:
-        """
-        Find all entries by their performer and return them as an iterable.
+        """Find all entries by their performer and return them as an iterable.
 
         :param name: The name of the performer to search for.
         :type name: str
         :returns: The entries with the performer.
         :rtype: Iterable[Entry]
         """
-
         for item in self._queue:
             if item.shares_performer(name):
                 yield item
 
     def find_by_uuid(self, uuid: UUID | str) -> Entry | None:
-        """
-        Find an entry by its uuid and return it.
+        """Find an entry by its uuid and return it.
 
         :param uuid: The uuid to search for.
         :type uuid: UUID | str
@@ -159,10 +148,7 @@ class Queue:
         return None
 
     def find_by_uid(self, uid: str) -> Iterable[Entry]:
-        """
-        Find all entries for a given user id
-        """
-
+        """Find all entries for a given user id."""
         for item in self._queue:
             if item.uid == uid:
                 yield item
@@ -174,8 +160,7 @@ class Queue:
         return start_value
 
     async def remove(self, entry: Entry) -> None:
-        """
-        Remove an entry, if it exists. Decrease the semaphore.
+        """Remove an entry, if it exists. Decrease the semaphore.
 
         :param entry: The entry to remove
         :type entry: Entry
@@ -186,8 +171,7 @@ class Queue:
             self._queue.remove(entry)
 
     async def move_up(self, uuid: str) -> None:
-        """
-        Move an :py:class:`syng.entry.Entry` with the uuid up in the queue.
+        """Move an :py:class:`syng.entry.Entry` with the uuid up in the queue.
 
         If it is called on the first two elements, nothing will happen.
 
@@ -207,8 +191,7 @@ class Queue:
                 self._queue[uuid_idx - 1] = tmp
 
     async def move_to(self, uuid: str, target: int) -> None:
-        """
-        Move an :py:class:`syng.entry.Entry` with the uuid to a specific position.
+        """Move an :py:class:`syng.entry.Entry` with the uuid to a specific position.
 
         :param uuid: The uuid of the entry.
         :type uuid: str
@@ -216,7 +199,6 @@ class Queue:
         :type target: int
         :rtype: None
         """
-
         async with self.readlock:
             uuid_idx = 0
             for idx, item in enumerate(self._queue):

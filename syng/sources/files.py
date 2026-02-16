@@ -27,7 +27,7 @@ class FilesSource(FileBasedSource):
     source_name = "files"
 
     async def get_file_list(self) -> list[str]:
-        """Collect all files in ``dir``, that have the correct filename extension"""
+        """Collect all files in ``dir``, that have the correct filename extension."""
 
         def _get_file_list() -> list[str]:
             file_list = []
@@ -40,8 +40,7 @@ class FilesSource(FileBasedSource):
         return await asyncio.to_thread(_get_file_list)
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
-        """
-        Return the duration for the entry file.
+        """Return the duration for the entry file.
 
         :param entry: An entry
         :type entry: Entry
@@ -49,18 +48,15 @@ class FilesSource(FileBasedSource):
           ``duration`` key.
         :rtype: dict[str, Any]
         """
-
         duration = await self.get_duration(os.path.join(self.config.dir, entry.ident))
 
         return {"duration": duration}
 
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
-        """
-        No buffering needs to be done, since the files are already on disk.
+        """No buffering needs to be done, since the files are already on disk.
 
         We just return the file names.
         """
-
         return self.get_video_audio_split(os.path.join(self.config.dir, entry.ident))
 
 

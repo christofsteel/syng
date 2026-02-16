@@ -1,5 +1,4 @@
-"""
-Imports all sources, so that they add themselves to the
+"""Imports all sources, so that they add themselves to the
 ``available_sources`` dictionary.
 """
 
@@ -28,8 +27,7 @@ def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
 
 
 def configure_sources(configs: dict[str, SourceConfig]) -> dict[str, Source]:
-    """
-    Create a Source object for each entry in the given configs dictionary.
+    """Create a Source object for each entry in the given configs dictionary.
 
     :param configs: Configurations for the sources
     :type configs: dict[str, Any]

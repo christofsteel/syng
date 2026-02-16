@@ -1,5 +1,4 @@
-"""
-Construct the S3 source.
+"""Construct the S3 source.
 
 Adds it to the ``available_sources`` with the name ``s3``
 """
@@ -73,13 +72,11 @@ class S3Source(FileBasedSource):
             )
 
     def load_file_list_from_server(self) -> list[str]:
-        """
-        Load the file list from the s3 instance.
+        """Load the file list from the s3 instance.
 
         :return: A list of file paths
         :rtype: list[str]
         """
-
         file_list = [
             obj.object_name
             for obj in self.minio.list_objects(self.config.bucket, recursive=True)
@@ -96,8 +93,7 @@ class S3Source(FileBasedSource):
             dump(file_list, index_file_handle)
 
     async def get_file_list(self) -> list[str]:
-        """
-        Return the list of files on the s3 instance, according to the extensions.
+        """Return the list of files on the s3 instance, according to the extensions.
 
         If an index file exists, this will be read instead.
 
@@ -121,8 +117,7 @@ class S3Source(FileBasedSource):
         return await asyncio.to_thread(_get_file_list)
 
     async def update_file_list(self) -> list[str] | None:
-        """
-        Rescan the file list and update the index file.
+        """Rescan the file list and update the index file.
 
         :return: The updated file list
         :rtype: list[str]
@@ -136,8 +131,7 @@ class S3Source(FileBasedSource):
         return await asyncio.to_thread(_update_file_list)
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
-        """
-        Return the duration for the music file.
+        """Return the duration for the music file.
 
         :param entry: The entry with the associated mp3 file
         :type entry: Entry
@@ -145,7 +139,6 @@ class S3Source(FileBasedSource):
           ``duration`` key.
         :rtype: dict[str, Any]
         """
-
         await self.ensure_playable(entry)
 
         file_name: str = self.downloaded_files[entry.ident].video
@@ -155,8 +148,7 @@ class S3Source(FileBasedSource):
         return {"duration": duration}
 
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
-        """
-        Download the file from the s3.
+        """Download the file from the s3.
 
         If it is a ``cdg`` file, the accompaning ``mp3`` file is also downloaded
 
@@ -167,7 +159,6 @@ class S3Source(FileBasedSource):
                  .
         :rtype: Tuple[str, Optional[str]]
         """
-
         video_path, audio_path = self.get_video_audio_split(entry.ident)
         video_dl_path: str = os.path.join(self.config.tmp_dir, video_path)
         os.makedirs(os.path.dirname(video_dl_path), exist_ok=True)

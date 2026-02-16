@@ -31,8 +31,7 @@ class FileBasedConfig(SourceConfig):
 
 @dataclass
 class FileBasedSource(Source, ABC):
-    """
-    A abstract source for indexing and playing songs based on files.
+    """A abstract source for indexing and playing songs based on files.
 
     Config options are:
         -``extensions``, list of filename extensions
@@ -49,8 +48,7 @@ class FileBasedSource(Source, ABC):
         return entry.ident in self._index and entry.source == self.source_name
 
     def has_correct_extension(self, path: str | None) -> bool:
-        """
-        Check if a `path` has a correct extension.
+        """Check if a `path` has a correct extension.
 
         For A+B type extensions (like mp3+cdg) only the latter half is checked
 
@@ -64,8 +62,7 @@ class FileBasedSource(Source, ABC):
         ]
 
     def get_video_audio_split(self, path: str) -> tuple[str, str | None]:
-        """
-        Returns path for audio and video file, if filetype is marked as split.
+        """Returns path for audio and video file, if filetype is marked as split.
 
         If the file is not marked as split, the second element of the tuple will be None.
 
@@ -86,8 +83,7 @@ class FileBasedSource(Source, ABC):
         return (path, None)
 
     async def get_duration(self, path: str) -> int:
-        """
-        Return the duration for the file.
+        """Return the duration for the file.
 
         :param path: The path to the file
         :type path: str

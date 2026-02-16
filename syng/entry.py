@@ -59,8 +59,7 @@ class Entry:
     incomplete_data: bool = False
 
     def short_str(self) -> str:
-        """
-        Get a short string representation of this entry.
+        """Get a short string representation of this entry.
 
         :return: A short string representation.
         :rtype: str
@@ -68,8 +67,7 @@ class Entry:
         return f"{self.artist} - {self.title} ({self.performer})"
 
     def update(self, **kwargs: Any) -> None:
-        """
-        Update the attributes with given substitutions.
+        r"""Update the attributes with given substitutions.
 
         :param \\*\\*kwargs: Keywords taken from the list of attributes.
         :type \\*\\*kwargs: Any
@@ -78,8 +76,7 @@ class Entry:
         self.__dict__.update(kwargs)
 
     def shares_performer(self, other_performer: str) -> bool:
-        """
-        Check if this entry shares a performer with another entry.
+        """Check if this entry shares a performer with another entry.
 
         :param other_performer: The performer to check against.
         :type other_performer: str

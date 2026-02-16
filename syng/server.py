@@ -1,5 +1,4 @@
-"""
-Module for the Server.
+"""Module for the Server.
 
 The server listens for incoming connections from playback clients and web
 clients via the socket.io protocol.
@@ -58,8 +57,7 @@ DEFAULT_CONFIG = {
 
 
 def with_state(handler: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator that forwards the state of a room to a handler.
+    """Decorator that forwards the state of a room to a handler.
 
     :param forward_room: Either the handler to decorate or a boolean
         defining if the room should be forwarded.
@@ -78,8 +76,7 @@ def with_state(handler: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator, that requires the client to be an admin.
+    """Decorator, that requires the client to be an admin.
 
     If the client is not an admin, the handler is not called.
 
@@ -101,8 +98,7 @@ def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def playback(handler: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator, that requires the client to be a playback client.
+    """Decorator, that requires the client to be a playback client.
 
     If the client is not a playback client, the handler is not called.
 
@@ -233,8 +229,7 @@ class Server:
         self.sio.on("client-msg", self.handle_client_msg)
 
     async def is_admin(self, state: State, sid: str) -> bool:
-        """
-        Check if a given sid is an admin in a room.
+        """Check if a given sid is an admin in a room.
 
         :param room: The room to check
         :type room: str
@@ -249,8 +244,7 @@ class Server:
             return "admin" in session and session["admin"]
 
     async def root_handler(self, request: Any) -> Any:
-        """
-        Handle the index and favicon requests.
+        """Handle the index and favicon requests.
 
         If the path of the request ends with "/favicon.ico" return the favicon,
         otherwise the index.html. This way the javascript can read the room code
@@ -265,8 +259,7 @@ class Server:
         return web.FileResponse(os.path.join(self.app["root_folder"], "index.html"))
 
     def get_number_connections(self) -> int:
-        """
-        Get the number of connections to the server.
+        """Get the number of connections to the server.
 
         :return: The number of connections
         :rtype: int
@@ -279,8 +272,7 @@ class Server:
         return num
 
     def get_connections(self) -> dict[str, dict[str, list[tuple[str, str]]]]:
-        """
-        Get all connections to the server.
+        """Get all connections to the server.
 
         :return: A dictionary mapping namespaces to rooms and participants.
         :rtype: dict[str, dict[str, list[tuple[str, str]]]]
@@ -295,8 +287,7 @@ class Server:
         return connections
 
     async def get_clients(self, room: str) -> list[dict[str, Any]]:
-        """
-        Get the number of clients in a room.
+        """Get the number of clients in a room.
 
         :param room: The room to get the number of clients for
         :type room: str
@@ -316,10 +307,7 @@ class Server:
         return clients
 
     async def admin_handler(self, request: Any) -> Any:
-        """
-        Handle the admin request.
-        """
-
+        """Handle the admin request."""
         rooms = [
             {
                 "room": room,
@@ -350,8 +338,7 @@ class Server:
         await self.send_state(state, room)
 
     async def log_to_playback(self, state: State, msg: str, level: str = "info") -> None:
-        """
-        Log a message to the playback client.
+        """Log a message to the playback client.
 
         This is used to inform the playback client of errors or other messages.
 
@@ -364,8 +351,7 @@ class Server:
         await self.sio.emit("msg", {"msg": msg, "type": level}, room=state.sid)
 
     async def send_state(self, state: State, sid: str) -> None:
-        """
-        Send the current state (queue and recent-list) to sid.
+        """Send the current state (queue and recent-list) to sid.
 
         This sends a "state" message. This can be received either by the playback
         client, a web client or the whole room.
@@ -379,7 +365,6 @@ class Server:
         :type sid: str:
         :rtype: None
         """
-
         safe_config = {k: v for k, v in state.client.config.items() if k not in ["secret", "key"]}
 
         await self.sio.emit(
@@ -395,8 +380,7 @@ class Server:
 
     @with_state
     async def handle_get_state(self, state: State, sid: str) -> None:
-        """
-        Handle the "get-state" message.
+        """Handle the "get-state" message.
 
         Sends the current state to whoever requests it. This failes if the sender
         is not part of any room.
@@ -412,8 +396,7 @@ class Server:
     async def handle_waiting_room_append(
         self, state: State, sid: str, data: dict[str, Any]
     ) -> str | None:
-        """
-        Append a song to the waiting room.
+        """Append a song to the waiting room.
 
         This should be called from a web client. Appends the entry, that is encoded
         within the data to the waiting room of the room the client is currently
@@ -474,8 +457,7 @@ class Server:
     async def append_to_queue(
         self, state: State, entry: Entry, report_to: str | None = None
     ) -> None:
-        """
-        Append a song to the queue for a given session.
+        """Append a song to the queue for a given session.
 
         Checks, if the computed start time is before the configured end time of the
         event, and reports an error, if the end time is exceeded.
@@ -527,8 +509,7 @@ class Server:
     @admin
     @with_state
     async def handle_show_config(self, state: State, sid: str) -> None:
-        """
-        Sends public config to webclient.
+        """Sends public config to webclient.
 
         This will only be send if the client is on an admin connection.
 
@@ -545,8 +526,7 @@ class Server:
     @admin
     @with_state
     async def handle_update_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Forwards an updated config from an authorized webclient to the playback client.
+        """Forwards an updated config from an authorized webclient to the playback client.
 
         This is currently untrested and should be used with caution.
 
@@ -569,8 +549,7 @@ class Server:
 
     @with_state
     async def handle_append(self, state: State, sid: str, data: dict[str, Any]) -> str | None:
-        """
-        Handle the "append" message.
+        """Handle the "append" message.
 
         This should be called from a web client. Appends the entry, that is encoded
         within the data to the room the client is currently connected to. An entry
@@ -677,8 +656,7 @@ class Server:
     async def handle_append_anyway(
         self, state: State, sid: str, data: dict[str, Any]
     ) -> str | None:
-        """
-        Appends a song to the queue, even if the performer is already in queue.
+        """Appends a song to the queue, even if the performer is already in queue.
 
         Works the same as handle_append, but without the check if the performer is already
         in queue.
@@ -741,8 +719,7 @@ class Server:
     @playback
     @with_state
     async def handle_meta_info(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "meta-info" message.
+        """Handle the "meta-info" message.
 
         Updated a :py:class:syng.entry.Entry`, that is encoded in the data
         parameter, in the queue, that belongs to the room the requesting client
@@ -781,8 +758,7 @@ class Server:
     @playback
     @with_state
     async def handle_get_first(self, state: State, sid: str) -> None:
-        """
-        Handle the "get-first" message.
+        """Handle the "get-first" message.
 
         This message is send by the playback client, once it has connected. It
         should only be send for the initial song. Each subsequent song should be
@@ -808,8 +784,7 @@ class Server:
     async def handle_queue_to_waiting_room(
         self, state: State, sid: str, data: dict[str, Any]
     ) -> None:
-        """
-        Handle the "queue-to-waiting" message.
+        """Handle the "queue-to-waiting" message.
 
         If on an admin-connection, removes a song from the queue and appends it to
         the waiting room. If the performer has only one entry in the queue, it is
@@ -819,7 +794,6 @@ class Server:
         :type sid: str
         :rtype: None
         """
-
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
             performer_entries = list(state.queue.find_all_by_name(entry.performer))
@@ -834,8 +808,7 @@ class Server:
     async def handle_waiting_room_to_queue(
         self, state: State, sid: str, data: dict[str, Any]
     ) -> None:
-        """
-        Handle the "waiting-room-to-queue" message.
+        """Handle the "waiting-room-to-queue" message.
 
         If on an admin-connection, removes a song from the waiting room and appends it to
         the queue.
@@ -853,8 +826,7 @@ class Server:
             await self.append_to_queue(state, entry, sid)
 
     async def add_songs_from_waiting_room(self, state: State) -> None:
-        """
-        Add all songs from the waiting room, that should be added to the queue.
+        """Add all songs from the waiting room, that should be added to the queue.
 
         A song should be added if none of its performers are already queued.
 
@@ -874,8 +846,7 @@ class Server:
             state.waiting_room.remove(wr_entry)
 
     async def discard_first(self, state: State) -> Entry:
-        """
-        Gets the first element of the queue, handling resulting triggers.
+        """Gets the first element of the queue, handling resulting triggers.
 
         This function is used to get the first element of the queue, and handle
         the resulting triggers. This includes adding songs from the waiting room,
@@ -885,7 +856,6 @@ class Server:
         :type room: str
         :rtype: Entry
         """
-
         old_entry = await state.queue.popleft()
 
         await self.add_songs_from_waiting_room(state)
@@ -898,8 +868,7 @@ class Server:
     @playback
     @with_state
     async def handle_pop_then_get_next(self, state: State, sid: str) -> None:
-        """
-        Handle the "pop-then-get-next" message.
+        """Handle the "pop-then-get-next" message.
 
         This function acts similar to the :py:func:`handle_get_first` function. The
         main difference is, that prior to sending a song to the playback client,
@@ -925,8 +894,7 @@ class Server:
         await self.sio.emit("play", current, room=sid)
 
     def check_registration(self, key: str) -> bool:
-        """
-        Check if a given key is in the registration keyfile.
+        """Check if a given key is in the registration keyfile.
 
         This is used to authenticate a client, if the server is in private or
         restricted mode.
@@ -943,8 +911,7 @@ class Server:
             return key in keys
 
     async def check_client_version(self, client_version: tuple[int, int, int], sid: str) -> bool:
-        """
-        Check if a given version is compatible with the server.
+        """Check if a given version is compatible with the server.
 
         :param version: The version to check
         :type version: tuple[int, int, int]
@@ -982,8 +949,7 @@ class Server:
     @admin
     @with_state
     async def handle_import_queue(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "import-queue" message.
+        """Handle the "import-queue" message.
 
         This will add entries to the queue and waiting room from the client.
 
@@ -997,7 +963,6 @@ class Server:
         :type data: dict[str, Any]
         :rtype: None
         """
-
         queue_entries = [Entry(**entry) for entry in data.get("queue", [])]
         waiting_room_entries = [Entry(**entry) for entry in data.get("waiting_room", [])]
         recent_entries = [Entry(**entry) for entry in data.get("recent", [])]
@@ -1011,8 +976,7 @@ class Server:
     @admin
     @with_state
     async def handle_remove_room(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "remove-room" message.
+        """Handle the "remove-room" message.
 
         This will remove the room from the server, and delete all associated data.
         This is only available on an admin connection.
@@ -1041,8 +1005,7 @@ class Server:
     @playback
     @with_state
     async def handle_sources(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "sources" message.
+        """Handle the "sources" message.
 
         Get the list of sources the client wants to use. Update internal list of
         sources, remove unused sources and query for a config for all uninitialized
@@ -1075,8 +1038,7 @@ class Server:
     @playback
     @with_state
     async def handle_config_chunk(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "config-chunk" message.
+        """Handle the "config-chunk" message.
 
         This is called, when a source wants its configuration transmitted in
         chunks, rather than a single message. If the source already exist
@@ -1099,8 +1061,7 @@ class Server:
     @playback
     @with_state
     async def handle_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "config" message.
+        """Handle the "config" message.
 
         This is called, when a source wants its configuration transmitted in
         a single message, rather than chunks. A source will be created with the
@@ -1124,8 +1085,7 @@ class Server:
     async def handle_connect(
         self, sid: str, environ: dict[str, Any], auth: None | dict[str, Any] = None
     ) -> None:
-        """
-        Handle the "connect" message.
+        """Handle the "connect" message.
 
         This is called, when a client connects to the server. It will register the
         client and send the initial state of the room to the client.
@@ -1170,8 +1130,7 @@ class Server:
             )
 
     async def register_playback_client(self, sid: str, data: dict[str, Any]) -> None:
-        """
-        Register a new playback client and create a new room if necessary.
+        """Register a new playback client and create a new room if necessary.
 
         The data dictionary should have the following keys:
             - `room` (Optional), the requested room
@@ -1297,8 +1256,7 @@ class Server:
 
     @with_state
     async def handle_register_admin(self, state: State, sid: str, data: dict[str, Any]) -> bool:
-        """
-        THIS IS DEPRECATED, REGISTRATION IS NOW DONE VIA THE CONNECT EVENT.
+        """THIS IS DEPRECATED, REGISTRATION IS NOW DONE VIA THE CONNECT EVENT.
 
         Handle a "register-admin" message.
 
@@ -1320,8 +1278,7 @@ class Server:
     @admin
     @with_state
     async def handle_skip_current(self, state: State, sid: str) -> None:
-        """
-        Handle a "skip-current" message.
+        """Handle a "skip-current" message.
 
         If this comes from an admin connection, forward the "skip-current" message
         to the playback client. This will be handled by the
@@ -1338,8 +1295,7 @@ class Server:
     @admin
     @with_state
     async def handle_move_to(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "move-to" message.
+        """Handle the "move-to" message.
 
         If on an admin connection, moves the entry specified in the data to the
         position specified in the data.
@@ -1356,8 +1312,7 @@ class Server:
     @admin
     @with_state
     async def handle_move_up(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "move-up" message.
+        """Handle the "move-up" message.
 
         If on an admin connection, moves up the entry specified in the data by one
         place in the queue.
@@ -1374,8 +1329,7 @@ class Server:
     @admin
     @with_state
     async def handle_skip(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "skip" message.
+        """Handle the "skip" message.
 
         If on an admin connection, removes the entry specified by data["uuid"]
         from the queue or the waiting room. Triggers the waiting room.
@@ -1409,8 +1363,7 @@ class Server:
         await self.broadcast_state(state, sid=sid)
 
     async def handle_disconnect(self, sid: str) -> None:
-        """
-        Handle the "disconnect" message.
+        """Handle the "disconnect" message.
 
         This message is send automatically, when a client disconnets.
 
@@ -1427,8 +1380,7 @@ class Server:
 
     @with_state
     async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> str:
-        """
-        Handle the "search" message.
+        """Handle the "search" message.
 
         Forwards the dict["query"] to the :py:func:`Source.search` method, and
         execute them concurrently. The order is given by the
@@ -1461,8 +1413,7 @@ class Server:
     async def search_and_emit(
         self, search_id: uuid.UUID, query: str, state: State, sid: str
     ) -> None:
-        """
-        Search for a query on a source and emit the results.
+        """Search for a query on a source and emit the results.
 
         :param search_id: The search id
         :type search_id: uuid.UUID
@@ -1474,7 +1425,6 @@ class Server:
         :type sid: str
         :rtype: list[Result]
         """
-
         results_list = await asyncio.gather(
             *[state.client.sources[source].search(query) for source in state.client.sources_prio]
         )
@@ -1486,8 +1436,7 @@ class Server:
 
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:
-        """
-        Handle the "search-results" message.
+        """Handle the "search-results" message.
 
         This message is send by the playback client, once it has received search
         results. The results are send to the web client.
@@ -1525,8 +1474,7 @@ class Server:
     async def send_search_results(
         self, sid: str, results: list[Result], search_id: uuid.UUID | None
     ) -> None:
-        """
-        Send search results to a client.
+        """Send search results to a client.
 
         :param sid: The session id of the client to send the results to.
         :type sid: str
@@ -1541,15 +1489,13 @@ class Server:
         )
 
     async def cleanup(self) -> None:
-        """
-        Clean up the unused playback clients
+        """Clean up the unused playback clients.
 
         This runs every hour, and removes every client, that did not requested a song for four
         hours.
 
         :rtype: None
         """
-
         logger.info("Start Cleanup")
         to_remove: list[str] = []
         for sid, state in self.clients.items():
@@ -1576,8 +1522,7 @@ class Server:
         self,
         iapp: web.Application,
     ) -> AsyncGenerator[None, None]:
-        """
-        Create all the background tasks.
+        """Create all the background tasks.
 
         For now, this is only the cleanup task.
 
@@ -1585,7 +1530,6 @@ class Server:
         :type iapp: web.Application
         :rtype: AsyncGenerator[None, None]
         """
-
         iapp["repeated_cleanup"] = asyncio.create_task(self.cleanup())
 
         yield
@@ -1594,8 +1538,7 @@ class Server:
         await iapp["repeated_cleanup"]
 
     async def run_apps(self, host: str, port: int, admin_port: int | None) -> None:
-        """
-        Run the main and admin apps.
+        """Run the main and admin apps.
 
         This is used to run the main app and the admin app in parallel.
 
@@ -1623,8 +1566,7 @@ class Server:
             await asyncio.sleep(3600)
 
     def run(self, args: Namespace) -> None:
-        """
-        Run the server.
+        """Run the server.
 
         `args` consists of the following attributes:
             - `host`, the host to bind to
@@ -1676,8 +1618,7 @@ class Server:
 
 
 def run_server(args: Namespace) -> None:
-    """
-    Run the server.
+    """Run the server.
 
     :param args: The command line arguments
     :type args: Namespace

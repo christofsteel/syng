@@ -197,8 +197,7 @@ def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datet
 
 
 def default_config() -> dict[str, int | str | None]:
-    """
-    Return a default configuration for the client.
+    """Return a default configuration for the client.
 
     :returns: A dictionary with the default configuration.
     :rtype: dict[str, Optional[int | str]]

@@ -1,5 +1,4 @@
-"""
-Abstract class for sources.
+"""Abstract class for sources.
 
 Also defines the dictionary of available sources. Each source should add itself
 to this dictionary in its module.
@@ -120,8 +119,7 @@ class Source(ABC):
         return config_type
 
     def is_valid(self, entry: Entry) -> bool:
-        """
-        Check if the entry is valid.
+        """Check if the entry is valid.
 
         Each source can implement this method to check if the entry is valid.
 
@@ -141,8 +139,7 @@ class Source(ABC):
         artist: str | None = None,
         title: str | None = None,
     ) -> Entry | None:
-        """
-        Create an :py:class:`syng.entry.Entry` from a given identifier.
+        """Create an :py:class:`syng.entry.Entry` from a given identifier.
 
         By default, this confirmes, that the ident is a valid entry (i.e. part
         of the indexed list), and builds an Entry by parsing the file name.
@@ -161,7 +158,6 @@ class Source(ABC):
         :rtype: Optional[Entry]
         :raises EntryNotValid: If the entry is not valid for the source.
         """
-
         res: Result = Result.from_filename(ident, self.source_name)
         if collab_mode not in ["solo", "group", "duet"]:
             collab_mode = None
@@ -181,8 +177,7 @@ class Source(ABC):
         return entry
 
     async def search(self, query: str) -> list[Result]:
-        """
-        Search the songs from the source for a query.
+        """Search the songs from the source for a query.
 
         By default, this searches in the internal index.
 
@@ -199,8 +194,7 @@ class Source(ABC):
 
     @abstractmethod
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
-        """
-        Source specific part of buffering.
+        """Source specific part of buffering.
 
         This should asynchronous download all required files to play the entry,
         and return the location of the video and audio file. If the audio is
@@ -218,8 +212,7 @@ class Source(ABC):
         """
 
     async def buffer(self, entry: Entry, pos: int) -> None:
-        """
-        Buffer all necessary files for the entry.
+        """Buffer all necessary files for the entry.
 
         This calls the specific :py:func:`Source.do_buffer` method. It
         ensures, that the correct events will be triggered, when the buffer
@@ -257,8 +250,7 @@ class Source(ABC):
         self.downloaded_files[entry.ident].ready.set()
 
     async def skip_current(self, entry: Entry) -> None:
-        """
-        Skips first song in the queue.
+        """Skips first song in the queue.
 
         If it is played, the player is killed, if it is still buffered, the
         buffering is aborted. Then a flag is set to keep the player from
@@ -277,8 +269,7 @@ class Source(ABC):
             self.downloaded_files[entry.ident].ready.set()
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
-        """
-        Guaranties that the given entry can be played.
+        """Guaranties that the given entry can be played.
 
         First start buffering, then wait for the buffering to end.
 
@@ -292,8 +283,7 @@ class Source(ABC):
         return dlfilesentry.video, dlfilesentry.audio
 
     async def get_missing_metadata(self, _entry: Entry) -> dict[str, Any]:
-        """
-        Read and report missing metadata.
+        """Read and report missing metadata.
 
         If the source sended a list of filenames to the server, the server can
         search these filenames, but has no way to read e.g. the duration. This
@@ -310,8 +300,7 @@ class Source(ABC):
 
     @staticmethod
     def split_search_term(search_term: str) -> list[str]:
-        """
-        Split a search term, respecting quoted spaces
+        """Split a search term, respecting quoted spaces.
 
         If quotation is not deterministic, fall back to splitting at each space
         """
@@ -323,8 +312,7 @@ class Source(ABC):
             return splits
 
     def filter_data_by_query(self, query: str, data: list[str]) -> list[str]:
-        """
-        Filter the ``data``-list by the ``query``.
+        """Filter the ``data``-list by the ``query``.
 
         :param query: The query to filter
         :type query: str
@@ -343,8 +331,7 @@ class Source(ABC):
         return [element for element in data if contains_all_words(splitquery, element)]
 
     async def get_file_list(self) -> list[str]:
-        """
-        Gather a list of all files belonging to the source.
+        """Gather a list of all files belonging to the source.
 
         This list will be send to the server. When the server searches, this
         list will be searched.
@@ -355,8 +342,7 @@ class Source(ABC):
         return []
 
     async def update_file_list(self) -> list[str] | None:
-        """
-        Update the internal list of files.
+        """Update the internal list of files.
 
         This is called after the client sends its initial file list to the
         server to update the list of files since the last time an index file
@@ -371,8 +357,7 @@ class Source(ABC):
         return None
 
     async def update_config(self) -> dict[str, Any] | list[dict[str, Any]] | None:
-        """
-        Update the config of the source.
+        """Update the config of the source.
 
         This is called after the client sends its initial config to the server to
         update the config. E.g. to update the list of files, that should be send to
@@ -383,7 +368,6 @@ class Source(ABC):
 
         :rtype: Optional[dict[str, Any] | list[dict[str, Any]]
         """
-
         if not self.build_index:
             return None
         logger.warning(f"{self.source_name}: updating index")
@@ -395,8 +379,7 @@ class Source(ABC):
         return None
 
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
-        """
-        Return the part of the config, that should be sent to the server.
+        """Return the part of the config, that should be sent to the server.
 
         Can be either a dictionary or a list of dictionaries. If it is a
         dictionary, a single message will be sent. If it is a list, one message
@@ -437,8 +420,7 @@ class Source(ABC):
         return packages
 
     def add_to_config(self, config: dict[str, Any], running_number: int) -> None:
-        """
-        Add the config to the own config.
+        """Add the config to the own config.
 
         This is called on the server, if :py:func:`Source.get_config` returns a
         list.

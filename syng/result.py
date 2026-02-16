@@ -32,8 +32,7 @@ class Result:
 
     @classmethod
     def from_filename(cls, filename: str, source: str) -> Result:
-        """
-        Infer most attributes from the filename.
+        """Infer most attributes from the filename.
 
         The filename must be in this form::
 
@@ -62,8 +61,7 @@ class Result:
 
     @classmethod
     def from_dict(cls, values: dict[str, str]) -> Result:
-        """
-        Create a Result object from a dictionary.
+        """Create a Result object from a dictionary.
 
         The dictionary must have the following keys:
           - ident (str)
@@ -88,8 +86,7 @@ class Result:
         )
 
     def to_dict(self) -> dict[str, str]:
-        """
-        Convert the Result object to a dictionary.
+        """Convert the Result object to a dictionary.
 
         The dictionary will have the following keys:
           - ident (str)

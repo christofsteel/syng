@@ -1,5 +1,4 @@
-"""
-Construct the YouTube source.
+"""Construct the YouTube source.
 
 This source uses yt-dlp to search and download videos from YouTube.
 
@@ -30,13 +29,10 @@ from syng.sources.source import (
 
 
 class YouTube:
-    """
-    A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
-    """
+    """A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp."""
 
     def __init__(self, url: str | None = None, info: dict[str, Any] | None = None) -> None:
-        """
-        Construct a YouTube object from a url.
+        """Construct a YouTube object from a url.
 
         If the url is already in the cache, the object is constructed from the
         cache. Otherwise yt-dlp is used to extract the information.
@@ -74,8 +70,7 @@ class YouTube:
 
     @property
     def title(self) -> str:
-        """
-        The title of the video.
+        """The title of the video.
 
         :return: The title of the video.
         :rtype: str
@@ -86,8 +81,7 @@ class YouTube:
 
     @property
     def author(self) -> str:
-        """
-        The author of the video.
+        """The author of the video.
 
         :return: The author of the video.
         :rtype: str
@@ -98,8 +92,7 @@ class YouTube:
 
     @classmethod
     def from_result(cls, search_result: dict[str, Any]) -> YouTube:
-        """
-        Construct a YouTube object from yt-dlp search results.
+        """Construct a YouTube object from yt-dlp search results.
 
         :param search_result: The search result from yt-dlp.
         :type search_result: dict[str, Any]
@@ -109,14 +102,11 @@ class YouTube:
 
 
 class Search:
-    """
-    A minimal compatibility layer for the Search object of pytube, implemented via yt-dlp
-    """
+    """A minimal compatibility layer for the Search object of pytube, implemented via yt-dlp."""
 
     # pylint: disable=too-few-public-methods
     def __init__(self, query: str, channel: str | None = None) -> None:
-        """
-        Construct a Search object from a query and an optional channel.
+        """Construct a Search object from a query and an optional channel.
 
         Uses yt-dlp to search for the query.
 
@@ -237,8 +227,7 @@ class YoutubeSource(Source):
         )
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
-        """
-        Ensure that the entry is playable.
+        """Ensure that the entry is playable.
 
         If the entry is not yet downloaded, download it.
         If start_streaming is set, start streaming immediatly.
@@ -247,7 +236,6 @@ class YoutubeSource(Source):
         :type entry: Entry
         :rtype: None
         """
-
         if entry.incomplete_data:
             meta_info = await self.get_missing_metadata(entry)
             entry.update(**meta_info)
@@ -269,8 +257,7 @@ class YoutubeSource(Source):
         artist: str | None = None,
         title: str | None = None,
     ) -> Entry | None:
-        """
-        Create an :py:class:`syng.entry.Entry` for the identifier.
+        """Create an :py:class:`syng.entry.Entry` for the identifier.
 
         The identifier should be a youtube url. An entry is created with
         all available metadata for the video.
@@ -284,7 +271,6 @@ class YoutubeSource(Source):
         :return: An entry with the data.
         :rtype: Optional[Entry]
         """
-
         return Entry(
             ident=ident,
             source="youtube",
@@ -298,8 +284,7 @@ class YoutubeSource(Source):
         )
 
     async def search(self, query: str) -> list[Result]:
-        """
-        Search YouTube and the configured channels for the query.
+        """Search YouTube and the configured channels for the query.
 
         The first results are the results of the configured channels. The next
         results are the results from youtube as a whole, a configurable suffix
@@ -318,8 +303,7 @@ class YoutubeSource(Source):
         """
 
         def _contains_index(queries: list[str], result: YouTube) -> float:
-            """
-            Calculate a score for the result.
+            """Calculate a score for the result.
 
             The score is the ratio of how many words of the query are in the
             title and author of the result.
@@ -364,8 +348,7 @@ class YoutubeSource(Source):
         ]
 
     def is_valid(self, entry: Entry) -> bool:
-        """
-        Check if the entry is valid.
+        """Check if the entry is valid.
 
         An entry is valid, if the video is not too long.
 
@@ -385,16 +368,14 @@ class YoutubeSource(Source):
         return Search(f"{query}{suffix}").results
 
     def _channel_search(self, query: str, channel: str) -> list[YouTube]:
-        """
-        Search a channel for a query.
+        """Search a channel for a query.
 
         A lot of black Magic happens here.
         """
         return Search(f"{query} karaoke", channel).results
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
-        """
-        Video metadata should be read on the client to avoid banning
+        """Video metadata should be read on the client to avoid banning
         the server.
         """
         if entry.incomplete_data or None in (entry.artist, entry.title):
@@ -407,8 +388,7 @@ class YoutubeSource(Source):
         return {}
 
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
-        """
-        Download the video.
+        """Download the video.
 
         Downloads the highest quality stream respecting the ``max_res``.
         For higher resolution videos (1080p and above).
@@ -427,7 +407,6 @@ class YoutubeSource(Source):
         :return: The location of the video file and ``None``.
         :rtype: Tuple[str, Optional[str]]
         """
-
         if 0 < self.config.max_duration < entry.duration:
             raise ValueError(
                 f"Video {entry.ident} too long: {entry.duration} > {self.config.max_duration}"

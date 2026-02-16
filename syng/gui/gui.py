@@ -146,10 +146,7 @@ class SyngGui(QMainWindow):
             )
 
     def clear_cache(self) -> None:
-        """
-        Clear the cache directory of the client.
-        """
-
+        """Clear the cache directory of the client."""
         cache_dir = platformdirs.user_cache_dir("syng")
         if os.path.exists(cache_dir):
             answer = QMessageBox.question(

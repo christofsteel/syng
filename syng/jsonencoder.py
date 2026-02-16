@@ -12,8 +12,7 @@ from syng.song_queue import Queue
 
 
 class SyngEncoder(json.JSONEncoder):
-    """
-    Encoder of :py:class:`Entry`, :py:class`Queue`, :py:class`Result` and UUID.
+    """Encoder of :py:class:`Entry`, :py:class`Queue`, :py:class`Result` and UUID.
 
     Entry and Result are ``dataclasses``, so they are mapped to their
     dictionary representation.
