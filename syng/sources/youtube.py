@@ -149,6 +149,8 @@ class Search:
 
 
 class Resolution(enum.Enum):
+    """Target resolution of a YouTueb Video."""
+
     RES144 = 144
     RES360 = 360
     RES720 = 720
@@ -158,6 +160,25 @@ class Resolution(enum.Enum):
 
 @dataclass
 class YouTubeConfig(SourceConfig):
+    """Configuration object for YouTubeSources.
+
+    :param enabled: Enable this source
+    :param channels: A list of all channel this source should search in.
+            Examples are ``/c/CCKaraoke`` or
+            ``/channel/UCwTRjvjVge51X-ILJ4i22ew``
+    :param tmp_dir: The folder, where temporary files are stored. Default
+            is ``${XDG_CACHE_DIR}/syng``.
+    :param max_res: The highest video resolution, that should be
+            downloaded/streamed. Default is 720.
+    :param start_streaming: If set to ``True``, the client starts streaming
+            the video, if buffering was not completed. Needs ``youtube-dl`` or
+            ``yt-dlp``. Default is False.
+    :param search_suffix: A string that is appended to the search query.
+            Default is "karaoke".
+    :param max_duration: The maximum duration of a video in seconds. A value of 0 disables this.
+            Default is 1800.
+    """
+
     enabled: bool = field(default=True, metadata={"desc": "Enable this source"})
     channels: list[str] = field(
         default_factory=list, metadata={"desc": "A list of channels\nto search in", "server": True}
@@ -187,30 +208,14 @@ class YouTubeConfig(SourceConfig):
 
 @dataclass
 class YoutubeSource(Source):
-    """A source for playing karaoke files from YouTube.
-
-    Config options are:
-        - ``channels``: A list of all channel this source should search in.
-          Examples are ``/c/CCKaraoke`` or
-          ``/channel/UCwTRjvjVge51X-ILJ4i22ew``
-        - ``tmp_dir``: The folder, where temporary files are stored. Default
-          is ``${XDG_CACHE_DIR}/syng``.
-        - ``max_res``: The highest video resolution, that should be
-          downloaded/streamed. Default is 720.
-        - ``start_streaming``: If set to ``True``, the client starts streaming
-          the video, if buffering was not completed. Needs ``youtube-dl`` or
-          ``yt-dlp``. Default is False.
-        - ``search_suffix``: A string that is appended to the search query.
-          Default is "karaoke".
-        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this.
-                            Default is 1800.
-    """
+    """A source for playing karaoke files from YouTube."""
 
     config: YouTubeConfig
 
     source_name = "youtube"
 
     def __post_init__(self) -> None:
+        """Initialize the YoutubeSource."""
         super().__post_init__()
 
         self.formatstring = (
@@ -375,9 +380,7 @@ class YoutubeSource(Source):
         return Search(f"{query} karaoke", channel).results
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
-        """Video metadata should be read on the client to avoid banning
-        the server.
-        """
+        """Video metadata should be read on the client to avoid banning the server."""
         if entry.incomplete_data or None in (entry.artist, entry.title):
             youtube_video: YouTube = await asyncio.to_thread(YouTube, entry.ident)
             return {
