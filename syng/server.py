@@ -1215,14 +1215,11 @@ class Server:
         :rtype: None
         """
         if "version" not in data:
-            pass
-            # TODO: Fallback to old registration method
-
-            # await self.sio.emit(
-            #     "client-registered",
-            #     {"success": False, "room": None, "reason": "NO_VERSION"},
-            #     room=sid,
-            # )
+            await self.sio.emit(
+                "client-registered",
+                {"success": False, "room": None, "reason": "NO_VERSION"},
+                room=sid,
+            )
             return
 
         client_version = tuple(data["version"])
@@ -1660,8 +1657,6 @@ class Server:
         self.admin_app.router.add_route("*", "/", self.admin_handler)
 
         self.app.cleanup_ctx.append(self.background_tasks)
-        # if args.admin_password:
-        #     self.sio.instrument(auth={"username": "admin", "password": args.admin_password})
 
         try:
             asyncio.run(

@@ -104,9 +104,6 @@ class State:
     queue: list[Entry] = field(default_factory=list)
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
-    # config: Client
-    # config: dict[str, Any] = field(default_factory=default_config)
-    # old_config: dict[str, Any] = field(default_factory=default_config)
 
 
 class Client:
@@ -641,20 +638,6 @@ class Client:
 
         self.loop = asyncio.get_running_loop()
 
-        # self.sources.update(configure_sources(source_configs))
-
-        # if "config" in config:
-        #     last_song = (
-        #         datetime.datetime.fromisoformat(config["config"]["last_song"]).timestamp()
-        #         if "last_song" in config["config"] and config["config"]["last_song"]
-        #         else None
-        #     )
-        #     self.state.config |= config["config"] | {"last_song": last_song}
-
-        # if not ("secret" in self.state.config and self.state.config["secret"]):
-        #     self.state.config["secret"] = "".join(
-        #         secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-        #     )
         print(f"Secret: {self.config.general.secret}")
 
         try:
@@ -694,7 +677,6 @@ def create_async_and_start_client(config: SyngConfig) -> None:
     :rtype: None
     """
 
-    # logger.addHandler(QueueHandler(queue))
     client = Client(config)
 
     asyncio.run(client.start_client())
