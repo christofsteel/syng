@@ -28,29 +28,25 @@ class EntryNotValid(Exception):
 
 @dataclass
 class DLFilesEntry:
-    """This represents a song in the context of a source.
+    """A song in the context of a source.
 
-    :param ready: This event triggers as soon, as all files for the song are
+    This stores additional metadata, like the download/buffering status
+
+    Attributes:
+        ready: Event, that triggers as soon, as all files for the song are
         downloaded/buffered.
-    :type ready: asyncio.Event
-    :param video: The location of the video part of the song.
-    :type video: str
-    :param audio: The location of the audio part of the song, if it is not
+        video: The location of the video part of the song.
+        audio: The location of the audio part of the song, if it is not
         incuded in the video file. (Default is ``None``)
-    :type audio: Optional[str]
-    :param buffering: True if parts are buffering, False otherwise (Default is
+        buffering: True if parts are buffering, False otherwise (Default is
         ``False``)
-    :type buffering: bool
-    :param complete: True if download was completed, False otherwise (Default
+        complete: True if download is completed, False otherwise (Default
         is ``False``)
-    :type complete: bool
-    :param skip: True if the next Entry for this file should be skipped
+        skip: True if the next Entry for this file should be skipped
         (Default is ``False``)
-    :param buffer_task: Reference to the task, that downloads the files.
-    :type buffer_task: Optional[asyncio.Task[Tuple[str, Optional[str]]]]
-    """
+        buffer_task: Reference to the task, that downloads the files.
 
-    # pylint: disable=too-many-instance-attributes
+    """
 
     ready: asyncio.Event = field(default_factory=asyncio.Event)
     video: str = ""
@@ -87,22 +83,21 @@ class Source(ABC):
     ``get_missing_metadata``, ``get_config``
 
     Each source has a reference to all files, that are currently queued to
-    download via the :py:attr:`Source.downloaded_files` attribute and a
-    reference to a ``mpv`` process playing songs for that specific source
+    download via the :py:attr:`Source.downloaded_files` attribute.
 
-    :attributes: - ``downloaded_files``, a dictionary mapping
-                   :py:attr:`Entry.ident` to :py:class:`DLFilesEntry`.
-                 - ``player``, the reference to the ``mpv`` process, if it has
-                   started
-                 - ``extra_mpv_options``, dictionary of arguments added to the mpv
-                   instance, can be overwritten by a subclass
-                 - ``source_name``, the string used to identify the source
+    Attributes:
+        config: Specific configuration for a source
+        source_name: Name of the source
+        downloaded_files: Mapping to files, that are currently downloading or available
+        extra_mpv_options: Extra options, that will be passed to the mpv player
+
     """
 
     config: SourceConfig
     source_name: str = ""
 
     def __post_init__(self) -> None:
+        """Initialize basic source options."""
         self.downloaded_files: defaultdict[str, DLFilesEntry] = defaultdict(DLFilesEntry)
         self._masterlock: asyncio.Lock = asyncio.Lock()
         self.extra_mpv_options: dict[str, str] = {}
@@ -113,6 +108,15 @@ class Source(ABC):
 
     @classmethod
     def get_config_type(cls) -> type[SourceConfig]:
+        """Return the type of the configuration of the current source.
+
+        Returns:
+            The type of the configuration for this source
+
+        Raises:
+            TypeError: If the configuration type is not a subclass of ``SourceConfig``
+
+        """
         config_type: type[SourceConfig] = get_type_hints(cls)["config"]
         if not issubclass(config_type, SourceConfig):
             raise TypeError
@@ -121,12 +125,15 @@ class Source(ABC):
     def is_valid(self, entry: Entry) -> bool:
         """Check if the entry is valid.
 
-        Each source can implement this method to check if the entry is valid.
+        Each source can implement this method to check if the entry is valid. This returns always
+        True.
 
-        :param entry: The entry to check
-        :type entry: Entry
-        :returns: True if the entry is valid, False otherwise.
-        :rtype: bool
+        Args:
+            entry: The entry to check
+
+        Returns:
+            True
+
         """
         return True
 
@@ -149,14 +156,20 @@ class Source(ABC):
         180 seconds. When added to the queue, the server will ask the client
         for additional metadata, like this.
 
-        :param performer: The performer of the song
-        :type performer: str
-        :param ident: Unique identifier of the song.
-        :type ident: str
-        :returns: New entry for the identifier, or None, if the ident is
+        Args:
+            performer: The performer of the song
+            ident: Unique identifier of the song.
+            collab_mode: Configured collaboration mode
+            artist: Fallback Artist
+            title: Fallback Title
+
+        Returns:
+            New entry for the identifier, or None, if the ident is
             invalid.
-        :rtype: Optional[Entry]
-        :raises EntryNotValid: If the entry is not valid for the source.
+
+        Raises:
+            EntryNotValid: If the entry is not valid for the source.
+
         """
         res: Result = Result.from_filename(ident, self.source_name)
         if collab_mode not in ["solo", "group", "duet"]:
@@ -181,10 +194,12 @@ class Source(ABC):
 
         By default, this searches in the internal index.
 
-        :param query: The query to search for
-        :type query: str
-        :returns: A list of Results containing the query.
-        :rtype: list[Result]
+        Args:
+            query: The query to search for.
+
+        Returns:
+            A list of Results containing the query.
+
         """
         filtered: list[str] = self.filter_data_by_query(query, self._index)
         results: list[Result] = []
@@ -199,16 +214,17 @@ class Source(ABC):
         This should asynchronous download all required files to play the entry,
         and return the location of the video and audio file. If the audio is
         included in the video file, the location for the audio file should be
-        `None`.
+        ``None``.
 
         Abstract, needs to be implemented by subclass.
 
-        :param entry: The entry to buffer
-        :type entry: Entry
-        :param pos: The position in the queue, the entry is at.
-        :type pos: int
-        :returns: A Tuple of the locations for the video and the audio file.
-        :rtype: Tuple[str, Optional[str]]
+        Args:
+            entry: The entry to buffer
+            pos: The position in the queue, the entry is at.
+
+        Returns:
+            A tuple of the locations for the video and the audio file.
+
         """
 
     async def buffer(self, entry: Entry, pos: int) -> None:
@@ -222,11 +238,13 @@ class Source(ABC):
         If this is called multiple times for the same song (even if they come
         from different entries) This will immediately return.
 
-        :param entry: The entry to buffer
-        :type entry: Entry
-        :param pos: The position in the queue, the entry is at.
-        :type pos: int
-        :rtype: None
+        Args:
+            entry: The entry to buffer
+            pos: The position in the queue, the entry is at.
+
+        Raises:
+            ValueError: If buffering failes for any reason.
+
         """
         async with self._masterlock:
             if self.downloaded_files[entry.ident].buffering:
@@ -256,9 +274,9 @@ class Source(ABC):
         buffering is aborted. Then a flag is set to keep the player from
         playing it.
 
-        :param entry: A reference to the first entry of the queue
-        :type entry: Entry
-        :rtype: None
+        Args:
+            entry: A reference to the first entry of the queue
+
         """
         async with self._masterlock:
             self._skip_next = True
@@ -273,9 +291,13 @@ class Source(ABC):
 
         First start buffering, then wait for the buffering to end.
 
-        :param entry: The entry to ensure playback for.
-        :type entry: Entry
-        :rtype: None
+        Args:
+            entry: The entry to ensure playback for.
+
+        Returns:
+            The path to the video file and the audio file. The latter is ``None``, if audio is
+            included in the video file.
+
         """
         await self.buffer(entry, 0)
         dlfilesentry = self.downloaded_files[entry.ident]
@@ -291,10 +313,12 @@ class Source(ABC):
 
         By default this just returns an empty dict.
 
-        :param _entry: The entry to get the metadata for
-        :type _entry: Entry
-        :returns: A dictionary with the missing metadata.
-        :rtype dict[str, Any]
+        Args:
+            _entry: The entry to get the metadata for
+
+        Returns:
+            A dictionary with the missing metadata.
+
         """
         return {}
 
@@ -303,6 +327,13 @@ class Source(ABC):
         """Split a search term, respecting quoted spaces.
 
         If quotation is not deterministic, fall back to splitting at each space
+
+        Args:
+            search_term: The search term to split.
+
+        Returns:
+            List of words, respecting quotations.
+
         """
         try:
             return shlex.split(search_term)
@@ -314,13 +345,13 @@ class Source(ABC):
     def filter_data_by_query(self, query: str, data: list[str]) -> list[str]:
         """Filter the ``data``-list by the ``query``.
 
-        :param query: The query to filter
-        :type query: str
-        :param data: The list to filter
-        :type data: list[str]
-        :return: All entries in the list containing the query.
-        :rtype: list[str]
-        :raises: MalformedSearchQueryException when the search query is malformed
+        Args:
+            query: The query to filter by
+            data: The list to filter on
+
+        Returns:
+            All entries in the list containing the query.
+
         """
 
         def contains_all_words(words: list[str], element: str) -> bool:
@@ -336,8 +367,9 @@ class Source(ABC):
         This list will be send to the server. When the server searches, this
         list will be searched.
 
-        :return: List of filenames belonging to the source
-        :rtype: list[str]
+        Returns:
+            An empty list.
+
         """
         return []
 
@@ -351,8 +383,9 @@ class Source(ABC):
         It should return None, if the list is already up to date.
         Otherwise it should return the new list of files.
 
+        Returns:
+            None
 
-        :rtype: Optional[list[str]]
         """
         return None
 
@@ -363,10 +396,9 @@ class Source(ABC):
         update the config. E.g. to update the list of files, that should be send to
         the server.
 
-        It returns None, if the config is already up to date.
-        Otherwise returns the new config.
+        Returns:
+            ``None``, if the config is already up to date, otherwise the new config.
 
-        :rtype: Optional[dict[str, Any] | list[dict[str, Any]]
         """
         if not self.build_index:
             return None
@@ -392,8 +424,9 @@ class Source(ABC):
         But this can be any other values, as long as the respective source can
         handle that data.
 
-        :return: The part of the config, that should be sent to the server.
-        :rtype: dict[str, Any] | list[dict[str, Any]]
+        Returns:
+            The part of the config, that should be sent to the server.
+
         """
         packages = []
 
@@ -430,11 +463,10 @@ class Source(ABC):
 
         If the running_number is 0, the index will be reset.
 
-        :param config: The part of the config to add.
-        :type config: dict[str, Any]
-        :param running_number: The running number of the config
-        :type running_number: int
-        :rtype: None
+        Args:
+            config: The part of the config to add.
+            running_number: The running number of the config
+
         """
         if running_number == 0:
             self._index = []
