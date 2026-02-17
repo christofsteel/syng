@@ -3,7 +3,6 @@
 import asyncio
 from collections import deque
 from collections.abc import Callable, Iterable
-from typing import Any
 from uuid import UUID
 
 from syng.entry import Entry
@@ -14,15 +13,17 @@ class Queue:
 
     This queue keeps track of the amount of entries by using a semaphore.
 
-    :param initial_entries: Initial list of entries to add to the queue
-    :type initial_entries: list[Entry]
+    Attributes:
+        initial_entries: Initial list of entries to add to the queue
+
     """
 
     def __init__(self, initial_entries: list[Entry]) -> None:
         """Construct the queue. And initialize the internal lock and semaphore.
 
-        :param initial_entries: Initial list of entries to add to the queue
-        :type initial_entries: list[Entry]
+        Args:
+            initial_entries: Initial list of entries to add to the queue
+
         """
         self._queue = deque(initial_entries)
 
@@ -32,9 +33,9 @@ class Queue:
     def extend(self, entries: Iterable[Entry]) -> None:
         """Extend the queue with a list of entries and increase the semaphore.
 
-        :param entries: The entries to add
-        :type entries: Iterable[Entry]
-        :rtype: None
+        Args:
+            entries: The entries to add
+
         """
         for entry in entries:
             self.append(entry)
@@ -42,15 +43,20 @@ class Queue:
     def append(self, entry: Entry) -> None:
         """Append an entry to the queue, increase the semaphore.
 
-        :param entry: The entry to add
-        :type entry: Entry
-        :rtype: None
+        Args:
+            entry: The entry to add
+
         """
         self._queue.append(entry)
         self.num_of_entries_sem.release()
 
     def try_peek(self) -> Entry | None:
-        """Return the first entry in the queue, if it exists."""
+        """Return the first entry in the queue, if it exists.
+
+        Returns:
+            The first entry in the queue, if it exists.
+
+        """
         if len(self._queue) > 0:
             return self._queue[0]
         return None
@@ -60,8 +66,9 @@ class Queue:
 
         If the queue is empty, wait until the queue has at least one entry.
 
-        :returns: First entry of the queue
-        :rtype: Entry
+        Returns:
+            First entry of the queue
+
         """
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
@@ -75,8 +82,9 @@ class Queue:
         Decreases the semaphore. If the queue is empty, wait until the queue
         has at least one entry.
 
-        :returns: First entry of the queue
-        :rtype: Entry
+        Returns:
+            First entry of the queue
+
         """
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
@@ -89,8 +97,9 @@ class Queue:
         This is done, so that the entries can be converted to a JSON object,
         when sending it to the web or playback client.
 
-        :returns: A list with all the entries.
-        :rtype: list[Entry]
+        Returns:
+            A list with all the entries.
+
         """
         return list(self._queue)  # [item for item in self._queue]
 
@@ -99,11 +108,10 @@ class Queue:
 
         If an entry with that uuid is not in the queue, nothing happens.
 
-        :param uuid: The uuid of the entry to update
-        :type uuid: UUID | str
-        :param updater: A function, that updates the entry
-        :type updater: Callable[[Entry], None]
-        :rtype: None
+        Args:
+            uuid: The uuid of the entry to update
+            updater: A function, that updates the entry
+
         """
         for item in self._queue:
             if item.uuid == uuid or str(item.uuid) == uuid:
@@ -112,10 +120,12 @@ class Queue:
     def find_by_name(self, name: str) -> Entry | None:
         """Find the first entry by its performer and return it.
 
-        :param name: The name of the performer to search for.
-        :type name: str
-        :returns: The entry with the performer or `None` if no such entry exists
-        :rtype: Optional[Entry]
+        Args:
+            name: The name of the performer to search for.
+
+        Returns:
+            The entry with the performer or `None` if no such entry exists
+
         """
         for item in self._queue:
             if item.shares_performer(name):
@@ -125,10 +135,12 @@ class Queue:
     def find_all_by_name(self, name: str) -> Iterable[Entry]:
         """Find all entries by their performer and return them as an iterable.
 
-        :param name: The name of the performer to search for.
-        :type name: str
-        :returns: The entries with the performer.
-        :rtype: Iterable[Entry]
+        Args:
+            name: The name of the performer to search for.
+
+        Yields:
+            The entries with the performer.
+
         """
         for item in self._queue:
             if item.shares_performer(name):
@@ -137,10 +149,12 @@ class Queue:
     def find_by_uuid(self, uuid: UUID | str) -> Entry | None:
         """Find an entry by its uuid and return it.
 
-        :param uuid: The uuid to search for.
-        :type uuid: UUID | str
-        :returns: The entry with the uuid or `None` if no such entry exists
-        :rtype: Optional[Entry]
+        Args:
+            uuid: The uuid to search for.
+
+        Returns:
+            The entry with the uuid or `None` if no such entry exists
+
         """
         for item in self._queue:
             if item.uuid == uuid or str(item.uuid) == uuid:
@@ -148,13 +162,33 @@ class Queue:
         return None
 
     def find_by_uid(self, uid: str) -> Iterable[Entry]:
-        """Find all entries for a given user id."""
+        """Find all entries for a given user id.
+
+        Args:
+            uid: User id
+
+        Yields:
+            All entries for the uid
+
+        """
         for item in self._queue:
             if item.uid == uid:
                 yield item
 
-    def fold(self, func: Callable[[Entry, Any], Any], start_value: Any) -> Any:
-        """Call ``func`` on each entry and accumulate the result."""
+    def fold[T](self, func: Callable[[Entry, T], T], start_value: T) -> T:
+        """Call ``func`` on each entry and accumulate the result.
+
+        Type Args:
+            T: Type of the result
+
+        Args:
+            func: Folding function
+            start_value: Initial Value of the accumulator
+
+        Returns:
+            Accumulated result of the fold.
+
+        """
         for item in self._queue:
             start_value = func(item, start_value)
         return start_value
@@ -162,9 +196,9 @@ class Queue:
     async def remove(self, entry: Entry) -> None:
         """Remove an entry, if it exists. Decrease the semaphore.
 
-        :param entry: The entry to remove
-        :type entry: Entry
-        :rtype: None
+        Args:
+            entry: The entry to remove
+
         """
         async with self.readlock:
             await self.num_of_entries_sem.acquire()
@@ -175,9 +209,9 @@ class Queue:
 
         If it is called on the first two elements, nothing will happen.
 
-        :param uuid: The uuid of the entry.
-        :type uuid: str
-        :rtype: None
+        Args:
+            uuid: The uuid of the entry.
+
         """
         async with self.readlock:
             uuid_idx = 0
@@ -193,11 +227,10 @@ class Queue:
     async def move_to(self, uuid: str, target: int) -> None:
         """Move an :py:class:`syng.entry.Entry` with the uuid to a specific position.
 
-        :param uuid: The uuid of the entry.
-        :type uuid: str
-        :param target: The target position.
-        :type target: int
-        :rtype: None
+        Args:
+            uuid: The uuid of the entry.
+            target: The target position.
+
         """
         async with self.readlock:
             uuid_idx = 0
