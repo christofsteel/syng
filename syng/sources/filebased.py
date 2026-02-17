@@ -23,6 +23,13 @@ from syng.sources.source import Source
 
 @dataclass
 class FileBasedConfig(SourceConfig):
+    """(Base) Configuration object for filebased Sources.
+
+    Attributes:
+        extensions: List of filename extensions, that are included in this source.
+
+    """
+
     extensions: list[str] = field(
         default_factory=lambda: ["mp3+cdg"],
         metadata={"desc": "List of filename extensions\n(mp3+cdg, mp4, ...)"},
@@ -33,18 +40,35 @@ class FileBasedConfig(SourceConfig):
 class FileBasedSource(Source, ABC):
     """A abstract source for indexing and playing songs based on files.
 
-    Config options are:
-        -``extensions``, list of filename extensions
+    By default, a index to help with searching is created, and mpv is set up to use ``oversample``
+    for a more __blocky__ look, to mimic traditional karaoke machines.
+
+    Attributes:
+        config: ``FileBasedConfig`` object.
+
     """
 
     config: FileBasedConfig
 
     def __post_init__(self) -> None:
+        """Initialize the source and set default."""
         super().__post_init__()
         self.build_index = True
         self.extra_mpv_options = {"scale": "oversample"}
 
     def is_valid(self, entry: Entry) -> bool:
+        """Check if an entry is valid.
+
+        An entry is valid, if it is included in the index and this source is registered as its
+        source.
+
+        Args:
+            entry: The entry to check.
+
+        Returns:
+            True iff. the entry is valud.
+
+        """
         return entry.ident in self._index and entry.source == self.source_name
 
     def has_correct_extension(self, path: str | None) -> bool:
@@ -52,24 +76,28 @@ class FileBasedSource(Source, ABC):
 
         For A+B type extensions (like mp3+cdg) only the latter half is checked
 
-        :param path: The path to check.
-        :type path: Optional[str]
-        :return: True iff path has correct extension.
-        :rtype: bool
+        Args:
+            path: The path to check.
+
+        Returns:
+            True iff path has correct extension, or is ``None``
+
         """
         return path is not None and os.path.splitext(path)[1][1:] in [
             ext.rsplit("+", maxsplit=1)[-1] for ext in self.config.extensions
         ]
 
     def get_video_audio_split(self, path: str) -> tuple[str, str | None]:
-        """Returns path for audio and video file, if filetype is marked as split.
+        """Return path for audio and video file, if filetype is marked as split.
 
         If the file is not marked as split, the second element of the tuple will be None.
 
-        :params: path: The path to the file
-        :type path: str
-        :return: Tuple with path to video and audio file
-        :rtype: tuple[str, Optional[str]]
+        Args:
+            path: The path to the file
+
+        Returns:
+            Tuple with path to video and audio file, if applicable
+
         """
         extension_of_path = os.path.splitext(path)[1][1:]
         splitted_extensions = [ext.split("+") for ext in self.config.extensions if "+" in ext]
@@ -85,10 +113,12 @@ class FileBasedSource(Source, ABC):
     async def get_duration(self, path: str) -> int:
         """Return the duration for the file.
 
-        :param path: The path to the file
-        :type path: str
-        :return: The duration in seconds
-        :rtype: int
+        Args:
+            path: The path to the file
+
+        Returns:
+            The duration in seconds
+
         """
         if not PYMEDIAINFO_AVAILABLE:
             return 180
