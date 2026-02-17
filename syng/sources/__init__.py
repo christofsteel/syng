@@ -1,5 +1,6 @@
-"""Imports all sources, so that they add themselves to the
-``available_sources`` dictionary.
+"""Package for all sources.
+
+Imports all sources, so that they add themselves to the ``available_sources`` dictionary.
 """
 
 from typing import get_type_hints
@@ -15,6 +16,12 @@ __all__ = ["FilesSource", "S3Source", "YoutubeSource"]
 
 
 def available_source_configs() -> dict[str, type[SourceConfig]]:
+    """Config types for all sources.
+
+    Returns:
+        Dictionary, mapping source name to accomaning config types
+
+    """
     return {
         source: get_source_config_type(source_type)
         for source, source_type in available_sources.items()
@@ -22,6 +29,15 @@ def available_source_configs() -> dict[str, type[SourceConfig]]:
 
 
 def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
+    """Config type for source type.
+
+    Args:
+        source_type: Class of a Source
+
+    Returns:
+        Config type for ``source_type``
+
+    """
     config_class: type[SourceConfig] = get_type_hints(source_type)["config"]
     return config_class
 
@@ -29,11 +45,15 @@ def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
 def configure_sources(configs: dict[str, SourceConfig]) -> dict[str, Source]:
     """Create a Source object for each entry in the given configs dictionary.
 
-    :param configs: Configurations for the sources
-    :type configs: dict[str, Any]
-    :return: A dictionary, mapping the name of the source to the
-      source object
-    :rtype: dict[str, Source]
+    Args:
+        configs: Configurations for the sources
+
+    Returns:
+        A dictionary, mapping the name of the source to the source object
+
+    Raises:
+        RuntimeError: if a source is included, that does not exist
+
     """
     configured_sources = {}
     for source, config in configs.items():
