@@ -100,8 +100,10 @@ ignore_missing_imports = true
 line-length = 100
 
 [tool.ruff.lint]
+preview = true
 select = ["E",
     "D",
+    "DOC",
     "F",
     "UP",
     "B",
@@ -113,6 +115,8 @@ ignore = ["ANN401", "D203", "D213"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.black]
 line-length = 100
