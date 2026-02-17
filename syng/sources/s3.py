@@ -27,6 +27,19 @@ from syng.sources.source import available_sources
 
 @dataclass
 class S3Config(FileBasedConfig):
+    """Configuration class for S3 sources.
+
+    Attributes:
+        endpoint: Endpoint of the s3
+        access_key: Access key of the s3 (username)
+        secret_key: Secret key of the s3 (password)
+        secure: Use SSL
+        bucket: Bucket of the s3
+        tmp_dir: Folder for temporary download
+        index_file: Cache file to store the list of filenames
+
+    """
+
     endpoint: str = field(default="", metadata={"desc": "Endpoint of the s3"})
     access_key: str = field(default="", metadata={"desc": "Access key of the s3 (username)"})
     secret_key: str = field(
@@ -48,20 +61,16 @@ class S3Config(FileBasedConfig):
 class S3Source(FileBasedSource):
     """A source for playing songs from a s3 compatible storage.
 
-    Config options are:
-        - ``endpoint``, ``access_key``, ``secret_key``, ``secure``, ``bucket``: These
-          will simply be forwarded to the ``minio`` client.
-        - ``tmp_dir``: The folder, where temporary files are stored. Default
-          is ``${XDG_CACHE_DIR}/syng``
-        - ``index_file``: If the file does not exist, saves the paths of
-          files from the s3 instance to this file. If it exists, loads
-          the list of files from this file.
+    Attributes:
+        config: ``S3SourceConfig`` object.
+
     """
 
     config: S3Config
     source_name = "s3"
 
     def __post_init__(self) -> None:
+        """Initialize the minio client."""
         super().__post_init__()
         if MINIO_AVAILABE:
             self.minio: Minio = Minio(
@@ -74,8 +83,11 @@ class S3Source(FileBasedSource):
     def load_file_list_from_server(self) -> list[str]:
         """Load the file list from the s3 instance.
 
-        :return: A list of file paths
-        :rtype: list[str]
+        The list is filtered by the configured filename extensions.
+
+        Returns:
+            A list of file paths
+
         """
         file_list = [
             obj.object_name
@@ -85,6 +97,12 @@ class S3Source(FileBasedSource):
         return file_list
 
     def write_index(self, file_list: list[str]) -> None:
+        """Write the index file.
+
+        Args:
+            file_list: List of paths to write
+
+        """
         index_dir = os.path.dirname(self.config.index_file)
         if index_dir:
             os.makedirs(os.path.dirname(self.config.index_file), exist_ok=True)
@@ -99,8 +117,9 @@ class S3Source(FileBasedSource):
 
         As a side effect, an index file is generated, if configured.
 
-        :return: see above
-        :rtype: list[str]
+        Returns:
+            List of files names.
+
         """
 
         def _get_file_list() -> list[str]:
@@ -119,8 +138,9 @@ class S3Source(FileBasedSource):
     async def update_file_list(self) -> list[str] | None:
         """Rescan the file list and update the index file.
 
-        :return: The updated file list
-        :rtype: list[str]
+        Returns:
+            The updated file list
+
         """
 
         def _update_file_list() -> list[str]:
@@ -133,11 +153,12 @@ class S3Source(FileBasedSource):
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """Return the duration for the music file.
 
-        :param entry: The entry with the associated mp3 file
-        :type entry: Entry
-        :return: A dictionary containing the duration in seconds in the
-          ``duration`` key.
-        :rtype: dict[str, Any]
+        Args:
+            entry: The entry with the associated mp3 file
+
+        Returns:
+            A dictionary containing the duration in seconds in the ``duration`` key.
+
         """
         await self.ensure_playable(entry)
 
@@ -150,14 +171,15 @@ class S3Source(FileBasedSource):
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """Download the file from the s3.
 
-        If it is a ``cdg`` file, the accompaning ``mp3`` file is also downloaded
+        Also download accompaning audio files, if a video file is requested.
 
-        :param entry: The entry to download
-        :type entry: Entry
-        :return: A tuple with the location of the main file. If the file a ``cdg`` file,
-                 the second position is the location of the ``mp3`` file, otherwise None
-                 .
-        :rtype: Tuple[str, Optional[str]]
+        Args:
+            entry: The entry to download
+            pos: position in the queue
+
+        Returns:
+            Path to the video file, and the audio file (if it exists)
+
         """
         video_path, audio_path = self.get_video_audio_split(entry.ident)
         video_dl_path: str = os.path.join(self.config.tmp_dir, video_path)
