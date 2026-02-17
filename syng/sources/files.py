@@ -12,6 +12,13 @@ from syng.sources.source import available_sources
 
 @dataclass
 class FileSourceConfig(FileBasedConfig):
+    """Configuration object for ``FilesSource``.
+
+    Attributes:
+        dir: Directory with the files to serve.
+
+    """
+
     dir: str = field(default=".", metadata={"desc": "Directory to index", "semantic": "folder"})
 
 
@@ -19,15 +26,21 @@ class FileSourceConfig(FileBasedConfig):
 class FilesSource(FileBasedSource):
     """A source for indexing and playing songs from a local folder.
 
-    Config options are:
-        -``dir``, dirctory to index and serve from.
+    Attributes:
+        config: ``FileSourceConfig`` object.
+
     """
 
     config: FileSourceConfig
     source_name = "files"
 
     async def get_file_list(self) -> list[str]:
-        """Collect all files in ``dir``, that have the correct filename extension."""
+        """Collect all files in ``dir``, that have the correct filename extension.
+
+        Returns:
+            All files in ``dir``, filtered by their filename extension.
+
+        """
 
         def _get_file_list() -> list[str]:
             file_list = []
@@ -42,11 +55,12 @@ class FilesSource(FileBasedSource):
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """Return the duration for the entry file.
 
-        :param entry: An entry
-        :type entry: Entry
-        :return: A dictionary containing the duration in seconds in the
-          ``duration`` key.
-        :rtype: dict[str, Any]
+        Args:
+            entry: An entry
+
+        Returns:
+            A dictionary containing the duration in seconds in the ``duration`` key.
+
         """
         duration = await self.get_duration(os.path.join(self.config.dir, entry.ident))
 
@@ -55,7 +69,9 @@ class FilesSource(FileBasedSource):
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
         """No buffering needs to be done, since the files are already on disk.
 
-        We just return the file names.
+        Returns:
+            The video and the audio filename fot the entry, if applicable.
+
         """
         return self.get_video_audio_split(os.path.join(self.config.dir, entry.ident))
 
