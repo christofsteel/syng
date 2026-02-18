@@ -8,19 +8,16 @@ from dataclasses import dataclass
 
 @dataclass
 class Result:
-    """This models a search result.
+    """A single search result.
 
-    :param ident: The identifier of the entry in the source
-    :type ident: str
-    :param source: The name of the source of the entry
-    :type source: str
-    :param title: The title of the song
-    :type title: str
-    :param artist: The artist of the song
-    :type artist: str
-    :param album: The name of the album or compilation, this particular
-        version is from.
-    :type album: str
+    Attributes:
+        ident: The identifier of the entry in the source
+        source: The name of the source of the entry
+        title: The title of the song
+        artist: The artist of the song
+        album: The name of the album or compilation, this particular version is from.
+        duration: The duration of the song
+
     """
 
     ident: str
@@ -32,7 +29,7 @@ class Result:
 
     @classmethod
     def from_filename(cls, filename: str, source: str) -> Result:
-        """Infer most attributes from the filename.
+        """Infer some attributes from the filename.
 
         The filename must be in this form::
 
@@ -41,12 +38,13 @@ class Result:
         If parsing failes, the filename will be used as the title and the
         artist and album will be set to "Unknown".
 
-        :param filename: The filename to parse
-        :type filename: str
-        :param source: The name of the source
-        :type source: str
-        :return: see above
-        :rtype: Optional[Result]
+        Args:
+            filename: The filename to parse
+            source: The name of the source
+
+        Returns:
+            A ``Result`` with the parsed results
+
         """
         basename = os.path.splitext(filename)[0]
         try:
@@ -71,10 +69,12 @@ class Result:
           - album (str)
           - duration (int, optional)
 
-        :param values: The dictionary with the values
-        :type values: dict[str, str]
-        :return: The Result object
-        :rtype: Result
+        Args:
+            values: The dictionary with the values
+
+        Returns:
+            A ``Result`` containg the information if the dict.
+
         """
         return cls(
             ident=values["ident"],
@@ -96,8 +96,9 @@ class Result:
           - artist (str, if available)
           - duration (str, if available)
 
-        :return: The dictionary with the values
-        :rtype: dict[str, str]
+        Returns:
+            The dictionary with the values
+
         """
         output: dict[str, str] = {
             "ident": self.ident,
