@@ -21,10 +21,10 @@ import random
 import string
 import uuid
 from argparse import Namespace
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from dataclasses import dataclass, field
 from json.decoder import JSONDecodeError
-from typing import Any, Literal, cast
+from typing import Any, Concatenate, Literal, cast
 
 import socketio
 from aiohttp import web
@@ -35,8 +35,19 @@ from syng.config import deserialize_config
 try:
     from profanity_check import predict
 except ImportError:
-    # If the profanity_check package is not installed, use a dummy function
+
     def predict(strings: list[str]) -> list[Literal[0, 1]]:
+        """Mock predict function from profanity_check.
+
+        This is only used, if profanity_check does not exist.
+
+        Args:
+            strings: List of strings to check
+
+        Returns:
+            Always [0]
+
+        """
         return [0]
 
 
@@ -56,17 +67,22 @@ DEFAULT_CONFIG = {
 }
 
 
-def with_state(handler: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator that forwards the state of a room to a handler.
+def with_state[T, **P](
+    handler: Callable[Concatenate[Server, State, str, P], Awaitable[T]],
+) -> Callable[Concatenate[Server, str, P], Awaitable[T]]:
+    """Inject the state in the call of a handler function.
 
-    :param forward_room: Either the handler to decorate or a boolean
-        defining if the room should be forwarded.
-    :type forward_room: bool | Callable[..., Any]
-    :return: The decorated handler or a function that decorates a handler
-    :rtype: Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]
+    The state will be the first argument of the given handler function.
+
+    Args:
+        handler: Handler, where the state is injected.
+
+    Returns:
+        The decorated handler.
+
     """
 
-    async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
+    async def wrapper(self: Server, sid: str, /, *args: P.args, **kwargs: P.kwargs) -> T:
         async with self.sio.session(sid) as session:
             room = session["room"]
         state = self.clients[room]
@@ -75,18 +91,22 @@ def with_state(handler: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator, that requires the client to be an admin.
+def admin[T, **P](
+    handler: Callable[Concatenate[Server, str, P], Awaitable[T]],
+) -> Callable[Concatenate[Server, str, P], Awaitable[T]]:
+    """Only allow admin connections for the handler.
 
-    If the client is not an admin, the handler is not called.
+    If not on an admin connection, an error is send back.
 
-    :param handler: The handler to decorate
-    :type handler: Callable[..., Any]
-    :return: The decorated handler
-    :rtype: Callable[..., Any]
+    Args:
+        handler: The handler to decorate
+
+    Returns:
+        The decorated handler
+
     """
 
-    async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
+    async def wrapper(self: Server, sid: str, /, *args: P.args, **kwargs: P.kwargs) -> Any:
         async with self.sio.session(sid) as session:
             room = session["room"]
             if room not in self.clients or not await self.is_admin(self.clients[room], sid):
@@ -97,18 +117,22 @@ def admin(handler: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def playback(handler: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator, that requires the client to be a playback client.
+def playback[T, **P](
+    handler: Callable[Concatenate[Server, str, P], Awaitable[T]],
+) -> Callable[Concatenate[Server, str, P], Awaitable[T]]:
+    """Only allow playback connections for the handler.
 
     If the client is not a playback client, the handler is not called.
 
-    :param handler: The handler to decorate
-    :type handler: Callable[..., Any]
-    :return: The decorated handler
-    :rtype: Callable[..., Any]
+    Args:
+        handler: The handler to decorate
+
+    Returns:
+        The decorated handler
+
     """
 
-    async def wrapper(self: Server, sid: str, *args: Any, **kwargs: Any) -> Any:
+    async def wrapper(self: Server, sid: str, /, *args: Any, **kwargs: Any) -> Any:
         async with self.sio.session(sid) as session:
             room = session["room"]
         state = self.clients[room]
@@ -121,30 +145,31 @@ def playback(handler: Callable[..., Any]) -> Callable[..., Any]:
 
 @dataclass
 class Client:
-    """This stores the configuration of a specific playback client.
+    """Client object, containing the information the server needs to know about the client.
 
     In case a new playback client connects to a room, these values can be
     overwritten.
 
-    :param sources: A dictionary mapping the name of the used sources to their
-        instances.
-    :type sources: Source
-    :param sources_prio: A list defining the order of the search results.
-    :type sources_prio: list[str]
-    :param config: Various configuration options for the client:
-        * `preview_duration` (`Optional[int]`): The duration in seconds the
-            playback client shows a preview for the next song. This is accounted for
-            in the calculation of the ETA for songs later in the queue.
-        * `last_song` (`Optional[float]`): A timestamp, defining the end of the queue.
-        * `waiting_room_policy` (Optional[str]): One of:
-            - `forced`, if a performer is already in the queue, they are put in the
-                       waiting room.
-            - `optional`, if a performer is already in the queue, they have the option
-                          to be put in the waiting room.
-            - `None`, performers are always added to the queue.
-        * `allow_collab_mode` (`bool`): True if users can tag their entries with
-             collaboration requests.
-    :type config: dict[str, Any]:
+    Attributes:
+        sources: A dictionary mapping the name of the used sources to their
+            instances.
+        sources_prio: A list defining the order of the search results.
+        config: Various configuration options for the client:
+            * `secret` (`str`): The secret for the room. Used to log in as an admin on the
+                webclient or reconnect a playbackclient
+            * `preview_duration` (`Optional[int]`): The duration in seconds the
+                playback client shows a preview for the next song. This is accounted for
+                in the calculation of the ETA for songs later in the queue.
+            * `last_song` (`Optional[float]`): A timestamp, defining the end of the queue.
+            * `waiting_room_policy` (Optional[str]): One of:
+                - `forced`, if a performer is already in the queue, they are put in the
+                        waiting room.
+                - `optional`, if a performer is already in the queue, they have the option
+                            to be put in the waiting room.
+                - `None`, performers are always added to the queue.
+            * `allow_collab_mode` (`bool`): True if users can tag their entries with
+                collaboration requests.
+
     """
 
     sources: dict[str, Source]
@@ -154,29 +179,22 @@ class Client:
 
 @dataclass
 class State:
-    """This defines the state of one session/room.
+    """Representation of the state of a room/session.
 
-    :param secret: The secret for the room. Used to log in as an admin on the
-        webclient or reconnect a playbackclient
-    :type secret: str
-    :param queue: A queue of :py:class:`syng.entry.Entry` objects. New songs
-        are appended to this, and if a playback client requests a song, it is
-        taken from the top.
-    :type queue: Queue
-    :param waiting_room: Contains the Entries, that are hold back, until a
-        specific song is finished.
-    :type waiting_room: list[Entry]
-    :param recent: A list of already played songs in order.
-    :type recent: list[Entry]
-    :param sid: The socket.io session id of the (unique) playback client. Once
-        a new playback client connects to a room (with the correct secret),
-        this will be swapped with the new sid.
-    :type sid: str
-    :param client: The config for the playback client
-    :type client: Client
-    :param last_seen: Timestamp of the last connected client. Used to determine
-        if a room is still in use.
-    :type last_seen: datetime
+    Attributes:
+        queue: A queue of :py:class:`syng.entry.Entry` objects. New songs
+            are appended to this, and if a playback client requests a song, it is
+            taken from the top.
+        waiting_room: Contains the Entries, that are hold back, until a
+            specific song is finished.
+        recent: A list of already played songs in order.
+        sid: The socket.io session id of the (unique) playback client. Once
+            a new playback client connects to a room (with the correct secret),
+            this will be swapped with the new sid.
+        client: The config for the playback client
+        last_seen: Timestamp of the last connected client. Used to determine
+            if a room is still in use.
+
     """
 
     queue: Queue
@@ -188,7 +206,10 @@ class State:
 
 
 class Server:
+    """Server class, handling the rooms, their queues and connections."""
+
     def __init__(self) -> None:
+        """Initialize the internal SocketIO server."""
         self.sio = socketio.AsyncServer(
             cors_allowed_origins="*", logger=True, engineio_logger=False, json=jsonencoder
         )
@@ -201,6 +222,7 @@ class Server:
         self.register_handlers()
 
     def register_handlers(self) -> None:
+        """Register each message to their accompaning handler."""
         self.sio.on("get-state", self.handle_get_state)
         self.sio.on("waiting-room-append", self.handle_waiting_room_append)
         self.sio.on("show-config", self.handle_show_config)
@@ -215,7 +237,6 @@ class Server:
         self.sio.on("sources", self.handle_sources)
         self.sio.on("config-chunk", self.handle_config_chunk)
         self.sio.on("config", self.handle_config)
-        self.sio.on("register-admin", self.handle_register_admin)
         self.sio.on("remove-room", self.handle_remove_room)
         self.sio.on("skip-current", self.handle_skip_current)
         self.sio.on("move-to", self.handle_move_to)
@@ -231,28 +252,32 @@ class Server:
     async def is_admin(self, state: State, sid: str) -> bool:
         """Check if a given sid is an admin in a room.
 
-        :param room: The room to check
-        :type room: str
-        :param sid: The session id to check
-        :type sid: str
-        :return: True if the sid is an admin in the room, False otherwise
-        :rtype: bool
+        Args:
+            state: The room to check
+            sid: The session id to check
+
+        Returns:
+            True if the sid is an admin in the room, False otherwise
+
         """
         if state.sid == sid:
             return True
         async with self.sio.session(sid) as session:
             return "admin" in session and session["admin"]
 
-    async def root_handler(self, request: Any) -> Any:
+    async def root_handler(self, request: web.Request) -> web.FileResponse:
         """Handle the index and favicon requests.
 
         If the path of the request ends with "/favicon.ico" return the favicon,
         otherwise the index.html. This way the javascript can read the room code
         from the url.
 
-        :param request Any: Webrequest from aiohttp
-        :return: Either the favicon or the index.html
-        :rtype web.FileResponse:
+        Args:
+            request: Webrequest from aiohttp
+
+        Returns:
+            Either the favicon or the index.html
+
         """
         if request.path.endswith("/favicon.ico"):
             return web.FileResponse(os.path.join(self.app["root_folder"], "favicon.ico"))
@@ -261,8 +286,9 @@ class Server:
     def get_number_connections(self) -> int:
         """Get the number of connections to the server.
 
-        :return: The number of connections
-        :rtype: int
+        Returns:
+            The number of connections
+
         """
         num = 0
         for namespace in self.sio.manager.get_namespaces():
@@ -274,8 +300,9 @@ class Server:
     def get_connections(self) -> dict[str, dict[str, list[tuple[str, str]]]]:
         """Get all connections to the server.
 
-        :return: A dictionary mapping namespaces to rooms and participants.
-        :rtype: dict[str, dict[str, list[tuple[str, str]]]]
+        Returns:
+            A dictionary mapping namespaces to rooms and participants.
+
         """
         connections: dict[str, dict[str, list[tuple[str, str]]]] = {}
         for namespace in self.sio.manager.get_namespaces():
@@ -289,10 +316,12 @@ class Server:
     async def get_clients(self, room: str) -> list[dict[str, Any]]:
         """Get the number of clients in a room.
 
-        :param room: The room to get the number of clients for
-        :type room: str
-        :return: The number of clients in the room
-        :rtype: int
+        Args:
+            room: The room to get the number of clients for
+
+        Returns:
+            The number of clients in the room
+
         """
         clients = []
         for sid, _client_id in self.sio.manager.get_participants("/", room):
@@ -306,8 +335,16 @@ class Server:
             clients.append(client)
         return clients
 
-    async def admin_handler(self, request: Any) -> Any:
-        """Handle the admin request."""
+    async def admin_handler(self, request: web.Request) -> web.Response:
+        """Handle requests to the internal admin endpoint for the server.
+
+        Args:
+            request: Unused
+
+        Returns:
+            A JSON-String with metadata of the currently connected clients and existing rooms.
+
+        """
         rooms = [
             {
                 "room": room,
@@ -331,6 +368,17 @@ class Server:
     async def broadcast_state(
         self, state: State, /, sid: str | None = None, room: str | None = None
     ) -> None:
+        """Send the state of a room to all participants in a room.
+
+        If a ``room`` is provided, use that room, otherwise use the room associated with the
+        playback client ``sid``. If this also is not provided, get the room from the ``state``.
+
+        Args:
+            state: The state to broadcast
+            sid: Session ID of a playback client or ``None``
+            room: The room to broadcast in, or ``None``
+
+        """
         if room is None:
             sid = state.sid if sid is None else sid
             async with self.sio.session(sid) as session:
@@ -342,11 +390,11 @@ class Server:
 
         This is used to inform the playback client of errors or other messages.
 
-        :param state: The state of the room
-        :type state: State
-        :param msg: The message to send
-        :type msg: str
-        :rtype: None
+        Args:
+            state: The state of the room
+            msg: The message to send
+            level: loglevel
+
         """
         await self.sio.emit("msg", {"msg": msg, "type": level}, room=state.sid)
 
@@ -359,11 +407,10 @@ class Server:
         If it is send to a playback client, it will be handled by the
         :py:func:`syng.client.handle_state` function.
 
-        :param state: The state to send
-        :type state: State
-        :param sid: The recepient of the "state" message
-        :type sid: str:
-        :rtype: None
+        Args:
+            state: The state to send
+            sid: The recepient of the "state" message
+
         """
         safe_config = {k: v for k, v in state.client.config.items() if k not in ["secret", "key"]}
 
@@ -385,10 +432,10 @@ class Server:
         Sends the current state to whoever requests it. This failes if the sender
         is not part of any room.
 
-        :param sid: The initial sender, and therefore recepient of the "state"
-            message
-        :type sid: str
-        :rtype: None
+        Args:
+            state: The current state of a room
+            sid: The initial sender, and therefore recepient of the "state" message
+
         """
         await self.send_state(state, sid)
 
@@ -402,13 +449,15 @@ class Server:
         within the data to the waiting room of the room the client is currently
         connected to.
 
-        :param sid: The session id of the client sending this request
-        :type sid: str
-        :param data: A dictionary encoding the entry, that should be added to the
-            waiting room.
-        :type data: dict[str, Any]
-        :return: The uuid of the added entry or None if the entry could not be added
-        :rtype: Optional[str]
+        Args:
+            state: The current state of a room
+            sid: The session id of the client sending this request
+            data: A dictionary encoding the entry, that should be added to the
+                waiting room.
+
+        Returns:
+            The uuid of the added entry or None if the entry could not be added
+
         """
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
@@ -462,13 +511,11 @@ class Server:
         Checks, if the computed start time is before the configured end time of the
         event, and reports an error, if the end time is exceeded.
 
-        :param room: The room with the queue.
-        :type room: str
-        :param entry: The entry that contains the song.
-        :type entry: Entry
-        :param report_to: If an error occurs, who to report to.
-        :type report_to: Optional[str]
-        :rtype: None
+        Args:
+            state: The state of the room with the queue.
+            entry: The entry that contains the song.
+            report_to: If an error occurs, who to report to.
+
         """
         first_song = state.queue.try_peek()
         if first_song is None or first_song.started_at is None:
@@ -509,13 +556,14 @@ class Server:
     @admin
     @with_state
     async def handle_show_config(self, state: State, sid: str) -> None:
-        """Sends public config to webclient.
+        """Send the public config to webclient.
 
         This will only be send if the client is on an admin connection.
 
-        :param sid: The session id of the client sending this request
-        :type sid: str
-        :rtype: None
+        Args:
+            state: The state of a room.
+            sid: The session id of the client sending this request
+
         """
         await self.sio.emit(
             "config",
@@ -526,15 +574,15 @@ class Server:
     @admin
     @with_state
     async def handle_update_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Forwards an updated config from an authorized webclient to the playback client.
+        """Forward an updated config from an authorized webclient to the playback client.
 
         This is currently untrested and should be used with caution.
 
-        :param sid: The session id of the client sending this request
-        :type sid: str
-        :param data: A dictionary encoding the new configuration
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of a room.
+            sid: The session id of the client sending this request
+            data: A dictionary encoding the new configuration
+
         """
         try:
             config = jsonencoder.loads(data["config"])
@@ -575,13 +623,15 @@ class Server:
         handled there with the :py:func:`syng.client.handle_get_meta_info`
         function.
 
-        :param sid: The session id of the client sending this request
-        :type sid: str
-        :param data: A dictionary encoding the entry, that should be added to the
-            queue.
-        :type data: dict[str, Any]
-        :return: The uuid of the added entry or None if the entry could not be added
-        :rtype: Optional[str]
+        Args:
+            state: The state of a room.
+            sid: The session id of the client sending this request
+            data: A dictionary encoding the entry, that should be added to the
+                queue.
+
+        Returns:
+            The uuid of the added entry or None if the entry could not be added
+
         """
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
@@ -656,15 +706,22 @@ class Server:
     async def handle_append_anyway(
         self, state: State, sid: str, data: dict[str, Any]
     ) -> str | None:
-        """Appends a song to the queue, even if the performer is already in queue.
+        """Append a song to the queue, even if the performer is already in queue.
 
         Works the same as handle_append, but without the check if the performer is already
         in queue.
 
         Only if the waiting_room_policy is not configured as forced.
 
-        :return: The uuid of the added entry or None if the entry could not be added
-        :rtype: Optional[str]
+        Args:
+            state: The state of a room.
+            sid: The session id of the client sending this request
+            data: A dictionary encoding the entry, that should be added to the
+                queue.
+
+        Returns:
+            The uuid of the added entry or None if the entry could not be added
+
         """
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
@@ -727,12 +784,12 @@ class Server:
 
         Afterwards send the updated queue to all members of the room.
 
-        :param sid: The session id of the client sending this request.
-        :type sid: str
-        :param data: A dictionary encoding the entry to update (already with the
-            new metadata)
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of a room.
+            sid: The session id of the client sending this request.
+            data: A dictionary encoding the entry to update (already with the
+                new metadata)
+
         """
         state.queue.update(
             data["uuid"],
@@ -770,9 +827,10 @@ class Server:
         playback client in a "play" message. This will be handled by the
         :py:func:`syng.client.handle_play` function.
 
-        :param sid: The session id of the requesting client
-        :type sid: str
-        :rtype: None
+        Args:
+            state: State of the room.
+            sid: The session id of the requesting client
+
         """
         current = await state.queue.peek()
         current.started_at = datetime.datetime.now().timestamp()
@@ -790,9 +848,11 @@ class Server:
         the waiting room. If the performer has only one entry in the queue, it is
         put back into the queue immediately.
 
-        :param sid: The session id of the requesting client
-        :type sid: str
-        :rtype: None
+        Args:
+            state: State of the room.
+            sid: The session id of the requesting client
+            data: dictionary containing at least the uuid of the entry.
+
         """
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
@@ -813,9 +873,11 @@ class Server:
         If on an admin-connection, removes a song from the waiting room and appends it to
         the queue.
 
-        :param sid: The session id of the requesting client
-        :type sid: str
-        :rtype: None
+        Args:
+            state: State of the room.
+            sid: The session id of the requesting client
+            data: Dictionary containing at least the uuid of the entry.
+
         """
         entry = next(
             (wr_entry for wr_entry in state.waiting_room if str(wr_entry.uuid) == data["uuid"]),
@@ -832,9 +894,9 @@ class Server:
 
         This should be called every time a song leaves the queue.
 
-        :param room: The room holding the queue.
-        :type room: str
-        :rtype: None
+        Args:
+            state: State of the room holding the queue.
+
         """
         wrs_to_remove = []
         for wr_entry in state.waiting_room:
@@ -846,15 +908,20 @@ class Server:
             state.waiting_room.remove(wr_entry)
 
     async def discard_first(self, state: State) -> Entry:
-        """Gets the first element of the queue, handling resulting triggers.
+        """Get the first element of the queue and handle resulting triggers.
 
         This function is used to get the first element of the queue, and handle
         the resulting triggers. This includes adding songs from the waiting room,
         and updating the state of the room.
 
-        :param room: The room to get the first element from.
-        :type room: str
-        :rtype: Entry
+        This function waits until at least one element is in the queue.
+
+        Args:
+            state: State of the room to get the first element from.
+
+        Returns:
+            First element of the queue.
+
         """
         old_entry = await state.queue.popleft()
 
@@ -880,9 +947,10 @@ class Server:
         "play" message. This will be handled by the
         :py:func:`syng.client.handle_play` function.
 
-        :param sid: The session id of the requesting playback client
-        :type sid: str
-        :rtype: None
+        Args:
+            state: State of the room.
+            sid: The session id of the requesting playback client
+
         """
         await self.discard_first(state)
         await self.broadcast_state(state, sid=sid)
@@ -899,10 +967,12 @@ class Server:
         This is used to authenticate a client, if the server is in private or
         restricted mode.
 
-        :param key: The key to check
-        :type key: str
-        :return: True if the key is in the registration keyfile, False otherwise
-        :rtype: bool
+        Args:
+            key: The key to check
+
+        Returns:
+            True if the key is in the registration keyfile, False otherwise
+
         """
         with open(self.app["registration-keyfile"], encoding="utf8") as f:
             raw_keys = f.readlines()
@@ -913,10 +983,18 @@ class Server:
     async def check_client_version(self, client_version: tuple[int, int, int], sid: str) -> bool:
         """Check if a given version is compatible with the server.
 
-        :param version: The version to check
-        :type version: tuple[int, int, int]
-        :return: True if the version is compatible, False otherwise
-        :rtype: bool
+        If versions mismatch, but protocols are compatible, sends a warning to the client.
+
+        Args:
+            client_version: The version to check
+            sid: session, to send the result of the check
+
+        Returns:
+            True if the version is compatible
+
+        Raises:
+            ConnectionRefusedError: if the protocol versions mismatch.
+
         """
         if client_version < SYNG_PROTOCOL_VERSION:
             await self.sio.emit(
@@ -957,11 +1035,11 @@ class Server:
             - `queue`, a list of entries to import into the queue
             - `waiting_room`, a list of entries to import into the waiting room
 
-        :param sid: The session id of the client sending this request
-        :type sid: str
-        :param data: A dictionary with the keys described above
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the client sending this request
+            data: A dictionary with the keys described above
+
         """
         queue_entries = [Entry(**entry) for entry in data.get("queue", [])]
         waiting_room_entries = [Entry(**entry) for entry in data.get("waiting_room", [])]
@@ -974,16 +1052,16 @@ class Server:
         await self.broadcast_state(state, sid=sid)
 
     @admin
-    @with_state
-    async def handle_remove_room(self, state: State, sid: str, data: dict[str, Any]) -> None:
+    async def handle_remove_room(self, sid: str) -> None:
         """Handle the "remove-room" message.
 
-        This will remove the room from the server, and delete all associated data.
+        This will remove the room from the server, delete all associated data and disconnect all
+        connected clients.
         This is only available on an admin connection.
 
-        :param sid: The session id of the client sending this request
-        :type sid: str
-        :rtype: None
+        Args:
+            sid: The session id of the client sending this request
+
         """
         async with self.sio.session(sid) as session:
             room = cast(str, session["room"])
@@ -1017,12 +1095,12 @@ class Server:
         sources need to be configured and request their configuration. The list
         of sources will set the :py:attr:`Config.sources_prio` attribute.
 
-        :param sid: The session id of the playback client
-        :type sid: str
-        :param data: A dictionary containing a "sources" key, with the list of
-            sources to use.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the playback client
+            data: A dictionary containing a "sources" key, with the list of
+                sources to use.
+
         """
         unused_sources = state.client.sources.keys() - data["sources"]
         new_sources = data["sources"] - state.client.sources.keys()
@@ -1046,12 +1124,13 @@ class Server:
         to the source, otherwise a source will be created with the given
         configuration.
 
-        :param sid: The session id of the playback client
-        :type sid: str
-        :param data: A dictionary with a "source" (str) and a
-            "config" (dict[str, Any]) entry. The exact content of the config entry
-            depends on the source.
-        :rtype: None
+        Args:
+            state: The state of the room
+            sid: The session id of the playback client
+            data: A dictionary with a "source" (str) and a
+                "config" (dict[str, Any]) entry. The exact content of the config entry
+                depends on the source.
+
         """
         if data["source"] not in state.client.sources:
             state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
@@ -1067,13 +1146,13 @@ class Server:
         a single message, rather than chunks. A source will be created with the
         given configuration.
 
-        :param sid: The session id of the playback client
-        :type sid: str
-        :param data: A dictionary with a "source" (str) and a
-            "config" (dict[str, Any]) entry. The exact content of the config entry
-            depends on the source.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the playback client
+            data: A dictionary with a "source" (str) and a
+                "config" (dict[str, Any]) entry. The exact content of the config entry
+                depends on the source.
+
         """
         logger.debug("handle_config: %s", data)
         source_to_configure = available_sources[data["source"]]
@@ -1090,12 +1169,14 @@ class Server:
         This is called, when a client connects to the server. It will register the
         client and send the initial state of the room to the client.
 
-        :param sid: The session id of the requesting client.
-        :type sid: str
-        :param data: A dictionary with the keys described in
-            :py:func:`handle_register_client`.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            sid: The session id of the requesting client.
+            environ: Unused
+            auth: Authentication of the client (admin, playback, webclient)
+
+        Raises:
+            ConnectionRefusedError: If no auth is provided
+
         """
         logger.debug("Client %s connected", sid)
         if auth is None or "type" not in auth:
@@ -1108,6 +1189,19 @@ class Server:
                 await self.register_web_client(sid, auth)
 
     async def register_web_client(self, sid: str, auth: dict[str, Any]) -> None:
+        """Register a connection as a webclient.
+
+        This adds the connection to a room. If ``secret`` is part of the auth, and it matches the
+        secert of the room, the connection is marked as an admin connection.
+
+        Args:
+            sid: The sid, that tries to register
+            auth: A dictionary, that can contain a secret and should contain a room
+
+        Raises:
+            ConnectionRefusedError: If the room does not exist.
+
+        """
         if auth["room"] in self.clients:
             logger.info("Client %s registered for room %s", sid, auth["room"])
             async with self.sio.session(sid) as session:
@@ -1167,11 +1261,15 @@ class Server:
 
         Afterwards all clients in the room will be send the current state.
 
-        :param sid: The session id of the requesting playback client.
-        :type sid: str
-        :param data: A dictionary with the keys described above
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            sid: The session id of the requesting playback client.
+            data: A dictionary with the keys described above
+
+        Raises:
+            ConnectionRefusedError: If the server is marked as private and a wrong key is submitted,
+                or if the client tries to connect to an existing room, but does not provide the
+                correct secret.
+
         """
         if "version" not in data:
             await self.sio.emit(
@@ -1254,27 +1352,6 @@ class Server:
             await self.sio.enter_room(sid, room)
             await self.send_state(self.clients[room], sid)
 
-    @with_state
-    async def handle_register_admin(self, state: State, sid: str, data: dict[str, Any]) -> bool:
-        """THIS IS DEPRECATED, REGISTRATION IS NOW DONE VIA THE CONNECT EVENT.
-
-        Handle a "register-admin" message.
-
-        If the client provides the correct secret for its room, the connection is
-        upgraded to an admin connection.
-
-        :param sid: The session id of the client, requesting admin.
-        :type sid: str:
-        :param data: A dictionary with at least a "secret" entry.
-        :type data: dict[str, Any]
-        :return: True, if the secret is correct, False otherwise
-        :rtype: bool
-        """
-        is_admin: bool = data["secret"] == state.client.config["secret"]
-        async with self.sio.session(sid) as session:
-            session["admin"] = is_admin
-        return is_admin
-
     @admin
     @with_state
     async def handle_skip_current(self, state: State, sid: str) -> None:
@@ -1284,9 +1361,10 @@ class Server:
         to the playback client. This will be handled by the
         :py:func:`syng.client.handle_skip_current` function.
 
-        :param sid: The session id of the client, requesting.
-        :type sid: str
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the client, requesting.
+
         """
         old_entry = await self.discard_first(state)
         await self.sio.emit("skip-current", old_entry, room=state.sid)
@@ -1300,11 +1378,11 @@ class Server:
         If on an admin connection, moves the entry specified in the data to the
         position specified in the data.
 
-        :param sid: The session id of the client requesting.
-        :type sid: str
-        :param data: A dictionary with at least an "uuid" and a "target" entry
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the client requesting.
+            data: A dictionary with at least an "uuid" and a "target" entry
+
         """
         await state.queue.move_to(data["uuid"], data["target"])
         await self.broadcast_state(state, sid=sid)
@@ -1317,11 +1395,10 @@ class Server:
         If on an admin connection, moves up the entry specified in the data by one
         place in the queue.
 
-        :param sid: The session id of the client requesting.
-        :type sid: str
-        :param data: A dictionary with at least an "uuid" entry
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the client requesting.
+            data: A dictionary with at least an "uuid" entry
         """
         await state.queue.move_up(data["uuid"])
         await self.broadcast_state(state, sid=sid)
@@ -1334,11 +1411,11 @@ class Server:
         If on an admin connection, removes the entry specified by data["uuid"]
         from the queue or the waiting room. Triggers the waiting room.
 
-        :param sid: The session id of the client requesting.
-        :type sid: str
-        :param data: A dictionary with at least an "uuid" entry.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            state: The state of the room.
+            sid: The session id of the client requesting.
+            data: A dictionary with at least an "uuid" entry.
+
         """
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
@@ -1369,9 +1446,9 @@ class Server:
 
         Remove the client from its room.
 
-        :param sid: The session id of the client disconnecting
-        :type sid: str
-        :rtype: None
+        Args:
+            sid: The session id of the client disconnecting
+
         """
         async with self.sio.session(sid) as session:
             room = session.get("room")
@@ -1382,19 +1459,24 @@ class Server:
     async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> str:
         """Handle the "search" message.
 
-        Forwards the dict["query"] to the :py:func:`Source.search` method, and
-        execute them concurrently. The order is given by the
-        :py:attr:`Config.sources_prio` attribute of the state.
+        If the session is restricted, this forwards the search to the playback client.
+        Otherwise, the search is forwarded to the :py:func:`Source.search` method of each source,
+        and executed concurrently. The order is given by the :py:attr:`Config.sources_prio`
+        attribute of the state.
+
+        To track searches between web client and playback client, a search id is created.
 
         The result will be send with a "search-results" message to the (web)
         client.
 
-        :param sid: The session id of the client requesting.
-        :type sid: str
-        :param data: A dictionary with at least a "query" entry.
-        :type data: dict[str, str]
-        :return: The search id
-        :rtype: str
+        Args:
+            state: The state of the room.
+            sid: The session id of the client requesting.
+            data: A dictionary with at least a "query" entry.
+
+        Returns:
+            The search id
+
         """
         query = data["query"]
         search_id = uuid.uuid4()
@@ -1413,17 +1495,14 @@ class Server:
     async def search_and_emit(
         self, search_id: uuid.UUID, query: str, state: State, sid: str
     ) -> None:
-        """Search for a query on a source and emit the results.
+        """Search for a query on all sources and emit the results.
 
-        :param search_id: The search id
-        :type search_id: uuid.UUID
-        :param query: The query to search for
-        :type query: str
-        :param state: The state of the room
-        :type state: State
-        :param sid: The session id of the client
-        :type sid: str
-        :rtype: list[Result]
+        Args:
+            search_id: The search id
+            query: The query to search for
+            state: The state of the room
+            sid: The session id of the client
+
         """
         results_list = await asyncio.gather(
             *[state.client.sources[source].search(query) for source in state.client.sources_prio]
@@ -1446,11 +1525,10 @@ class Server:
             - `results`, a list of search results (list[dict[str, Any]])
             - `search_id`, the search id (str) (Optional)
 
-        :param sid: The session id of the playback client
-        :type sid: str
-        :param data: A dictionary with the keys described above
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            sid: The session id of the playback client
+            data: A dictionary with the keys described above
+
         """
         web_sid = data["sid"]
         search_id = data.get("search_id")
@@ -1461,6 +1539,19 @@ class Server:
 
     @playback
     async def handle_client_msg(self, sid: str, data: dict[str, Any]) -> None:
+        """Handle the ``client-msg`` message.
+
+        This is used to send a message from the playback client to one or all web clients.
+        The data dictionary should have the following keys:
+            - `target_sid`, the target of the message
+            - `type`, the loglevel of the message as an integer
+            - `msg`, the content of the message
+
+        Args:
+            sid: The session id of the playback client
+            data: A dictionary with the keys described above
+
+        """
         logger.debug(msg=f"Client-msg: {sid}, {data}")
         if "target_sid" in data:
             await self.sio.emit(
@@ -1476,11 +1567,11 @@ class Server:
     ) -> None:
         """Send search results to a client.
 
-        :param sid: The session id of the client to send the results to.
-        :type sid: str
-        :param results: The search results to send.
-        :type results: list[Result]
-        :rtype: None
+        Args:
+            sid: The session id of the client to send the results to.
+            search_id: The id, that was generated for this search
+            results: The search results to send.
+
         """
         await self.sio.emit(
             "search-results",
@@ -1493,8 +1584,6 @@ class Server:
 
         This runs every hour, and removes every client, that did not requested a song for four
         hours.
-
-        :rtype: None
         """
         logger.info("Start Cleanup")
         to_remove: list[str] = []
@@ -1526,9 +1615,12 @@ class Server:
 
         For now, this is only the cleanup task.
 
-        :param iapp: The web application
-        :type iapp: web.Application
-        :rtype: AsyncGenerator[None, None]
+        Args:
+            iapp: The web application
+
+        Yields:
+            Nothing. This is only implemented to wait
+
         """
         iapp["repeated_cleanup"] = asyncio.create_task(self.cleanup())
 
@@ -1542,13 +1634,11 @@ class Server:
 
         This is used to run the main app and the admin app in parallel.
 
-        :param host: The host to bind to
-        :type host: str
-        :param port: The port to bind to
-        :type port: int
-        :param admin_port: The port for the admin interface, or None if not used
-        :type admin_port: Optional[int]
-        :rtype: None
+        Args:
+            host: The host to bind to
+            port: The port to bind to
+            admin_port: The port for the admin interface, or None if not used
+
         """
         if admin_port:
             logger.info("Starting admin interface on port %d", admin_port)
@@ -1577,9 +1667,9 @@ class Server:
             - `restricted`, if the server is restricted
             - `admin_port`, the port for the admin interface
 
-        :param args: The command line arguments
-        :type args: Namespace
-        :rtype: None
+        Args:
+            args: The command line arguments
+
         """
         self.app["type"] = (
             "private" if args.private else "restricted" if args.restricted else "public"
@@ -1618,11 +1708,11 @@ class Server:
 
 
 def run_server(args: Namespace) -> None:
-    """Run the server.
+    """Create and run the server.
 
-    :param args: The command line arguments
-    :type args: Namespace
-    :rtype: None
+    Args:
+        args: The command line arguments
+
     """
     loglevel = getattr(logging, args.log_level.upper(), logging.WARNING)
     logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
