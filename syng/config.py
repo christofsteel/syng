@@ -30,13 +30,6 @@ class WaitingRoomPolicy(Enum):
     NONE = "none"
 
 
-class QrPosition(Enum):
-    TOP_RIGHT = "top-right"
-    TOP_LEFT = "top-left"
-    BOTTOM_RIGHT = "bottom-right"
-    BOTTOM_LEFT = "bottom-left"
-
-
 class LogLevel(Enum):
     DEBUG = "debug"
     INFO = "info"

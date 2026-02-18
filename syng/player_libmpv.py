@@ -9,30 +9,9 @@ from typing import cast
 import mpv
 from qrcode.main import QRCode
 
-from syng.config import ClientConfig
+from syng.config import ClientConfig, QRPosition
 from syng.entry import Entry
 from syng.runningstates import Lifecycle, RunningState
-
-
-class QRPosition(Enum):
-    TOP_LEFT = 1
-    TOP_RIGHT = 2
-    BOTTOM_LEFT = 3
-    BOTTOM_RIGHT = 4
-
-    @staticmethod
-    def from_string(value: str) -> "QRPosition":
-        match value:
-            case "top-left":
-                return QRPosition.TOP_LEFT
-            case "top-right":
-                return QRPosition.TOP_RIGHT
-            case "bottom-left":
-                return QRPosition.BOTTOM_LEFT
-            case "bottom-right":
-                return QRPosition.BOTTOM_RIGHT
-            case _:
-                return QRPosition.BOTTOM_RIGHT
 
 
 class Player:
@@ -161,9 +140,6 @@ class Player:
             case QRPosition.TOP_LEFT:
                 x_pos = 10
                 y_pos = 10
-            case _:
-                x_pos = osd_width - self.qr.width - 10
-                y_pos = osd_height - self.qr.height - 10
 
         self.qr_overlay = self.mpv.create_image_overlay(self.qr, pos=(x_pos, y_pos))
 
