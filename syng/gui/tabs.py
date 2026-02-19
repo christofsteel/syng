@@ -34,6 +34,8 @@ class SourceTab(OptionFrame):
 
 
 class UIConfigTab(OptionFrame):
+    config: UIConfig
+
     def __init__(self, parent: QWidget, config: UIConfig) -> None:
         super().__init__(config, parent)
 
@@ -53,6 +55,8 @@ class UIConfigTab(OptionFrame):
 
 
 class GeneralConfigTab(OptionFrame):
+    config: GeneralConfig
+
     def __init__(
         self,
         parent: QWidget,
