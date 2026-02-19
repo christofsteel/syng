@@ -21,7 +21,6 @@ import os
 import signal
 import threading
 from argparse import Namespace
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
 from traceback import print_exc
@@ -44,60 +43,20 @@ from syng.sources import Source, available_sources, configure_sources, get_sourc
 
 @dataclass
 class State:
-    """This captures the current state of the playback client.
+    """The State of the playback client.
 
     It doubles as a backup of the state of the :py:class:`syng.server` in case
     the server needs to be restarted.
 
-    :param current_source: This holds a reference to the
-        :py:class:`syng.sources.source.Source` object, that is currently
-        playing. If no song is played, the value is `None`.
-    :type current_source: Optional[Source]
-    :param queue: A copy of the current playlist on the server.
-    :type queue: list[Entry]
-    :param waiting_room: A copy of the waiting room on the server.
-    :type waiting_room: list[Entry]
-    :param recent: A copy of all played songs this session.
-    :type recent: list[Entry]
-    :param config: Various configuration options for the client:
-        * `server` (`str`): The url of the server to connect to.
-        * `room` (`str`): The room on the server this playback client is connected to.
-        * `secret` (`str`): The passcode of the room. If a playback client reconnects to
-            a room, this must be identical. Also, if a webclient wants to have
-            admin privileges, this must be included.
-        * `key` (`Optional[str]`) An optional key, if registration or functionality on the server
-            is limited.
-        * `preview_duration` (`Optional[int]`): The duration in seconds the
-            playback client shows a preview for the next song. This is accounted for
-            in the calculation of the ETA for songs later in the queue.
-        * `next_up_position` (`str`): The position of the "next up" box on the screen.
-            Possible values are: top or bottom.
-        * `last_song` (`Optional[datetime.datetime]`): A timestamp, defining the end of
-            the queue.
-        * `waiting_room_policy` (Optional[str]): One of:
-            - `forced`, if a performer is already in the queue, they are put in the
-                       waiting room.
-            - `optional`, if a performer is already in the queue, they have the option
-                          to be put in the waiting room.
-            - `None`, performers are always added to the queue.
-        * `allow_collab_mode` (`bool`): If False, does not allow for collab_mode selection in webui
-        * `buffer_in_advance` (`int`): The number of songs, that are buffered in
-            advance.
-        * `qr_box_size` (`int`): The size of one box in the QR code.
-        * `qr_position` (`str`): The position of the QR code on the screen. One of:
-            - `top-left`
-            - `top-right`
-            - `bottom-left`
-            - `bottom-right`
-        * `show_advanced` (`bool`): If the advanced options should be shown in the
-            gui.
-        * `log_level` (`str`): The log level of the client. One of: `debug`, `info`, `warning`,
-            `error`, `critical`. Default is `info`.
+    Attributes:
+        current_source: This holds a reference to the
+            :py:class:`syng.sources.source.Source` object, that is currently
+            playing. If no song is played, the value is `None`.
+        queue: A copy of the current playlist on the server.
+        waiting_room: A copy of the waiting room on the server.
+        recent: A copy of all played songs this session.
 
-    :type config: dict[str, Any]:
     """
-
-    # pylint: disable=too-many-instance-attributes
 
     current_source: Source | None = None
     queue: list[Entry] = field(default_factory=list)
@@ -106,19 +65,32 @@ class State:
 
 
 class Client:
+    """The Playback client.
+
+    Handles the connection to the server, manages the video player and contains the sources.
+
+    Attributes:
+        config: ``ClientConfig`` object.
+    """
+
     config: ClientConfig
 
     def __init__(self, config: SyngConfig) -> None:
+        """Initialize the client.
+
+        This sets up the websocket client, video player and configures all sources.
+
+        Args:
+            config: ``SyngConfig`` object, containing all client and source configuration.
+
+        """
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
         self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
         self.state = State()
-        self.player: Player
-        self.queue_callbacks: list[Callable[[list[Entry]], None]] = []
         self.register_handlers()
-        self.configured = False
         self.config = config.config
 
         self.set_log_level(self.config.general.log_level)
@@ -130,10 +102,13 @@ class Client:
             self.state.queue,
         )
 
-    def add_queue_callback(self, callback: Callable[[list[Entry]], None]) -> None:
-        self.queue_callbacks.append(callback)
-
     def set_log_level(self, level: LogLevel) -> None:
+        """Set the log level.
+
+        Args:
+            level: The log level to set
+
+        """
         match level:
             case LogLevel.DEBUG:
                 logger.setLevel(logging.DEBUG)
@@ -147,6 +122,7 @@ class Client:
                 logger.setLevel(logging.CRITICAL)
 
     def register_handlers(self) -> None:
+        """Register handlers for the SocketIO client."""
         self.sio.on("update_config", self.handle_update_config)
         self.sio.on("skip-current", self.handle_skip_current)
         self.sio.on("state", self.handle_state)
@@ -167,10 +143,10 @@ class Client:
         This function is called when the client fails to connect to the server.
         It will log the error and disconnect from the server.
 
-        :param data: A dictionary with the error message, or the error message
-          directly.
-        :type data: dict[str, Any] | str
-        :rtype: None
+        Args:
+            data: A dictionary with the error message, or the error message
+                directly.
+
         """
         logger.critical("Connection error: %s", data)
         await self.ensure_disconnect()
@@ -181,22 +157,26 @@ class Client:
         This function is called when the client receives a message, that is not
         handled by any of the other handlers. It will log the event and data.
 
-        :param event: The name of the event
-        :type event: str
-        :param data: The data of the event
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            event: The name of the event
+            data: The data of the event
+
         """
         logger.warning(f"Unknown message: {event} with data: {data}")
 
     async def handle_disconnect(self) -> None:
+        """Handle "disconnect" message.
+
+        This is called, when the connection to the server has terminated. Sets the livecycle of the
+        client to ended and ensures, that all other components of the client are disconnected or
+        closed.
+
+        """
         await self.connection_state.set_connection_state(Lifecycle.ENDED)
         await self.ensure_disconnect()
 
     async def ensure_disconnect(self) -> None:
-        """Ensure that the client is disconnected from the server and the player is
-        terminated.
-        """
+        """Ensure that the client is disconnected from the server and the player is terminated."""
         if await self.connection_state.client_is([Lifecycle.ENDING, Lifecycle.ENDED]):
             return
 
@@ -219,9 +199,9 @@ class Client:
 
         This function is used to print messages from the server to the console.
 
-        :param data: A dictionary with the `msg` entry.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary with the `msg` entry.
+
         """
         msg_type = data.get("type", "info")
         match msg_type:
@@ -239,11 +219,11 @@ class Client:
     async def handle_update_config(self, data: dict[str, Any]) -> None:
         """Handle the "update_config" message.
 
-        Currently, this function is untested and should be considered dangerous.
+        Currently, this function is not implemented.
 
-        :param data: A dictionary with the new configuration.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary with the new configuration.
+
         """
         raise NotImplementedError
         # self.state.config = default_config() | data
@@ -257,9 +237,10 @@ class Client:
         Since the ``queue`` could already be updated, when this evaluates, the
         first entry in the queue is send explicitly.
 
-        :param data: An entry, that should be equivalent to the first entry of the
-            queue.
-        :rtype: None
+        Args:
+            data: An entry, that should be equivalent to the first entry of the
+                queue.
+
         """
         logger.info("Skipping current")
         self.skipped.append(data["uuid"])
@@ -281,9 +262,9 @@ class Client:
         After recieving the new state, a buffering task for the first elements of
         the queue is started.
 
-        :param data: A dictionary with the `queue` and `recent` list.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary with the `queue` and `recent` list.
+
         """
         await self.connection_event.wait()
         self.state.queue.clear()
@@ -312,14 +293,12 @@ class Client:
             except ValueError as e:
                 logger.error("Error buffering: %s", e)
                 await self.sio.emit("skip", {"uuid": entry.uuid})
-        for callback in self.queue_callbacks:
-            callback(self.state.queue)
 
     async def handle_connect(self) -> None:
         """Handle the "connect" message.
 
         This is called when the client successfully connects to the server
-        and starts the player.
+        and starts the video player.
 
         Start listing all configured :py:class:`syng.sources.source.Source` to the
         server via a "sources" message. This message will be handled by the
@@ -330,7 +309,6 @@ class Client:
         with a "get-first" message. This will be handled on the server by the
         :py:func:`syng.server.handle_get_first` function.
 
-        :rtype: None
         """
         logger.info("Connected to server: %s", self.config.general.server)
         self.player.start()
@@ -363,9 +341,9 @@ class Client:
         sends them back to the server in a "meta-info" message. On the server side
         a :py:func:`syng.server.handle_meta_info` function is called.
 
-        :param data: A dictionary encoding the entry
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary encoding the entry
+
         """
         source: Source = self.sources[data["source"]]
         meta_info: dict[str, Any] = await source.get_missing_metadata(Entry(**data))
@@ -380,9 +358,9 @@ class Client:
         This is done by creating a black png file, and showing subtitles in the
         middle of the screen.... don't ask, it works
 
-        :param entry: The entry to preview
-        :type entry: :py:class:`Entry`
-        :rtype: None
+        Args:
+            entry: The entry to preview
+
         """
         await self.player.queue_next(entry)
 
@@ -400,9 +378,9 @@ class Client:
         If the entry is marked as skipped, emit a "get-first"  message instead,
         because the server already handled the removal of the first entry.
 
-        :param data: A dictionary encoding the entry
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary encoding the entry
+
         """
         entry: Entry = Entry(**data)
         source = self.sources[entry.source]
@@ -447,9 +425,9 @@ class Client:
         The results are then send back to the server in a "search-results" message,
         including the `sid` of the corresponding webclient.
 
-        :param data: A dictionary with the `query` and `sid` entry.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary with the `query` and `sid` entry.
+
         """
         logger.debug("Handling search: %s (%s)", data["query"], data["search_id"])
         query = data["query"]
@@ -484,10 +462,10 @@ class Client:
         After the configuration is send, the source is asked to update its
         configuration. This can also be split up in multiple parts.
 
-        :param data: A dictionary with the entry `source` and a string, that
-            corresponds to the name of a source.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary with the entry `source` and a string, that
+                corresponds to the name of a source.
+
         """
         await self.connection_event.wait()
         if data["source"] in self.sources:
@@ -532,19 +510,16 @@ class Client:
         This function is called when the client receives a signal to terminate. It
         will disconnect from the server and kill the current player.
 
-        :param loop: The asyncio event loop
-        :type loop: asyncio.AbstractEventLoop
-        :rtype: None
+        Args:
+            loop: The asyncio event loop
+
         """
         logger.debug("Received termination signal, shutting down...")
         engineio.async_client.async_signal_handler()
         asyncio.ensure_future(self.ensure_disconnect(), loop=loop)
 
     def quit_callback(self) -> None:
-        """Callback function for the player, terminating the player and disconnecting.
-
-        :rtype: None
-        """
+        """Callback function for the player, terminating the player and disconnecting."""
         if self.loop is not None:
             asyncio.run_coroutine_threadsafe(self.ensure_disconnect(), self.loop)
 
@@ -558,9 +533,9 @@ class Client:
     def export_queue(self, filename: str) -> None:
         """Export the current queue to a file.
 
-        :param filename: The name of the file to export the queue to.
-        :type filename: str
-        :rtype: None
+        Args:
+            filename: The name of the file to export the queue to.
+
         """
         with open(filename, "w", encoding="utf8") as file:
             jsonencoder.dump(
@@ -577,9 +552,9 @@ class Client:
     async def import_queue(self, filename: str) -> None:
         """Import a queue from a file.
 
-        :param filename: The name of the file to import the queue from.
-        :type filename: str
-        :rtype: None
+        Args:
+            filename: The name of the file to import the queue from.
+
         """
         with open(filename, encoding="utf8") as file:
             data = jsonencoder.load(file)
@@ -596,18 +571,16 @@ class Client:
         This is called when the server removes the room, that this client is
         connected to. We simply log this event.
 
-        :param data: A dictionary with the `room` entry.
-        :type data: dict[str, Any]
-        :rtype: None
+        Args:
+            data: A dictionary with the `room` entry.
+
         """
         logger.info("Room removed: %s", data["room"])
 
     async def start_client(self) -> None:
         """Initialize the client and connect to the server.
 
-        :param config: Config options for the client
-        :type config: dict[str, Any]
-        :rtype: None
+        This runs, until the connection to the server is seperated.
         """
         await self.connection_state.set_client_state(Lifecycle.STARTING)
 
@@ -642,13 +615,9 @@ class Client:
 def create_async_and_start_client(config: SyngConfig) -> None:
     """Create an asyncio event loop and start the client.
 
-    If a multiprocessing queue is given, the client will log to the queue.
+    Args:
+        config: Config options for the client
 
-    :param config: Config options for the client
-    :type config: dict[str, Any]
-    :param queue: A multiprocessing queue to log to
-    :type queue: Optional[Queue[LogRecord]]
-    :rtype: None
     """
     client = Client(config)
 
@@ -665,9 +634,9 @@ def run_client(args: Namespace) -> None:
         - key: The key to connect to the server
         - server: The url of the server to connect to
 
-    :param args: The arguments from the command line
-    :type args: Namespace
-    :rtype: None
+    Args:
+        args: The arguments from the command line
+
     """
     source_config_types = {
         source_name: get_source_config_type(source)
