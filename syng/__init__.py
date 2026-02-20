@@ -1,3 +1,10 @@
+"""Syng: All-in-one Karaoke Software.
+
+This module sets the version number from the packaging, as well as a prococol version for
+communication between server and client.
+
+"""
+
 from importlib.metadata import PackageNotFoundError, version
 
 from packaging.version import Version

@@ -1,5 +1,4 @@
-"""
-Main entry point for the application.
+"""Main entry point for the application.
 
 This module contains the main entry point for the application. It parses the
 command line arguments and runs the appropriate function based on the arguments.
@@ -73,13 +72,12 @@ except ImportError:
 
 
 def main() -> None:
-    """
+    """Parse arguments and start gui, client or server.
+
     Main entry point for the application.
 
     This function parses the command line arguments and runs the appropriate
     function based on the arguments.
-
-    :return: None
     """
     parser: ArgumentParser = ArgumentParser()
     sub_parsers = parser.add_subparsers(dest="action")

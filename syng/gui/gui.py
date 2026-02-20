@@ -1,15 +1,14 @@
+"""Qt Gui for Syng.Rocks!"""
+
 import logging
 import os
-import random
-import secrets
 import signal
-import string
 import sys
 from datetime import datetime
 from io import BytesIO
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import packaging.version
 
@@ -41,7 +40,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QLabel,
-    QListView,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -62,7 +60,6 @@ from syng.config import (
     GeneralConfig,
     SyngConfig,
     UIConfig,
-    default_config,
     deserialize_config,
     load_config,
     save_config,
@@ -71,12 +68,19 @@ from syng.log import logger
 from syng.sources import available_source_configs, available_sources
 
 
-class QueueView(QListView):
-    pass
-
-
 class SyngGui(QMainWindow):
+    """Main class for the Qt Gui for Syng."""
+
     def closeEvent(self, event: QCloseEvent) -> None:
+        """Handler for close event.
+
+        Closes the window and stops the client, if it is running.
+        Exists the application.
+
+        Args:
+            event: The close event
+
+        """
         QMainWindow.closeEvent(self, event)
         self.destroy()
         if self.client_thread is not None and self.client_thread.isRunning():
@@ -85,6 +89,12 @@ class SyngGui(QMainWindow):
         self.log_label_handler.cleanup()
 
     def add_buttons(self, show_advanced: bool) -> None:
+        """Populate the button are at the bottom of the GUI.
+
+        Args:
+            show_advanced: If False, hides reset, export and import button.
+
+        """
         self.buttons_layout = QHBoxLayout()
         self.central_layout.addLayout(self.buttons_layout)
 
@@ -112,10 +122,15 @@ class SyngGui(QMainWindow):
 
         self.startbutton = QPushButton("Connect")
 
-        self.startbutton.clicked.connect(self.start_syng_client)
+        self.startbutton.clicked.connect(self.start_stop_syng_client)
         self.buttons_layout.addWidget(self.startbutton)
 
     def export_queue(self) -> None:
+        """Exports the queue for the running client to a file.
+
+        Opens a file dialog, and forwards the request to the client.
+        If the client is not running, shows a warning.
+        """
         if self.client_thread is not None and self.client_thread.isRunning():
             filename = QFileDialog.getSaveFileName(self, "Export Queue", "", "JSON Files (*.json)")[
                 0
@@ -131,6 +146,11 @@ class SyngGui(QMainWindow):
             )
 
     def import_queue(self) -> None:
+        """Imports the queue for the running client from a file.
+
+        Opens a file dialog, and forwards the request to the client.
+        If the client is not running, shows a warning.
+        """
         if self.client_thread.isRunning():
             filename = QFileDialog.getOpenFileName(self, "Import Queue", "", "JSON Files (*.json)")[
                 0
@@ -146,10 +166,7 @@ class SyngGui(QMainWindow):
             )
 
     def clear_cache(self) -> None:
-        """
-        Clear the cache directory of the client.
-        """
-
+        """Clear the cache directory of the client."""
         cache_dir = platformdirs.user_cache_dir("syng")
         if os.path.exists(cache_dir):
             answer = QMessageBox.question(
@@ -167,6 +184,11 @@ class SyngGui(QMainWindow):
                 QMessageBox.information(self, "Cache Cleared", "The cache has been cleared.")
 
     def remove_room(self) -> None:
+        """Removes the current room.
+
+        Opens a dialog, and forwards the request to the client.
+        If the client is not running, shows a warning.
+        """
         if self.client_thread.isRunning():
             answer = QMessageBox.question(
                 self,
@@ -185,6 +207,11 @@ class SyngGui(QMainWindow):
             )
 
     def toggle_advanced(self, state: bool) -> None:
+        """Hide/Show advanced options.
+
+        Args:
+            state: If True, shows the options, otherwise hides them.
+        """
         self.resetbutton.setVisible(state)
         self.exportbutton.setVisible(state)
         self.importbutton.setVisible(state)
@@ -214,11 +241,13 @@ class SyngGui(QMainWindow):
                 tabbar.show()
             self.frm.addWidget(self.qr_widget)
 
-    def init_frame(self) -> None:
-        self.frm = QHBoxLayout()
-        self.central_layout.addLayout(self.frm)
-
     def init_tabs(self, show_advanced: bool) -> None:
+        """Initialize the tabbar.
+
+        Args:
+            show_advanced: If true, hides the tabbar.
+
+        """
         self.tabview: QTabWidget = QTabWidget(parent=self.central_widget)
         self.tabview.setAcceptDrops(False)
         self.tabview.setTabPosition(QTabWidget.TabPosition.West)
@@ -239,6 +268,13 @@ class SyngGui(QMainWindow):
         self.frm.addWidget(self.tabview)
 
     def add_qr(self, show_advanced: bool) -> None:
+        """Initialize the qr code.
+
+        Args:
+            show_advanced: If True, the qr code is put at the side, otherwise as part of the
+            general config tab.
+
+        """
         self.qr_widget: QWidget = QWidget(parent=self.central_widget)
         self.qr_layout = QVBoxLayout(self.qr_widget)
         self.qr_widget.setLayout(self.qr_layout)
@@ -258,18 +294,38 @@ class SyngGui(QMainWindow):
             self.frm.addWidget(self.qr_widget)
 
     def add_general_config(self, config: GeneralConfig) -> None:
+        """Initialize the general config tab.
+
+        Args:
+            config: Initial configuration to show.
+
+        """
         self.general_config = GeneralConfigTab(self, config, self.update_qr)
         self.tabview.addTab(self.general_config, "General")
 
     def add_ui_config(self, config: UIConfig) -> None:
+        """Initialize the UI config tab.
+
+        Args:
+            config: Initial configuration to show.
+
+        """
         self.ui_config = UIConfigTab(self, config)
         self.tabview.addTab(self.ui_config, "UI")
 
     def add_source_config(self, source_name: str, source_config: SourceConfig) -> None:
+        """Initialize a source config tab.
+
+        Args:
+            source_name: Name of the source
+            source_config: Initial configuration to show.
+
+        """
         self.tabs[source_name] = SourceTab(self, source_config)
         self.tabview.addTab(self.tabs[source_name], source_name)
 
     def add_log_tab(self) -> None:
+        """Initialize the logging tab."""
         self.log_tab = QWidget(parent=self.central_widget)
         self.log_layout = QVBoxLayout(self.log_tab)
         self.log_tab.setLayout(self.log_layout)
@@ -280,17 +336,8 @@ class SyngGui(QMainWindow):
 
         self.tabview.addTab(self.log_tab, "Logs")
 
-    def add_queue_tab(self) -> None:
-        self.queue_tab = QWidget(parent=self.central_widget)
-        self.queue_layout = QVBoxLayout(self.queue_tab)
-        self.queue_tab.setLayout(self.queue_layout)
-
-        self.queue_list_view: QueueView = QueueView(self.queue_tab)
-        self.queue_layout.addWidget(self.queue_list_view)
-
-        self.tabview.addTab(self.queue_tab, "Queue")
-
     def add_admin_tab(self) -> None:
+        """Initialize the admin tab."""
         self.admin_tab = QWidget(parent=self.central_widget)
         self.admin_layout = QVBoxLayout(self.admin_tab)
         self.admin_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
@@ -332,6 +379,14 @@ class SyngGui(QMainWindow):
         self,
         current_version: packaging.version.Version | None,
     ) -> None:
+        """Updates the version label in the admin tab.
+
+        Also shows the version currently running.
+
+        Args:
+            current_version: The latest version to show. If None, no text is shown.
+
+        """
         running_version = packaging.version.parse(__version__)
         label_string = (
             f"<i>Running version: {running_version}</i><br />"
@@ -352,6 +407,7 @@ class SyngGui(QMainWindow):
         self.version_label.setText(label_string)
 
     def __init__(self) -> None:
+        """Initialize the GUI."""
         super().__init__()
         self.setWindowTitle("Syng.Rocks!")
 
@@ -369,7 +425,8 @@ class SyngGui(QMainWindow):
 
         config = self.load_config(self.configfile)
 
-        self.init_frame()
+        self.frm = QHBoxLayout()
+        self.central_layout.addLayout(self.frm)
         self.init_tabs(config.config.general.show_advanced)
         self.add_buttons(config.config.general.show_advanced)
         self.add_general_config(config.config.general)
@@ -404,30 +461,8 @@ class SyngGui(QMainWindow):
         self.client_thread.finished.connect(self.set_client_button_start)
         self.client_thread.started.connect(self.set_client_button_stop)
 
-    def complete_config(self, config: dict[str, Any]) -> dict[str, Any]:
-        output: dict[str, dict[str, Any]] = {"sources": {}, "config": default_config()}
-
-        try:
-            output["config"] |= config["config"]
-        except (KeyError, TypeError):
-            print("Could not load config")
-
-        if not output["config"]["secret"]:
-            output["config"]["secret"] = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
-            )
-
-        if output["config"]["room"] == "":
-            output["config"]["room"] = "".join(
-                [random.choice(string.ascii_letters) for _ in range(6)]
-            ).upper()
-
-        for source_name, source_tab in self.tabs.items():
-            output["sources"][source_name] = source_tab.config
-
-        return output
-
     def clear_config(self) -> None:
+        """Clears the current configuration to default values."""
         answer = QMessageBox.question(
             self,
             "Reset all to Default",
@@ -442,9 +477,24 @@ class SyngGui(QMainWindow):
             self.update_config(SyngConfig(ClientConfig(), default_source_configs))
 
     def load_config(self, filename: str) -> SyngConfig:
+        """Load a configuration from a file and return it.
+
+        Args:
+            filename: Path to load the configuration from.
+
+        Returns:
+            A configuration object.
+
+        """
         return load_config(filename, available_source_configs())
 
     def update_config(self, config: SyngConfig) -> None:
+        """Update the GUI according to configuration values.
+
+        Args:
+            config: Configuration object for Syng
+
+        """
         self.general_config.load_config(config.config.general)
         self.ui_config.load_config(config.config.ui)
         for source_name, source_config in config.source_configs.items():
@@ -453,9 +503,15 @@ class SyngGui(QMainWindow):
         self.update_qr()
 
     def save_config(self) -> None:
+        """Save configuration to the default filepath."""
         save_config(self.configfile, self.gather_config())
 
     def gather_config(self) -> SyngConfig:
+        """Compile a configuration object from the settings in the tabs.
+
+        Returns:
+            Configuration object for Syng.
+        """
         sources: dict[str, SourceConfig] = {}
         for source, tab in self.tabs.items():
             sources[source] = tab.config
@@ -470,6 +526,10 @@ class SyngGui(QMainWindow):
         return SyngConfig(client_config, sources)
 
     def import_config(self) -> None:
+        """Import a configuration from a file.
+
+        Shows a file dialog for the filename.
+        """
         filename = QFileDialog.getOpenFileName(self, "Open File", "", "YAML Files (*.yaml)")[0]
 
         if filename:
@@ -477,12 +537,21 @@ class SyngGui(QMainWindow):
             self.update_config(config)
 
     def export_config(self) -> None:
+        """Exports a configuration to a file.
+
+        Shows a file dialog for the filename.
+        """
         filename = QFileDialog.getSaveFileName(self, "Save File", "", "YAML Files (*.yaml)")[0]
         if filename:
             config = self.gather_config()
             save_config(filename, config)
 
     def set_client_button_stop(self) -> None:
+        """Sets the ``Connect`` button to ``Disconnect``.
+
+        Enables the configuration widgets, that handle the connection.
+        Disables the widgets, that only work on a connection.
+        """
         self.general_config.string_options["server"].setEnabled(False)
         self.general_config.string_options["room"].setEnabled(False)
         self.update_config_button.setDisabled(False)
@@ -493,6 +562,11 @@ class SyngGui(QMainWindow):
         self.startbutton.setText("Disconnect")
 
     def set_client_button_start(self) -> None:
+        """Sets the ``Disconnect`` button to ``Connect``.
+
+        Disables the configuration widgets, that handle the connection.
+        Enable the widgets, that require a connection.
+        """
         self.general_config.string_options["server"].setEnabled(True)
         self.general_config.string_options["room"].setEnabled(True)
         self.update_config_button.setDisabled(True)
@@ -502,7 +576,15 @@ class SyngGui(QMainWindow):
 
         self.startbutton.setText("Connect")
 
-    def start_syng_client(self) -> None:
+    def start_stop_syng_client(self) -> None:
+        """Starts or stops the syng client.
+
+        If it is running, it is stopped, if it is stopped, it will be created and started.
+        Stopping disconnects the client and terminates the thread.
+        Starting creates a new thread object and a new client object. The configuration is saved to
+        disk as a side effect, but the client gets the configuration object directly.
+        Then the client thread is started.
+        """
         if self.client_thread.isRunning():
             logger.debug("Stopping client")
             self.client_thread.cleanup()
@@ -525,6 +607,15 @@ class SyngGui(QMainWindow):
 
     @Slot(str, int)
     def print_log(self, log: str, level: int) -> None:
+        """Print a log from the logger to the logtab.
+
+        If the loglevel is CRITICAL, a Messagebox appears.
+
+        Args:
+            log: The logmessage
+            level: The loglevel
+
+        """
         if level == logging.CRITICAL:
             log_msg_box = QMessageBox(self)
             log_msg_box.setIcon(QMessageBox.Icon.Critical)
@@ -534,6 +625,13 @@ class SyngGui(QMainWindow):
         self.log_text.append(f"[{datetime.now().strftime('%H:%M:%S')}] {log}")
 
     def change_qr(self, data: str) -> None:
+        """Change the qr code.
+
+        Create a new Image containing ``data`` and show it.
+
+        Args:
+            data: The string encoded in the qr code.
+        """
         qr = QRCode(box_size=10, border=2)
         qr.add_data(data)
         qr.make()
@@ -545,10 +643,14 @@ class SyngGui(QMainWindow):
         self.qr_label.setPixmap(qr_pixmap)
 
     def update_qr(self) -> None:
-        config = self.general_config.get_config()
-        syng_server = config["server"]
+        """Update the link in the qr code.
+
+        The link is read from the configuration of the GeneralConfigTab.
+        """
+        config = self.general_config.config
+        syng_server = config.server
         syng_server += "" if syng_server.endswith("/") else "/"
-        room = config["room"]
+        room = config.room
         self.linklabel.setText(
             f'<center><a href="{syng_server + room}">{syng_server + room}</a><center>'
         )
@@ -557,28 +659,57 @@ class SyngGui(QMainWindow):
 
 
 class LoggingLabelHandler(logging.Handler):
+    """Logging handler to forward logging to Qt."""
+
     class LogSignalEmiter(QObject):
+        """Emit a Signal, when logs are logged.
+
+        Signals:
+            log_signal: Emitted for each new log message. Contains message and level.
+
+        """
+
         log_signal = Signal(str, int)
 
         def __init__(self, parent: QObject | None = None) -> None:
+            """Initialize the emitter.
+
+            Args:
+                parent: Qt-Parent Object.
+
+            """
             super().__init__(parent)
 
     def __init__(self, parent: QObject | None = None) -> None:
+        """Initialize the handler and create an emitter.
+
+        Args:
+            parent: Qt-Parent Object, forwarded to the emitter.
+
+        """
         super().__init__()
         self.log_signal_emiter = self.LogSignalEmiter(parent)
         self._cleanup = False
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Forward the log message to the emitter, and emit it from there.
+
+        Args:
+            record: The logging message to emit.
+
+        """
         if not self._cleanup:  # This could race condition, but it's not a big
             # deal since it only causes a race condition,
             # when the program ends
             self.log_signal_emiter.log_signal.emit(self.format(record), record.levelno)
 
     def cleanup(self) -> None:
+        """Set the handler to cleanup."""
         self._cleanup = True
 
 
 def run_gui() -> None:
+    """Load the configfile from the default location and run the gui."""
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
     base_dir = os.path.dirname(__file__)
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):

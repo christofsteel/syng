@@ -1,5 +1,4 @@
-"""
-Construct the YouTube source.
+"""Construct the YouTube source.
 
 This source uses yt-dlp to search and download videos from YouTube.
 
@@ -30,19 +29,21 @@ from syng.sources.source import (
 
 
 class YouTube:
-    """
-    A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp
-    """
+    """A minimal compatibility layer for the YouTube object of pytube, implemented via yt-dlp."""
 
     def __init__(self, url: str | None = None, info: dict[str, Any] | None = None) -> None:
-        """
-        Construct a YouTube object from a url.
+        """Construct a YouTube object from a url.
 
         If the url is already in the cache, the object is constructed from the
         cache. Otherwise yt-dlp is used to extract the information.
 
-        :param url: The url of the video.
-        :type url: Optional[str]
+        Args:
+            url: The url of the video. If ``None`` an empy object is constructed.
+            info: Cache for the url
+
+        Raises:
+            RuntimeError: If the information cannot be loaded from YouTube
+
         """
         self._title: str | None
         self._author: str | None
@@ -74,58 +75,47 @@ class YouTube:
 
     @property
     def title(self) -> str:
-        """
-        The title of the video.
-
-        :return: The title of the video.
-        :rtype: str
-        """
+        """The title of the video."""
         if self._title is None:
             return ""
         return self._title
 
     @property
     def author(self) -> str:
-        """
-        The author of the video.
-
-        :return: The author of the video.
-        :rtype: str
-        """
+        """The author of the video."""
         if self._author is None:
             return ""
         return self._author
 
     @classmethod
     def from_result(cls, search_result: dict[str, Any]) -> YouTube:
-        """
-        Construct a YouTube object from yt-dlp search results.
+        """Construct a YouTube object from yt-dlp search results.
 
-        :param search_result: The search result from yt-dlp.
-        :type search_result: dict[str, Any]
+        Args:
+            search_result: The search result from yt-dlp.
+
+        Returns:
+            ``YouTube`` object from the search results.
+
         """
         url = search_result["url"]
         return cls(url, info=search_result)
 
 
 class Search:
-    """
-    A minimal compatibility layer for the Search object of pytube, implemented via yt-dlp
-    """
+    """A minimal compatibility layer for the Search object of pytube, implemented via yt-dlp."""
 
-    # pylint: disable=too-few-public-methods
     def __init__(self, query: str, channel: str | None = None) -> None:
-        """
-        Construct a Search object from a query and an optional channel.
+        """Construct a Search object from a query and an optional channel.
 
         Uses yt-dlp to search for the query.
 
         If no channel is given, the search is done on the whole of YouTube.
 
-        :param query: The query to search for.
-        :type query: str
-        :param channel: The channel to search in.
-        :type channel: Optional[str]
+        Args:
+            query: The query to search for.
+            channel: Optionally, the channel to search in.
+
         """
         sp = "EgIQAfABAQ=="  # This is a magic string, that tells youtube to search for videos
         if channel is None:
@@ -159,6 +149,8 @@ class Search:
 
 
 class Resolution(enum.Enum):
+    """Target resolution of a YouTube Video."""
+
     RES144 = 144
     RES360 = 360
     RES720 = 720
@@ -168,6 +160,22 @@ class Resolution(enum.Enum):
 
 @dataclass
 class YouTubeConfig(SourceConfig):
+    """Configuration object for YouTubeSources.
+
+    Attributes:
+        enabled: Enable this source
+        channels: A list of all channel this source should search in.
+            Examples are ``/c/CCKaraoke`` or ``/channel/UCwTRjvjVge51X-ILJ4i22ew``
+        tmp_dir: The folder, where temporary files are stored. Default is ``${XDG_CACHE_DIR}/syng``.
+        max_res: The highest video resolution, that should be downloaded/streamed. Default is 720.
+        start_streaming: If set to ``True``, the client starts streaming the video, if buffering was
+            not completed. Needs the ``yt-dlp`` binary installed. Default is False.
+        search_suffix: A string that is appended to the search query. Default is "karaoke".
+        max_duration: The maximum duration of a video in seconds. A value of 0 disables this.
+            Default is 1800.
+
+    """
+
     enabled: bool = field(default=True, metadata={"desc": "Enable this source"})
     channels: list[str] = field(
         default_factory=list, metadata={"desc": "A list of channels\nto search in", "server": True}
@@ -199,21 +207,9 @@ class YouTubeConfig(SourceConfig):
 class YoutubeSource(Source):
     """A source for playing karaoke files from YouTube.
 
-    Config options are:
-        - ``channels``: A list of all channel this source should search in.
-          Examples are ``/c/CCKaraoke`` or
-          ``/channel/UCwTRjvjVge51X-ILJ4i22ew``
-        - ``tmp_dir``: The folder, where temporary files are stored. Default
-          is ``${XDG_CACHE_DIR}/syng``.
-        - ``max_res``: The highest video resolution, that should be
-          downloaded/streamed. Default is 720.
-        - ``start_streaming``: If set to ``True``, the client starts streaming
-          the video, if buffering was not completed. Needs ``youtube-dl`` or
-          ``yt-dlp``. Default is False.
-        - ``search_suffix``: A string that is appended to the search query.
-          Default is "karaoke".
-        - ``max_duration``: The maximum duration of a video in seconds. A value of 0 disables this.
-                            Default is 1800.
+    Attributes:
+        config: ``YouTubeConfig`` object.
+
     """
 
     config: YouTubeConfig
@@ -221,6 +217,7 @@ class YoutubeSource(Source):
     source_name = "youtube"
 
     def __post_init__(self) -> None:
+        """Initialize the YoutubeSource."""
         super().__post_init__()
 
         self.formatstring = (
@@ -237,17 +234,22 @@ class YoutubeSource(Source):
         )
 
     async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
-        """
-        Ensure that the entry is playable.
+        """Ensure that the entry is playable.
 
         If the entry is not yet downloaded, download it.
         If start_streaming is set, start streaming immediatly.
 
-        :param entry: The entry to download.
-        :type entry: Entry
-        :rtype: None
-        """
+        Args:
+            entry: The entry to download.
 
+        Raises:
+            ValueError: if video exceeds the configured maximum duration.
+
+        Returns:
+            Path to the video file and ``None``, since the audio track is already included in the
+            video.
+
+        """
         if entry.incomplete_data:
             meta_info = await self.get_missing_metadata(entry)
             entry.update(**meta_info)
@@ -269,22 +271,22 @@ class YoutubeSource(Source):
         artist: str | None = None,
         title: str | None = None,
     ) -> Entry | None:
-        """
-        Create an :py:class:`syng.entry.Entry` for the identifier.
+        """Create an :py:class:`syng.entry.Entry` for the identifier.
 
         The identifier should be a youtube url. An entry is created with
         all available metadata for the video.
 
-        :param performer: The person singing.
-        :type performer: str
-        :param ident: A url to a YouTube video.
-        :type ident: str
-        :param collab_mode: The collaboration mode
-        :type collab_mode: str | None
-        :return: An entry with the data.
-        :rtype: Optional[Entry]
-        """
+        Args:
+            performer: The person singing.
+            ident: A url to a YouTube video.
+            collab_mode: The collaboration mode
+            artist: Channel of the video
+            title: Title of the video
 
+        Returns:
+            An entry with the data.
+
+        """
         return Entry(
             ident=ident,
             source="youtube",
@@ -298,8 +300,7 @@ class YoutubeSource(Source):
         )
 
     async def search(self, query: str) -> list[Result]:
-        """
-        Search YouTube and the configured channels for the query.
+        """Search YouTube and the configured channels for the query.
 
         The first results are the results of the configured channels. The next
         results are the results from youtube as a whole, a configurable suffix
@@ -310,24 +311,27 @@ class YoutubeSource(Source):
 
         All searching is done concurrently.
 
-        :param query: The query to search for
-        :type query: str
-        :return: A list of Results.
-        :rtype: list[Result]
-        :raises: MalformedSearchQueryException when the search query is malformed
+        Args:
+            query: The query to search for
+
+        Returns:
+            A list of Results.
+
         """
 
         def _contains_index(queries: list[str], result: YouTube) -> float:
-            """
-            Calculate a score for the result.
+            """Calculate a score for the result.
 
             The score is the ratio of how many words of the query are in the
             title and author of the result.
 
-            :param query: The query to search for.
-            :type query: str
-            :param result: The result to score.
-            :type result: YouTube
+            Args:
+                queries: The query to search for, seperated by chunks.
+                result: The result to score.
+
+            Returns:
+                Score as floating point, 0 means perfect match, 1 means no matches
+
             """
             compare_string: str = result.title.lower() + " " + result.author.lower()
             hits: int = 0
@@ -364,38 +368,63 @@ class YoutubeSource(Source):
         ]
 
     def is_valid(self, entry: Entry) -> bool:
-        """
-        Check if the entry is valid.
+        """Check if the entry is valid.
 
         An entry is valid, if the video is not too long.
 
-        :param entry: The entry to check.
-        :type entry: Entry
-        :return: True if the entry is valid, False otherwise.
-        :rtype: bool
+        Args:
+            entry: The entry to check.
+
+        Returns:
+            True if the entry is valid, False otherwise.
+
         """
         return self.config.max_duration == 0 or entry.duration <= self.config.max_duration
 
     def _yt_search(self, query: str) -> list[YouTube]:
         """Search youtube as a whole.
 
-        Adds a configurable suffix to the query. Default is "karaoke".
+        Adds a configurable suffix to the query.
+
+        Args:
+            query: The query to search for.
+
+        Returns:
+            A list of all results
+
         """
         suffix = f" {self.config.search_suffix}" if self.config.search_suffix else ""
         return Search(f"{query}{suffix}").results
 
     def _channel_search(self, query: str, channel: str) -> list[YouTube]:
-        """
-        Search a channel for a query.
+        """Search a channel for a query.
 
-        A lot of black Magic happens here.
+        Adds a configurable suffix to the query.
+
+        Args:
+            query: The query to search for.
+            channel: The channel to search in.
+
+        Returns:
+            A list of all results
+
         """
-        return Search(f"{query} karaoke", channel).results
+        suffix = f" {self.config.search_suffix}" if self.config.search_suffix else ""
+        return Search(f"{query}{suffix}", channel).results
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
-        """
-        Video metadata should be read on the client to avoid banning
-        the server.
+        """Fill missing metadata for a given entry.
+
+        This should happen on the playback client, to avoid banning the server.
+        If the entry already has all necessary data, this returns an empty dictionary.
+
+        Args:
+            entry: The entry to fill the metadata for
+
+        Returns:
+            A dict with ``duration``, ``artist`` and ``title``, taken from YouTube, or an empty
+            dict.
+
         """
         if entry.incomplete_data or None in (entry.artist, entry.title):
             youtube_video: YouTube = await asyncio.to_thread(YouTube, entry.ident)
@@ -407,8 +436,7 @@ class YoutubeSource(Source):
         return {}
 
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:
-        """
-        Download the video.
+        """Download the video.
 
         Downloads the highest quality stream respecting the ``max_res``.
         For higher resolution videos (1080p and above).
@@ -420,14 +448,17 @@ class YoutubeSource(Source):
         If pos is 0 and start_streaming is set, no buffering is done, instead the
         youtube url is returned.
 
-        :param entry: The entry to download.
-        :type entry: Entry
-        :param pos: The position in the video to start buffering.
-        :type pos: int
-        :return: The location of the video file and ``None``.
-        :rtype: Tuple[str, Optional[str]]
-        """
+        Args:
+            entry (Entry): The entry to download
+            pos (int): The position of the video in the queue
 
+        Returns:
+            tuple[str, str | None]: The location of the video file and ``None`
+
+        Raises:
+            ValueError: If video length exceeds the configured maximum duration
+
+        """
         if 0 < self.config.max_duration < entry.duration:
             raise ValueError(
                 f"Video {entry.ident} too long: {entry.duration} > {self.config.max_duration}"
