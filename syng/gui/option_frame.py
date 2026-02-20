@@ -1,3 +1,5 @@
+"""Windget, that hold options depending on the types of a configuration object."""
+
 import os
 from collections.abc import Callable
 from dataclasses import asdict
@@ -5,6 +7,7 @@ from datetime import datetime
 from enum import Enum
 from functools import partial
 from typing import Any, cast, get_args, get_origin
+from warnings import deprecated
 
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtGui import QIcon
@@ -29,9 +32,38 @@ from syng.config import Config
 
 
 class OptionFrame(QWidget):
+    """Widget, holding a configuration object and building a form for that object.
+
+    It supports adding rows to the form depending on the type of a configuration object. And updates
+    these configuration values continuously.
+
+    Attributes:
+        config: Configuration object
+    """
+
+    config: Config
+
     def add_option[T](
         self, ty: type[T], name: str, description: str, value: T, semantic: str | None
     ) -> None:
+        """Add a row to the form, depending on the type of an option.
+
+        The following types are supported:
+            - bool
+            - int
+            - str (with semantics: "password", "folder", "file" or None)
+            - list[str]
+            - datetime (result can be None)
+            - enums
+
+        Args:
+            ty: The type for which to add a row
+            name: The attribute name in the config object (for the update callback)
+            description: Label for the inputfield
+            value: Initial value
+            semantic: Semantic specification of the type (see above)
+
+        """
         if ty is bool:
             self.add_bool_option(name, description, value=cast(bool, value))
         elif ty is int:
@@ -54,10 +86,29 @@ class OptionFrame(QWidget):
             self.add_choose_option(name, description, values, value.value, ty)
 
     def set_config_field(self, name: str, value: Any) -> None:
+        """Set a field of the configuration object, if it exists.
+
+        If the object does not have the attribute, nothing happens.
+
+        Args:
+            name: name of the attribute
+            value: value to set
+
+        """
         if hasattr(self.config, name):
             setattr(self.config, name, value)
 
     def add_bool_option(self, name: str, description: str, value: bool = False) -> None:
+        """Add a checkbox for a boolean option.
+
+        Also add a listener to update the corresponding attribute when this value is changed.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial Value
+
+        """
         label = QLabel(description, self)
 
         self.bool_options[name] = QCheckBox(self)
@@ -76,6 +127,18 @@ class OptionFrame(QWidget):
         callback: Callable[..., None] | None = None,
         is_password: bool = False,
     ) -> None:
+        """Add an input field for a string option.
+
+        Also add a listener to update the corresponding attribute when this value is changed.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial Value
+            callback: Addional callback
+            is_password: If true, input field is a password field
+
+        """
         if value is None:
             value = ""
 
@@ -111,7 +174,15 @@ class OptionFrame(QWidget):
         if callback is not None:
             self.string_options[name].textChanged.connect(callback)
 
-    def path_setter(self, line: QLineEdit, name: str | None) -> None:
+    def line_edit_setter(self, line: QLineEdit, name: str | None) -> None:
+        """Set the text of a QLineEdit.
+
+        If name is None, nothing happens.
+
+        Args:
+            line: The QLineEdit
+            name: The test to set, or None.
+        """
         if name:
             line.setText(name)
 
@@ -122,6 +193,18 @@ class OptionFrame(QWidget):
         value: str | None = "",
         callback: Callable[..., None] | None = None,
     ) -> None:
+        """Add an input field for a file option.
+
+        Also add a button to open a "File open"-dialog and add a listener to update the
+        corresponding attribute when this value is changed.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial Value
+            callback: Addional callback
+
+        """
         if value is None:
             value = ""
 
@@ -131,7 +214,7 @@ class OptionFrame(QWidget):
         file_button = QPushButton(QIcon.fromTheme("document-open"), "", self)
 
         file_button.clicked.connect(
-            lambda: self.path_setter(
+            lambda: self.line_edit_setter(
                 file_name_widget,
                 QFileDialog.getOpenFileName(
                     self, "Select File", dir=os.path.dirname(file_name_widget.text())
@@ -157,6 +240,18 @@ class OptionFrame(QWidget):
         value: str | None = "",
         callback: Callable[..., None] | None = None,
     ) -> None:
+        """Add an input field for a folder option.
+
+        Also add a button to open a "Folder open"-dialog and add a listener to update the
+        corresponding attribute when this value is changed.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial Value
+            callback: Addional callback
+
+        """
         if value is None:
             value = ""
 
@@ -166,7 +261,7 @@ class OptionFrame(QWidget):
         folder_button = QPushButton(QIcon.fromTheme("folder-open"), "", self)
 
         folder_button.clicked.connect(
-            lambda: self.path_setter(
+            lambda: self.line_edit_setter(
                 folder_name_widget,
                 QFileDialog.getExistingDirectory(
                     self, "Select Folder", dir=folder_name_widget.text()
@@ -192,6 +287,17 @@ class OptionFrame(QWidget):
         value: int | None = 0,
         callback: Callable[..., None] | None = None,
     ) -> None:
+        """Add an number spinner for a integer option.
+
+        Also add a listener to update the corresponding attribute when this value is changed.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial Value
+            callback: Addional callback
+
+        """
         if value is None:
             value = 0
 
@@ -209,6 +315,12 @@ class OptionFrame(QWidget):
             self.int_options[name].textChanged.connect(callback)
 
     def update_model_list(self, name: str) -> None:
+        """Update a list attribute of the config with the values in the corresponding list widget.
+
+        Args:
+            name: name of the attribut
+
+        """
         options = [option.text().strip() for option in self.list_options[name]]
         self.set_config_field(name, options)
 
@@ -219,6 +331,17 @@ class OptionFrame(QWidget):
         line: QWidget,
         layout: QVBoxLayout,
     ) -> None:
+        """Remove an element of a list widget.
+
+        Updates the underlying configuration.
+
+        Args:
+            name: name of the attribute
+            element: The lineedit-element to remove
+            line: The line to remove (includes the remove button)
+            layout: the parent layout to remove from
+
+        """
         self.list_options[name].remove(element)
 
         layout.removeWidget(line)
@@ -232,6 +355,15 @@ class OptionFrame(QWidget):
         init: str,
         callback: Callable[..., None] | None,
     ) -> None:
+        """Add a row in a list widget.
+
+        Args:
+            name: Name of the attribute
+            layout: The layout to add the rows
+            init: initial value of the index
+            callback: additional callbacks
+
+        """
         input_and_minus = QWidget()
         input_and_minus_layout = QHBoxLayout(input_and_minus)
         input_and_minus.setLayout(input_and_minus_layout)
@@ -265,6 +397,21 @@ class OptionFrame(QWidget):
         value: list[str],
         callback: Callable[..., None] | None = None,
     ) -> None:
+        """Adds a list widget for a list[str] option.
+
+        The widget consists of multiple rows (one for each entry in the value list).
+        Each row has a line edit for the value at the index, and a button to remove the value from
+        the list. At the end sits a plus button to add another row.
+
+        Everytime something changes in the widget, the underlying configuration is updated.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial value
+            callback: additional callback
+
+        """
         label = QLabel(description, self)
 
         container_layout = QVBoxLayout()
@@ -291,6 +438,19 @@ class OptionFrame(QWidget):
         value: str = "",
         enum: type[Enum] | None = None,
     ) -> None:
+        """Add a combobox for an enum option.
+
+        Also add a listener to update the corresponding attribute when this value is changed.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            values: possible Values
+            value: initial Value
+            enum: The enum type represented.
+
+        """
+
         def change_choose_callback(value: str) -> None:
             if enum is None:
                 return
@@ -313,6 +473,23 @@ class OptionFrame(QWidget):
     def add_date_time_option(
         self, name: str, description: str, value: str | datetime | None
     ) -> None:
+        """Add a DateTimeEdit for datetime option.
+
+        Also includes checkbox to disable, value is then None.
+        Also add a listener to update the corresponding attribute when this value is changed.
+
+        If the value is None, it initializes with the current time.
+
+        Args:
+            name: Name of the attribute
+            description: Text of the label
+            value: initial Value
+
+        Raises:
+            ValueError: but catches it directly....
+
+        """
+
         def enabled_slot(date_time_widget: QDateTimeEdit, value: Qt.CheckState) -> None:
             if value == Qt.CheckState.Checked:
                 date_time = date_time_widget.dateTime().toPython()
@@ -354,6 +531,15 @@ class OptionFrame(QWidget):
         self.rows[name] = (label, date_time_layout)
 
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
+        """Initialize the widget.
+
+        Sets the configuration object, but does not automatically add rows for the options.
+
+        Args:
+            config: The configuration object
+            parent: Qt-Parent object
+
+        """
         super().__init__(parent)
         self.form_layout = QFormLayout(self)
         self.setLayout(self.form_layout)
@@ -369,6 +555,12 @@ class OptionFrame(QWidget):
 
     @property
     def option_names(self) -> set[str]:
+        """Names of all registered options.
+
+        Returns:
+            All option names.
+
+        """
         return set(
             self.string_options.keys()
             | self.int_options.keys()
@@ -378,7 +570,14 @@ class OptionFrame(QWidget):
             | self.date_time_options.keys()
         )
 
+    @deprecated("config object should be used")
     def get_config(self) -> dict[str, Any]:
+        """Gather options from the widget.
+
+        Returns:
+            Dictionary mapping each option to the value of the corresponding input widget.
+
+        """
         config: dict[str, Any] = {}
         for name, textbox in self.string_options.items():
             config[name] = textbox.text().strip()
@@ -409,6 +608,12 @@ class OptionFrame(QWidget):
         return config
 
     def load_config(self, config: Config) -> None:
+        """Load and apply options to the form.
+
+        Args:
+            config: Cofiguration object with values.
+
+        """
         config_dict = asdict(config)
         for name, textbox in self.string_options.items():
             textbox.setText(config_dict[name])
