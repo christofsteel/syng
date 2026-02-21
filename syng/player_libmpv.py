@@ -107,7 +107,7 @@ class Player:
         """Update the "next up" pop-up, if at the end of a song.
 
         This handles animation by setting the y position according to the playtime remaining.
-        If this is the last song in the queue, this does nothing.
+        If this is the last song in the queue, the pop-up stays hidden.
 
         Args:
             attribute: Unused
@@ -117,21 +117,20 @@ class Player:
         if self.mpv is None:
             print("MPV is not initialized", file=sys.stderr)
             return
-        hidden = value is None or value > self.next_up_time
+        hidden = value is None or value > self.next_up_time or len(self.queue) < 2
 
-        if len(self.queue) < 2:
-            return
         if not hidden:
             if self.next_up_y_pos < 0:
                 self.next_up_y_pos += 5
+            entry_string = self.queue[1].short_str()
         else:
             self.next_up_y_pos = -120
-        entry = self.queue[1]
+            entry_string = ""
 
         self.mpv.command(
             "osd_overlay",
             id=self.next_up_overlay_id,
-            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry.short_str()}",
+            data=f"{{\\pos({1920 // 2},{self.next_up_y_pos})}}Next Up: {entry_string}",
             res_x=1920,
             res_y=1080,
             z=0,
