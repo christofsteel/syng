@@ -344,30 +344,6 @@ def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datet
     raise TypeError(f"unsupported field type '{clas}'")
 
 
-def default_config() -> dict[str, int | str | None]:
-    """Return a default configuration for the client.
-
-    Returns:
-        A dictionary with the default configuration.
-    """
-    return {
-        "server": "https://syng.rocks",
-        "room": "",
-        "preview_duration": 3,
-        "secret": None,
-        "last_song": None,
-        "waiting_room_policy": None,
-        "key": None,
-        "buffer_in_advance": 2,
-        "qr_box_size": 7,
-        "qr_position": "top-right",
-        "show_advanced": False,
-        "log_level": "info",
-        "next_up_time": 20,
-        "allow_collab_mode": True,
-    }
-
-
 type _Serializable = Config | int | str | datetime | None | Enum | list[_Serializable]
 
 

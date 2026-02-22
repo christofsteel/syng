@@ -14,7 +14,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field, fields
 from itertools import zip_longest
 from traceback import print_exc
-from typing import Any, get_type_hints
+from typing import Any
 
 from syng.config import SourceConfig
 from syng.entry import Entry
@@ -105,22 +105,6 @@ class Source(ABC):
 
         self.build_index = False
         self._index: list[str] = []
-
-    @classmethod
-    def get_config_type(cls) -> type[SourceConfig]:
-        """Return the type of the configuration of the current source.
-
-        Returns:
-            The type of the configuration for this source
-
-        Raises:
-            TypeError: If the configuration type is not a subclass of ``SourceConfig``
-
-        """
-        config_type: type[SourceConfig] = get_type_hints(cls)["config"]
-        if not issubclass(config_type, SourceConfig):
-            raise TypeError
-        return config_type
 
     def is_valid(self, entry: Entry) -> bool:
         """Check if the entry is valid.
