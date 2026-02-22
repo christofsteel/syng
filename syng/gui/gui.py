@@ -60,7 +60,6 @@ from syng.config import (
     GeneralConfig,
     SyngConfig,
     UIConfig,
-    deserialize_config,
     load_config,
     save_config,
 )
@@ -216,19 +215,7 @@ class SyngGui(QMainWindow):
         self.exportbutton.setVisible(state)
         self.importbutton.setVisible(state)
 
-        for option in self.general_config.option_names.difference(
-            self.general_config.simple_options
-        ):
-            self.general_config.rows[option][0].setVisible(state)
-            widget_or_layout = self.general_config.rows[option][1]
-            if isinstance(widget_or_layout, QWidget):
-                widget_or_layout.setVisible(state)
-            else:
-                for i in range(widget_or_layout.count()):
-                    item = widget_or_layout.itemAt(i)
-                    widget = item.widget() if item else None
-                    if widget:
-                        widget.setVisible(state)
+        self.general_config.toggle_show_advanced(state)
 
         tabbar: QTabBar | None = self.tabview.tabBar()
         if not state:
@@ -507,21 +494,20 @@ class SyngGui(QMainWindow):
         save_config(self.configfile, self.gather_config())
 
     def gather_config(self) -> SyngConfig:
-        """Compile a configuration object from the settings in the tabs.
+        """Gather the configuration objects from each settings tab.
 
         Returns:
             Configuration object for Syng.
         """
         sources: dict[str, SourceConfig] = {}
+
         for source, tab in self.tabs.items():
             sources[source] = tab.config
 
-        general_config = self.general_config.get_config() | {
-            "show_advanced": self.show_advanced_toggle.isChecked()
-        }
-        ui_config = self.ui_config.get_config()
+        general_config = self.general_config.config
+        ui_config = self.ui_config.config
 
-        client_config = deserialize_config(ClientConfig, general_config | ui_config)
+        client_config = ClientConfig(general_config, ui_config)
 
         return SyngConfig(client_config, sources)
 

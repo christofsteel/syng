@@ -98,7 +98,9 @@ class GeneralConfig(Config):
     )
     buffer_in_advance: int = field(default=2, metadata={"desc": "Buffer the next songs in advance"})
     log_level: LogLevel = field(default=LogLevel.INFO, metadata={"desc": "Log Level"})
-    show_advanced: bool = False
+    show_advanced: bool = field(
+        default=False, metadata={"desc": "Show Advanced Options", "hidden": True}
+    )
 
 
 class QRPosition(Enum):
@@ -123,9 +125,13 @@ class UIConfig(Config):
     """
 
     preview_duration: int = field(default=3, metadata={"desc": "Preview duration in seconds"})
-    qr_box_size: int = 7
-    next_up_time: int = 20
-    qr_position: QRPosition = QRPosition.BOTTOM_RIGHT
+    next_up_time: int = field(
+        default=20, metadata={"desc": "Time remaining before Next Up Box is shown"}
+    )
+    qr_box_size: int = field(default=7, metadata={"desc": "QR Code Box Size"})
+    qr_position: QRPosition = field(
+        default=QRPosition.BOTTOM_RIGHT, metadata={"desc": "QR Code Position"}
+    )
 
 
 @dataclass

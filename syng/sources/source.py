@@ -413,7 +413,10 @@ class Source(ABC):
     async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
         """Return the part of the config, that should be sent to the server.
 
-        Can be either a dictionary or a list of dictionaries. If it is a
+        A configuation option is sent to the server, if its metadata has "server"=True
+        annotated.
+
+        The result can be either a dictionary or a list of dictionaries. If it is a
         dictionary, a single message will be sent. If it is a list, one message
         will be sent for each entry in the list.
 
