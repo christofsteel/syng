@@ -3,7 +3,8 @@
 The client connects to the server via the socket.io protocol, and plays the
 songs, that are sent by the server.
 
-Playback is done by the :py:class:`syng.sources.source.Source` objects, that
+Playback is done by the :py:class:`syng.player_libmpv.Player` object.
+The individual karaoke files are handled by each :py:class:`syng.sources.sources.Source` class, that
 are configured in the `sources` section of the configuration file and can currently
 be one of:
   - `youtube`

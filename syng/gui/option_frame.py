@@ -2,11 +2,12 @@
 
 import os
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from datetime import datetime
 from enum import Enum
 from functools import partial
-from typing import Any, cast, get_args, get_origin
+from types import NoneType, UnionType
+from typing import Any, Union, cast, get_args, get_origin, get_type_hints
 from warnings import deprecated
 
 from PySide6.QtCore import QDateTime, Qt
@@ -42,6 +43,38 @@ class OptionFrame(QWidget):
     """
 
     config: Config
+
+    def add_rows_from_config(self, config: Config) -> None:
+        """Add rows for each option in config.
+
+        Use metadata["desc"] for the text in the label, skip if metadata["hidden"] is True.
+        The type of the input field is determined by the annotated type in the configuration object.
+
+        Args:
+            config: Configuration object
+
+        """
+        config_types = get_type_hints(config.__class__)
+        values = config.__dict__
+
+        for field in fields(config):
+            name = field.name
+            description: str = field.metadata.get("desc", "")
+            semantic: str | None = field.metadata.get("semantic", None)
+            hidden: bool = field.metadata.get("hidden", False)
+            if hidden:
+                continue
+
+            field_type = config_types[name]
+            value = values[name]
+            if get_origin(field_type) in (Union, UnionType):
+                args = get_args(field_type)
+                if NoneType in args:
+                    parts = [ty for ty in args if ty is not NoneType]
+                    if len(parts) == 1:
+                        field_type = parts[0]
+
+            self.add_option(field_type, name, description, value, semantic)
 
     def add_option[T](
         self, ty: type[T], name: str, description: str, value: T, semantic: str | None
@@ -84,6 +117,19 @@ class OptionFrame(QWidget):
         elif issubclass(ty, Enum) and hasattr(value, "value"):
             values = [a.value for a in ty.__members__.values()]
             self.add_choose_option(name, description, values, value.value, ty)
+
+    def set_string_config_field(self, name: str, value: str) -> None:
+        """Set a string field of the configuration object, if it exists.
+
+        Strips the value of whitespaces.
+        If the object does not have the attribute, nothing happens.
+
+        Args:
+            name: name of the attribute
+            value: value to set
+
+        """
+        self.set_config_field(name, value.strip())
 
     def set_config_field(self, name: str, value: Any) -> None:
         """Set a field of the configuration object, if it exists.
@@ -145,7 +191,7 @@ class OptionFrame(QWidget):
         label = QLabel(description, self)
 
         self.string_options[name] = QLineEdit(self)
-        self.string_options[name].textChanged.connect(partial(self.set_config_field, name))
+        self.string_options[name].textChanged.connect(partial(self.set_string_config_field, name))
         if is_password:
             self.string_options[name].setEchoMode(QLineEdit.EchoMode.Password)
             action = self.string_options[name].addAction(
@@ -229,7 +275,7 @@ class OptionFrame(QWidget):
         file_layout.addWidget(file_button)
 
         self.string_options[name] = file_name_widget
-        self.string_options[name].textChanged.connect(partial(self.set_config_field, name))
+        self.string_options[name].textChanged.connect(partial(self.set_string_config_field, name))
         self.rows[name] = (label, file_name_widget)
         self.form_layout.addRow(label, file_layout)
 
@@ -276,7 +322,7 @@ class OptionFrame(QWidget):
         folder_layout.addWidget(folder_button)
 
         self.string_options[name] = folder_name_widget
-        self.string_options[name].textChanged.connect(partial(self.set_config_field, name))
+        self.string_options[name].textChanged.connect(partial(self.set_string_config_field, name))
         self.rows[name] = (label, folder_name_widget)
         self.form_layout.addRow(label, folder_layout)
 
@@ -317,12 +363,15 @@ class OptionFrame(QWidget):
     def update_model_list(self, name: str) -> None:
         """Update a list attribute of the config with the values in the corresponding list widget.
 
+        If the config dows not has the attribute, nothing happens.
+
         Args:
-            name: name of the attribut
+            name: name of the attribute
 
         """
-        options = [option.text().strip() for option in self.list_options[name]]
-        self.set_config_field(name, options)
+        if hasattr(self.config, name):
+            options = [option.text().strip() for option in self.list_options[name]]
+            setattr(self.config, name, options)
 
     def del_list_element(
         self,
@@ -492,7 +541,7 @@ class OptionFrame(QWidget):
 
         def enabled_slot(date_time_widget: QDateTimeEdit, value: Qt.CheckState) -> None:
             if value == Qt.CheckState.Checked:
-                date_time = date_time_widget.dateTime().toPython()
+                date_time = cast(datetime, date_time_widget.dateTime().toPython())
                 self.set_config_field(name, date_time)
             else:
                 self.set_config_field(name, None)
@@ -530,10 +579,10 @@ class OptionFrame(QWidget):
         self.form_layout.addRow(label, date_time_layout)
         self.rows[name] = (label, date_time_layout)
 
-    def __init__(self, config: Config, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None, config: Config) -> None:
         """Initialize the widget.
 
-        Sets the configuration object, but does not automatically add rows for the options.
+        Sets the configuration object, and adds rows for each configration option.
 
         Args:
             config: The configuration object
@@ -552,6 +601,7 @@ class OptionFrame(QWidget):
         self.rows: dict[str, tuple[QLabel, QWidget | QLayout]] = {}
 
         self.config = config
+        self.add_rows_from_config(config)
 
     @property
     def option_names(self) -> set[str]:
@@ -569,43 +619,6 @@ class OptionFrame(QWidget):
             | self.list_options.keys()
             | self.date_time_options.keys()
         )
-
-    @deprecated("config object should be used")
-    def get_config(self) -> dict[str, Any]:
-        """Gather options from the widget.
-
-        Returns:
-            Dictionary mapping each option to the value of the corresponding input widget.
-
-        """
-        config: dict[str, Any] = {}
-        for name, textbox in self.string_options.items():
-            config[name] = textbox.text().strip()
-
-        for name, spinner in self.int_options.items():
-            config[name] = spinner.value()
-
-        for name, optionmenu in self.choose_options.items():
-            config[name] = optionmenu.currentText().strip()
-
-        for name, checkbox in self.bool_options.items():
-            config[name] = checkbox.isChecked()
-
-        for name, textboxes in self.list_options.items():
-            config[name] = []
-            for textbox in textboxes:
-                config[name].append(textbox.text().strip())
-
-        for name, (picker, checkbox) in self.date_time_options.items():
-            if not checkbox.isChecked():
-                config[name] = None
-                continue
-            try:
-                config[name] = cast(datetime, picker.dateTime().toPython()).isoformat()
-            except ValueError:
-                config[name] = None
-
-        return config
 
     def load_config(self, config: Config) -> None:
         """Load and apply options to the form.
