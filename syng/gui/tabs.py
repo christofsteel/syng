@@ -39,6 +39,10 @@ class GeneralConfigTab(OptionFrame):
         state = state if isinstance(state, bool) else state > 0
 
         for option in self.option_names.difference(self.simple_options):
+            if option in self.options:
+                self.options[option].setVisible(state)
+                continue
+
             self.rows[option][0].setVisible(state)
             widget_or_layout = self.rows[option][1]
             if isinstance(widget_or_layout, QWidget):
@@ -54,7 +58,7 @@ class GeneralConfigTab(OptionFrame):
         self,
         parent: QWidget,
         config: GeneralConfig,
-        callback: Callable[..., None],
+        callback: Callable[[], None],
     ) -> None:
         """Initialize the widget.
 
@@ -74,7 +78,7 @@ class GeneralConfigTab(OptionFrame):
         ]
 
         for name in update_qr_fields:
-            self.string_options[name].textChanged.connect(callback)
+            self.options[name].add_change_callback(lambda _: callback())
 
         self.simple_options = [
             field.name for field in fields(config) if field.metadata.get("simple", False)

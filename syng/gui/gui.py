@@ -538,8 +538,8 @@ class SyngGui(QMainWindow):
         Enables the configuration widgets, that handle the connection.
         Disables the widgets, that only work on a connection.
         """
-        self.general_config.string_options["server"].setEnabled(False)
-        self.general_config.string_options["room"].setEnabled(False)
+        self.general_config.options["server"].setEnabled(False)
+        self.general_config.options["room"].setEnabled(False)
         self.update_config_button.setDisabled(False)
         self.remove_room_button.setDisabled(False)
         self.export_queue_button.setDisabled(False)
@@ -553,8 +553,8 @@ class SyngGui(QMainWindow):
         Disables the configuration widgets, that handle the connection.
         Enable the widgets, that require a connection.
         """
-        self.general_config.string_options["server"].setEnabled(True)
-        self.general_config.string_options["room"].setEnabled(True)
+        self.general_config.options["server"].setEnabled(True)
+        self.general_config.options["room"].setEnabled(True)
         self.update_config_button.setDisabled(True)
         self.remove_room_button.setDisabled(True)
         self.export_queue_button.setDisabled(True)

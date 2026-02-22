@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from syng.config import Config
+from syng.gui.row_widgets import PasswordSetting, RowWidget, StringSetting
 
 
 class OptionFrame(QWidget):
@@ -169,7 +170,7 @@ class OptionFrame(QWidget):
         name: str,
         description: str,
         value: str | None = "",
-        callback: Callable[..., None] | None = None,
+        callback: Callable[[str], None] | None = None,
         is_password: bool = False,
     ) -> None:
         """Add an input field for a string option.
@@ -187,37 +188,15 @@ class OptionFrame(QWidget):
         if value is None:
             value = ""
 
-        label = QLabel(description, self)
-
-        self.string_options[name] = QLineEdit(self)
-        self.string_options[name].textChanged.connect(partial(self.set_string_config_field, name))
         if is_password:
-            self.string_options[name].setEchoMode(QLineEdit.EchoMode.Password)
-            action = self.string_options[name].addAction(
-                QIcon(":/icons/eye_strike.svg"),
-                QLineEdit.ActionPosition.TrailingPosition,
-            )
-
-            if action is not None:
-
-                def toggle_visibility() -> None:
-                    self.string_options[name].setEchoMode(
-                        QLineEdit.EchoMode.Normal
-                        if self.string_options[name].echoMode() == QLineEdit.EchoMode.Password
-                        else QLineEdit.EchoMode.Password
-                    )
-                    if self.string_options[name].echoMode() == QLineEdit.EchoMode.Password:
-                        action.setIcon(QIcon(":/icons/eye_strike.svg"))
-                    else:
-                        action.setIcon(QIcon(":/icons/eye_clear.svg"))
-
-                action.triggered.connect(toggle_visibility)
-
-        self.string_options[name].insert(value)
-        self.form_layout.addRow(label, self.string_options[name])
-        self.rows[name] = (label, self.string_options[name])
+            settings_row = PasswordSetting(self, value, description)
+        else:
+            settings_row = StringSetting(self, value, description)
+        settings_row.add_change_callback(partial(self.set_config_field, name))
         if callback is not None:
-            self.string_options[name].textChanged.connect(callback)
+            settings_row.add_change_callback(callback)
+        self.options[name] = settings_row
+        self.form_layout.addRow(*settings_row.to_form_tuple())
 
     def line_edit_setter(self, line: QLineEdit, name: str | None) -> None:
         """Set the text of a QLineEdit.
@@ -598,6 +577,7 @@ class OptionFrame(QWidget):
         self.list_options: dict[str, list[QLineEdit]] = {}
         self.date_time_options: dict[str, tuple[QDateTimeEdit, QCheckBox]] = {}
         self.rows: dict[str, tuple[QLabel, QWidget | QLayout]] = {}
+        self.options: dict[str, RowWidget[str]] = {}
 
         self.config = config
         self.add_rows_from_config(config)
@@ -617,6 +597,7 @@ class OptionFrame(QWidget):
             | self.bool_options.keys()
             | self.list_options.keys()
             | self.date_time_options.keys()
+            | self.options.keys()
         )
 
     def load_config(self, config: Config) -> None:
@@ -627,6 +608,10 @@ class OptionFrame(QWidget):
 
         """
         config_dict = asdict(config)
+
+        for name, form_row in self.options.items():
+            form_row.set_value(config_dict[name])
+
         for name, textbox in self.string_options.items():
             textbox.setText(config_dict[name])
 
