@@ -1,2 +1,1 @@
-Merge pull request '[PR title]' (!${PullRequestIndex}) from [head branch] into [base branch].
-
+Merge pull request '${PullRequestTitle}' (${BaseRepoOwnerName}/${BaseRepoName}!${PullRequestIndex}) from ${HeadBranch} into ${BaseBranch}.
