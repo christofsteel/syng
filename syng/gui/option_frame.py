@@ -1,7 +1,6 @@
 """Windget, that hold options depending on the types of a configuration object."""
 
-import os
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from dataclasses import asdict, fields
 from datetime import datetime
 from enum import Enum
@@ -15,7 +14,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateTimeEdit,
-    QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -29,7 +27,15 @@ from PySide6.QtWidgets import (
 )
 
 from syng.config import Config
-from syng.gui.row_widgets import PasswordSetting, RowWidget, StringSetting
+from syng.gui.row_widgets import (
+    BoolSetting,
+    FileSetting,
+    FolderSetting,
+    IntSetting,
+    PasswordSetting,
+    RowWidget,
+    StringSetting,
+)
 
 
 class OptionFrame(QWidget):
@@ -155,15 +161,11 @@ class OptionFrame(QWidget):
             value: initial Value
 
         """
-        label = QLabel(description, self)
+        settings_row = BoolSetting(self, value, description)
 
-        self.bool_options[name] = QCheckBox(self)
-        self.bool_options[name].setChecked(value)
-        self.form_layout.addRow(label, self.bool_options[name])
-        self.rows[name] = (label, self.bool_options[name])
-        self.bool_options[name].checkStateChanged.connect(
-            lambda state: self.set_config_field(name, state == Qt.CheckState.Checked)
-        )
+        self.options[name] = settings_row
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
+        self.form_layout.addRow(*settings_row.to_form_tuple())
 
     def add_string_option(
         self,
@@ -188,13 +190,13 @@ class OptionFrame(QWidget):
         if value is None:
             value = ""
 
-        if is_password:
-            settings_row = PasswordSetting(self, value, description)
-        else:
+        if not is_password:
             settings_row = StringSetting(self, value, description)
-        settings_row.add_change_callback(partial(self.set_config_field, name))
+        else:
+            settings_row = PasswordSetting(self, value, description)
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
         if callback is not None:
-            settings_row.add_change_callback(callback)
+            settings_row.valueChanged.connect(callback)
         self.options[name] = settings_row
         self.form_layout.addRow(*settings_row.to_form_tuple())
 
@@ -231,31 +233,12 @@ class OptionFrame(QWidget):
         """
         if value is None:
             value = ""
-
-        label = QLabel(description, self)
-        file_layout = QHBoxLayout()
-        file_name_widget = QLineEdit(value, self)
-        file_button = QPushButton(QIcon.fromTheme("document-open"), "", self)
-
-        file_button.clicked.connect(
-            lambda: self.line_edit_setter(
-                file_name_widget,
-                QFileDialog.getOpenFileName(
-                    self, "Select File", dir=os.path.dirname(file_name_widget.text())
-                )[0],
-            )
-        )
-
+        settings_row = FileSetting(self, value, description)
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
         if callback is not None:
-            file_name_widget.textChanged.connect(callback)
-
-        file_layout.addWidget(file_name_widget)
-        file_layout.addWidget(file_button)
-
-        self.string_options[name] = file_name_widget
-        self.string_options[name].textChanged.connect(partial(self.set_string_config_field, name))
-        self.rows[name] = (label, file_name_widget)
-        self.form_layout.addRow(label, file_layout)
+            settings_row.valueChanged.connect(callback)
+        self.options[name] = settings_row
+        self.form_layout.addRow(*settings_row.to_form_tuple())
 
     def add_folder_option(
         self,
@@ -278,38 +261,19 @@ class OptionFrame(QWidget):
         """
         if value is None:
             value = ""
-
-        label = QLabel(description, self)
-        folder_layout = QHBoxLayout()
-        folder_name_widget = QLineEdit(value, self)
-        folder_button = QPushButton(QIcon.fromTheme("folder-open"), "", self)
-
-        folder_button.clicked.connect(
-            lambda: self.line_edit_setter(
-                folder_name_widget,
-                QFileDialog.getExistingDirectory(
-                    self, "Select Folder", dir=folder_name_widget.text()
-                ),
-            )
-        )
-
+        settings_row = FolderSetting(self, value, description)
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
         if callback is not None:
-            folder_name_widget.textChanged.connect(callback)
-
-        folder_layout.addWidget(folder_name_widget)
-        folder_layout.addWidget(folder_button)
-
-        self.string_options[name] = folder_name_widget
-        self.string_options[name].textChanged.connect(partial(self.set_string_config_field, name))
-        self.rows[name] = (label, folder_name_widget)
-        self.form_layout.addRow(label, folder_layout)
+            settings_row.valueChanged.connect(callback)
+        self.options[name] = settings_row
+        self.form_layout.addRow(*settings_row.to_form_tuple())
 
     def add_int_option(
         self,
         name: str,
         description: str,
         value: int | None = 0,
-        callback: Callable[..., None] | None = None,
+        callback: Callable[[int], None] | None = None,
     ) -> None:
         """Add an number spinner for a integer option.
 
@@ -325,18 +289,14 @@ class OptionFrame(QWidget):
         if value is None:
             value = 0
 
-        label = QLabel(description, self)
+        settings_row = IntSetting(self, value, description)
 
-        self.int_options[name] = QSpinBox(self)
-        self.int_options[name].textChanged.connect(
-            lambda value: self.set_config_field(name, int(value))
-        )
-        self.int_options[name].setMaximum(9999)
-        self.int_options[name].setValue(value)
-        self.form_layout.addRow(label, self.int_options[name])
-        self.rows[name] = (label, self.int_options[name])
+        self.options[name] = settings_row
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
+        self.form_layout.addRow(*settings_row.to_form_tuple())
+
         if callback is not None:
-            self.int_options[name].textChanged.connect(callback)
+            settings_row.valueChanged.connect(callback)
 
     def update_model_list(self, name: str) -> None:
         """Update a list attribute of the config with the values in the corresponding list widget.
@@ -577,7 +537,7 @@ class OptionFrame(QWidget):
         self.list_options: dict[str, list[QLineEdit]] = {}
         self.date_time_options: dict[str, tuple[QDateTimeEdit, QCheckBox]] = {}
         self.rows: dict[str, tuple[QLabel, QWidget | QLayout]] = {}
-        self.options: dict[str, RowWidget[str]] = {}
+        self.options: MutableMapping[str, RowWidget[Any]] = {}
 
         self.config = config
         self.add_rows_from_config(config)

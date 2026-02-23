@@ -78,7 +78,7 @@ class GeneralConfigTab(OptionFrame):
         ]
 
         for name in update_qr_fields:
-            self.options[name].add_change_callback(lambda _: callback())
+            self.options[name].valueChanged.connect(lambda _: callback())
 
         self.simple_options = [
             field.name for field in fields(config) if field.metadata.get("simple", False)
