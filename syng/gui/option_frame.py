@@ -9,7 +9,6 @@ from types import NoneType, UnionType
 from typing import Any, Union, cast, get_args, get_origin, get_type_hints
 
 from PySide6.QtCore import QDateTime, Qt
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -19,10 +18,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLayout,
     QLineEdit,
-    QPushButton,
-    QSizePolicy,
     QSpinBox,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -35,6 +31,7 @@ from syng.gui.row_widgets import (
     PasswordSetting,
     RowWidget,
     StringSetting,
+    StrListOption,
 )
 
 
@@ -298,85 +295,6 @@ class OptionFrame(QWidget):
         if callback is not None:
             settings_row.valueChanged.connect(callback)
 
-    def update_model_list(self, name: str) -> None:
-        """Update a list attribute of the config with the values in the corresponding list widget.
-
-        If the config dows not has the attribute, nothing happens.
-
-        Args:
-            name: name of the attribute
-
-        """
-        if hasattr(self.config, name):
-            options = [option.text().strip() for option in self.list_options[name]]
-            setattr(self.config, name, options)
-
-    def del_list_element(
-        self,
-        name: str,
-        element: QLineEdit,
-        line: QWidget,
-        layout: QVBoxLayout,
-    ) -> None:
-        """Remove an element of a list widget.
-
-        Updates the underlying configuration.
-
-        Args:
-            name: name of the attribute
-            element: The lineedit-element to remove
-            line: The line to remove (includes the remove button)
-            layout: the parent layout to remove from
-
-        """
-        self.list_options[name].remove(element)
-
-        layout.removeWidget(line)
-        line.deleteLater()
-        self.update_model_list(name)
-
-    def add_list_element(
-        self,
-        name: str,
-        layout: QVBoxLayout,
-        init: str,
-        callback: Callable[..., None] | None,
-    ) -> None:
-        """Add a row in a list widget.
-
-        Args:
-            name: Name of the attribute
-            layout: The layout to add the rows
-            init: initial value of the index
-            callback: additional callbacks
-
-        """
-        input_and_minus = QWidget()
-        input_and_minus_layout = QHBoxLayout(input_and_minus)
-        input_and_minus.setLayout(input_and_minus_layout)
-
-        input_and_minus_layout.setContentsMargins(0, 0, 0, 0)
-
-        input_field = QLineEdit(input_and_minus)
-        input_field.setText(init)
-        input_field.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        input_and_minus_layout.addWidget(input_field)
-        if callback is not None:
-            input_field.textChanged.connect(callback)
-        input_field.textChanged.connect(lambda _: self.update_model_list(name))
-
-        minus_button = QPushButton(QIcon.fromTheme("list-remove"), "", input_and_minus)
-        minus_button.clicked.connect(
-            partial(self.del_list_element, name, input_field, input_and_minus, layout)
-        )
-        minus_button.setFixedWidth(40)
-        minus_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        input_and_minus_layout.addWidget(minus_button)
-
-        layout.insertWidget(layout.count() - 1, input_and_minus)
-
-        self.list_options[name].append(input_field)
-
     def add_list_option(
         self,
         name: str,
@@ -399,23 +317,17 @@ class OptionFrame(QWidget):
             callback: additional callback
 
         """
-        label = QLabel(description, self)
+        if value is None:
+            value = []
+        settings_row = StrListOption(self, value, description)
 
-        container_layout = QVBoxLayout()
+        self.options[name] = settings_row
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
+        settings_row.valueChanged.connect(print)
+        self.form_layout.addRow(*settings_row.to_form_tuple())
 
-        self.form_layout.addRow(label, container_layout)
-        self.rows[name] = (label, container_layout)
-
-        self.list_options[name] = []
-        for v in value:
-            self.add_list_element(name, container_layout, v, callback)
-        plus_button = QPushButton(QIcon.fromTheme("list-add"), "", self)
-        plus_button.clicked.connect(
-            partial(self.add_list_element, name, container_layout, "", callback)
-        )
-        plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        container_layout.addWidget(plus_button)
+        if callback is not None:
+            settings_row.valueChanged.connect(callback)
 
     def add_choose_option(
         self,

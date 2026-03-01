@@ -1,7 +1,10 @@
 """Configuration rows for forms."""
 
+from __future__ import annotations
+
 import os
 from abc import abstractmethod
+from functools import partial
 from typing import override
 
 from PySide6.QtCore import Qt, Signal
@@ -14,7 +17,9 @@ from PySide6.QtWidgets import (
     QLayout,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -98,6 +103,16 @@ class RowWidget[T](QWidget):
         Args:
             value: new value
         """
+
+
+class RowWidgetWithLayout[T](RowWidget[T]):
+    """Base class for a RowWidget, that has a QLayout on the left."""
+
+    _layout: QLayout
+
+    @override
+    def to_form_tuple(self) -> tuple[QLabel, QLayout]:
+        return self._label, self._layout
 
 
 class BoolSetting(RowWidget[bool]):
@@ -190,7 +205,7 @@ class PasswordSetting(StringSetting):
         self.visibility_action.triggered.connect(self.toggle_visibility)
 
 
-class SettingWithDialogButton(RowWidget[str]):
+class SettingWithDialogButton(RowWidgetWithLayout[str]):
     """Settings row for string values with a button.
 
     The left side consists of a horizontal layout with a line edit and a button.
@@ -200,7 +215,10 @@ class SettingWithDialogButton(RowWidget[str]):
 
     _input_widget: QLineEdit
     _open_dialog_button: QPushButton
-    _layout: QHBoxLayout
+
+    @override
+    def set_value(self, value: str) -> None:
+        self._input_widget.setText(value)
 
     def line_edit_setter(self, value: str | None) -> None:
         """Set the text of a QLineEdit.
@@ -212,15 +230,6 @@ class SettingWithDialogButton(RowWidget[str]):
         """
         if value:
             self._input_widget.setText(value)
-
-    def to_form_tuple(self) -> tuple[QLabel, QLayout]:
-        """Construct a value, that can be insertet into a form.
-
-        Returns:
-            Tuple of the label and the layout containing the QLineEdit and button.
-
-        """
-        return (self._label, self._layout)
 
     def __init__(
         self,
@@ -278,3 +287,178 @@ class FolderSetting(SettingWithDialogButton):
                 ),
             )
         )
+
+
+class StrListElement(QWidget):
+    """Element for a StrListWidget.
+
+    Contains a LineEdit for the value and a delete button
+
+    Signals:
+      valueChanged: Emits, when the containing value is change, contains the text as data
+      deleteButtonClicked: Emits, when the delete button is clicked, contains the widget as data
+
+    """
+
+    input_field: QLineEdit
+    minus_button: QPushButton
+    valueChanged: Signal = Signal(str)
+    deleteButtonClicked: Signal = Signal(QWidget)
+
+    def button_clicked(self) -> None:
+        """Emit the deleteButtonClicked signal."""
+        self.deleteButtonClicked.emit(self)
+
+    def __init__(self, parent: QWidget, initial_value: str) -> None:
+        """Initializes the element with a line edit and a delete button.
+
+        Args:
+            parent: Qt parent widget
+            initial_value: initial value of the widget
+
+        """
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        self.setLayout(layout)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.input_field = QLineEdit(self)
+        self.input_field.setText(initial_value)
+        self.input_field.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout.addWidget(self.input_field)
+        self.input_field.textChanged.connect(lambda value: self.valueChanged.emit(value.strip()))
+
+        self.minus_button = QPushButton(QIcon.fromTheme("list-remove"), "", self)
+        self.minus_button.setFixedWidth(40)
+        self.minus_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        layout.addWidget(self.minus_button)
+        self.minus_button.clicked.connect(self.button_clicked)
+
+
+class StrListWidget(QWidget):
+    """Widget, that holds list of strings.
+
+    Contains a StrListElement for each value. Updates its model automatically.
+
+    Signals:
+        valueChanged: emits the value each time it is changed.
+
+    """
+
+    valueChanged: Signal = Signal(list)
+    _layout: QVBoxLayout
+    _values: list[str]
+
+    def set_values(self, values: list[str]) -> None:
+        """Set and replace all values.
+
+        Args:
+            values: new values
+        """
+        while self._layout.count() >= 1:
+            row = self._layout.itemAt(0)
+            if row is not None:
+                widget = row.widget()
+                if widget is not None and isinstance(widget, StrListElement):
+                    self.remove_value(widget)
+
+        for value in values:
+            self.append_value(value)
+
+    def append_value(self, value: str) -> None:
+        """Add a new empty at the end of the widget.
+
+        Also adds a new value to the internal list
+
+        Args:
+            value: The value to add
+
+        """
+        index = self._layout.count() - 1
+        entry = StrListElement(self, value)
+        entry.deleteButtonClicked.connect(self.remove_value)
+        entry.input_field.textChanged.connect(partial(self.update_value, entry))
+        self._layout.insertWidget(index, entry)
+        self._values.append(value)
+        self.valueChanged.emit(self._values)
+
+    def update_value(self, widget: StrListElement, value: str) -> None:
+        """Updates the internal value for a row.
+
+        This is called, when the row emits, that its value has changed.
+
+        Args:
+            widget: The widget, that has triggered this callback
+            value: The value of the widget
+
+        """
+        index = self._layout.indexOf(widget)
+        self._values[index] = value
+        self.valueChanged.emit(self._values)
+
+    def remove_value(self, widget: StrListElement) -> None:
+        """Remove a row and its value.
+
+        This is called, when the row emits, that its delete button has been clicked.
+
+        Args:
+            widget: Row widget to remove
+
+        """
+        index = self._layout.indexOf(widget)
+        self._layout.removeWidget(widget)
+        widget.deleteLater()
+
+        del self._values[index]
+        self.valueChanged.emit(self._values)
+
+    def __init__(self, parent: QWidget, initial_values: list[str]) -> None:
+        """Initialize the widget and connect all signals.
+
+        Args:
+            parent: Qt parent widget
+            initial_values: list of initial values
+
+        """
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        self._layout = layout
+        self._values = []
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        plus_button = QPushButton(QIcon.fromTheme("list-add"), "", self)
+        plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        plus_button.clicked.connect(lambda _: self.append_value(""))
+        layout.addWidget(plus_button)
+
+        for value in initial_values:
+            self.append_value(value)
+
+
+class StrListOption(RowWidget[list[str]]):
+    """Settings row with a list of strings.
+
+    Signals:
+        valueChanged: emits, when some of its values has been changed.
+
+    """
+
+    valueChanged: Signal = Signal(list)
+    _input_widget: StrListWidget
+
+    @override
+    def set_value(self, value: list[str]) -> None:
+        self._input_widget.set_values(value)
+
+    def __init__(self, parent: QWidget, initial_value: list[str], description: str) -> None:
+        """Initializes the row.
+
+        Args:
+            parent: Qt parent widget
+            initial_value: initial value of the widget
+            description: text of the label
+
+        """
+        super().__init__(parent, initial_value, description)
+        self._input_widget = StrListWidget(self, initial_value)
+        self._input_widget.valueChanged.connect(self.valueChanged.emit)
