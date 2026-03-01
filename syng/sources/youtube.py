@@ -242,12 +242,12 @@ class YoutubeSource(Source):
         Args:
             entry: The entry to download.
 
-        Raises:
-            ValueError: if video exceeds the configured maximum duration.
-
         Returns:
             Path to the video file and ``None``, since the audio track is already included in the
             video.
+
+        Raises:
+            ValueError: if video exceeds the configured maximum duration.
 
         """
         if entry.incomplete_data:
