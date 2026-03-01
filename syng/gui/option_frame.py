@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from functools import partial
 from types import NoneType, UnionType
-from typing import Any, Union, cast, get_args, get_origin, get_type_hints, reveal_type
+from typing import Any, Union, cast, get_args, get_origin, get_type_hints
 
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
