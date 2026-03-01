@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
+from enum import Enum
 from functools import partial
 from typing import override
 
@@ -11,6 +12,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -462,3 +464,64 @@ class StrListOption(RowWidget[list[str]]):
         super().__init__(parent, initial_value, description)
         self._input_widget = StrListWidget(self, initial_value)
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
+
+
+class EnumOption[T: Enum](RowWidget[T]):
+    """Setting row for values from an Enum.
+
+    Options are presented in a QComboBox.
+
+    Generic Types:
+        T: Type of the Enum
+
+    Signals:
+        valueChanged: Emits when the selection has changed
+
+    """
+
+    valueChanged: Signal = Signal(Enum)
+    _input_widget: QComboBox
+    _enum: type[T]
+
+    @override
+    def set_value(self, value: T) -> None:
+        return self._input_widget.setCurrentText(str(value.value))
+
+    def selection_to_value(self, selection: str) -> T:
+        """Try to parse a string into an enum value.
+
+        Identification is done first via the string representation, then via the int representation.
+
+        Args:
+            selection: value as string
+
+        Returns:
+            value as Enum T
+
+        """
+        try:
+            return self._enum(selection)
+        except ValueError:
+            return self._enum(int(selection))
+
+    def __init__(
+        self, parent: QWidget, initial_value: T, description: str, enum_class: type[T]
+    ) -> None:
+        """Initialize the row.
+
+        Args:
+            parent: Qt parent widget
+            initial_value: Initial state of the QComboBox
+            description: Text of the label
+            enum_class: Class object of the widget
+
+        """
+        super().__init__(parent, initial_value, description)
+        self._enum = enum_class
+
+        self._input_widget = QComboBox(self)
+        self._input_widget.addItems([str(v.value) for v in enum_class])
+        self._input_widget.setCurrentText(str(initial_value.value))
+        self._input_widget.currentTextChanged.connect(
+            lambda selection: self.valueChanged.emit(self.selection_to_value(selection))
+        )

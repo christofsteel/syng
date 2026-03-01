@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from functools import partial
 from types import NoneType, UnionType
-from typing import Any, Union, cast, get_args, get_origin, get_type_hints
+from typing import Any, Union, cast, get_args, get_origin, get_type_hints, reveal_type
 
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from syng.config import Config
 from syng.gui.row_widgets import (
     BoolSetting,
+    EnumOption,
     FileSetting,
     FolderSetting,
     IntSetting,
@@ -100,26 +101,25 @@ class OptionFrame(QWidget):
             semantic: Semantic specification of the type (see above)
 
         """
-        if ty is bool:
-            self.add_bool_option(name, description, value=cast(bool, value))
-        elif ty is int:
-            self.add_int_option(name, description, value=cast(int, value))
-        elif ty is str:
+        if ty is bool and isinstance(value, bool):
+            self.add_bool_option(name, description, value)
+        elif ty is int and isinstance(value, int):
+            self.add_int_option(name, description, value)
+        elif ty is str and isinstance(value, str):
             if semantic == "password":
-                self.add_string_option(name, description, value=cast(str, value), is_password=True)
+                self.add_string_option(name, description, value=value, is_password=True)
             elif semantic == "folder":
-                self.add_folder_option(name, description, value=cast(str, value))
+                self.add_folder_option(name, description, value=value)
             elif semantic == "file":
-                self.add_file_option(name, description, value=cast(str, value))
+                self.add_file_option(name, description, value=value)
             elif semantic is None:
-                self.add_string_option(name, description, value=cast(str, value))
+                self.add_string_option(name, description, value=value)
         elif get_origin(ty) is list and get_args(ty) == (str,):
             self.add_list_option(name, description, value=cast(list[str], value))
         elif ty is datetime:
             self.add_date_time_option(name, description, cast(datetime | None, value))
-        elif issubclass(ty, Enum) and hasattr(value, "value"):
-            values = [a.value for a in ty.__members__.values()]
-            self.add_choose_option(name, description, values, value.value, ty)
+        elif issubclass(ty, Enum) and isinstance(value, ty):
+            self.add_choose_option(name, description, value, ty)
 
     def set_string_config_field(self, name: str, value: str) -> None:
         """Set a string field of the configuration object, if it exists.
@@ -323,19 +323,17 @@ class OptionFrame(QWidget):
 
         self.options[name] = settings_row
         settings_row.valueChanged.connect(partial(self.set_config_field, name))
-        settings_row.valueChanged.connect(print)
         self.form_layout.addRow(*settings_row.to_form_tuple())
 
         if callback is not None:
             settings_row.valueChanged.connect(callback)
 
-    def add_choose_option(
+    def add_choose_option[T: Enum](
         self,
         name: str,
         description: str,
-        values: list[Any],
-        value: str = "",
-        enum: type[Enum] | None = None,
+        value: T,
+        enum: type[T],
     ) -> None:
         """Add a combobox for an enum option.
 
@@ -344,30 +342,15 @@ class OptionFrame(QWidget):
         Args:
             name: Name of the attribute
             description: Text of the label
-            values: possible Values
             value: initial Value
             enum: The enum type represented.
 
         """
+        settings_row = EnumOption(self, value, description, enum)
 
-        def change_choose_callback(value: str) -> None:
-            if enum is None:
-                return
-            try:
-                enum_value = enum(value)
-            except ValueError:
-                enum_value = enum(int(value))
-
-            self.set_config_field(name, enum_value)
-
-        label = QLabel(description, self)
-
-        self.choose_options[name] = QComboBox(self)
-        self.choose_options[name].addItems([str(v) for v in values])
-        self.choose_options[name].setCurrentText(str(value))
-        self.choose_options[name].currentTextChanged.connect(change_choose_callback)
-        self.form_layout.addRow(label, self.choose_options[name])
-        self.rows[name] = (label, self.choose_options[name])
+        self.options[name] = settings_row
+        settings_row.valueChanged.connect(partial(self.set_config_field, name))
+        self.form_layout.addRow(*settings_row.to_form_tuple())
 
     def add_date_time_option(
         self, name: str, description: str, value: str | datetime | None
