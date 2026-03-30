@@ -4,15 +4,24 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from functools import partial
-from typing import override
+from typing import (
+    get_args,
+    get_origin,
+    overload,
+    override,
+)
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QDateTime, Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDateTimeEdit,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -21,9 +30,456 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSpinBox,
+    QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
+
+
+@dataclass(frozen=True)
+class Boolean:
+    """Wrapper for boolean types.
+
+    This is needed, because bool is a subtype of int. This class is not.
+    """
+
+    value: bool
+
+
+type SupportedBaseType = Boolean | int | str | datetime | list[str]
+type SupportedType[T: Enum] = SupportedBaseType | T
+type MkInputWidget[T: SupportedBaseType | Enum] = Callable[[T], InputWidget[T]]
+type MkSupportedInputWidget[T: Enum] = (
+    MkInputWidget[bool]
+    | MkInputWidget[int]
+    | MkInputWidget[str]
+    | MkInputWidget[datetime]
+    | MkInputWidget[list[str]]
+    | MkInputWidget[T]
+)
+
+
+@overload
+def get_input_widget(ty: type[Boolean], semantic: str | None) -> MkInputWidget[bool]: ...
+@overload
+def get_input_widget(ty: type[int], semantic: str | None) -> MkInputWidget[int]: ...
+@overload
+def get_input_widget(ty: type[str], semantic: str | None) -> MkInputWidget[str]: ...
+@overload
+def get_input_widget(ty: type[datetime], semantic: str | None) -> MkInputWidget[datetime]: ...
+@overload
+def get_input_widget(ty: type[list[str]], semantic: str | None) -> MkInputWidget[list[str]]: ...
+
+
+def get_input_widget[T: Enum](
+    ty: type[SupportedType[T]], semantic: str | None
+) -> MkSupportedInputWidget[T]:
+    """Get the appropriate Input Widget for a type and semantic.
+
+    TypeVar:
+        T: Generic Type for enum support
+
+    Args:
+        ty: The type of the input
+        semantic: A special semantic for the type
+
+    Returns:
+        A builder for an input widget for the type and semantic
+
+    Raises:
+        TypeError: if the type is not a supported type
+
+    """
+    if ty is Boolean:
+        return CheckBox
+    elif ty is int:
+        return SpinBox
+    elif ty is str:
+        match semantic:
+            case "password":
+                return PasswordLineEdit
+            case "folder":
+                return FolderInputWidget
+            case "file":
+                return FileInputWidget
+            case _:
+                return LineEdit
+    elif ty is datetime:
+        return DateTimeEdit
+    elif get_origin(ty) is list and get_args(ty) == (str,):
+        return StrListInputWidget
+    elif issubclass(ty, Enum):
+        return partial(ComboBox, ty)
+    raise TypeError(f"Type {ty} is not supported.")
+
+
+def get_fallback[T: Enum](ty: type[SupportedType[T]]) -> SupportedType[T]:
+    """Get a fallback value for a type.
+
+    Args:
+        ty: type
+
+    Returns:
+        A fallback value of the type
+
+    Raises:
+        TypeError: if type is not supported
+
+    """
+    if ty is datetime:
+        return datetime.now()
+    elif ty is str:
+        return ""
+    elif ty is int:
+        return 0
+    elif get_origin(ty) is list:
+        return []
+    elif issubclass(ty, Enum):
+        return [choice for choice in ty][0]
+    elif ty is Boolean:
+        return True
+    raise TypeError(f"Type {ty} is not supported.")
+
+
+def make_input_widget[T](ty: type[T], semantic: str | None, value: T) -> InputWidget[T]:
+    """Create and instantiate a input widget for the given type and semantic.
+
+    Args:
+        ty: The type of the input
+        semantic: A special semantic for the type
+        value: Initial value of the widget
+
+    Returns:
+        A InputWidget for ty and semantic with the value.
+    """
+    input_widget_builder: MkInputWidget[T] = get_input_widget(ty, semantic)  # type: ignore
+    return input_widget_builder(value)
+
+
+def make_optional_input_widget[T](
+    ty: type[T | None], semantic: str | None, value: T | None
+) -> InputWidget[T | None]:
+    """Create and instantiate a deactivatable input widget for the given type and semantic.
+
+    Args:
+        ty: The type of the input
+        semantic: A special semantic for the type
+        value: Initial value of the widget
+
+    Returns:
+        A DeactivatableInputWidget containing a Widget for ty and semantic with the value.
+    """
+    input_widget_builder: MkInputWidget[T] = get_input_widget(ty, semantic)  # type: ignore
+    fallback: T = get_fallback(ty)  # type: ignore
+    return partial(DeactivatableInputWidget.wrap, fallback)(input_widget_builder)(value)
+
+
+class InputWidget[T](QWidget):
+    """Parentclass for widgets, that store Configuration data.
+
+    Attributes:
+        value: The current value of the data
+
+    Signals:
+        valueChanged: Triggers each time, the data is changed.
+    """
+
+    value: T
+    valueChanged: Signal
+
+    def __init__(self, initial_value: T, parent: QWidget | None = None) -> None:
+        """Construct the InputWidget.
+
+        Args:
+            initial_value: Value, stored by the InputWidget
+            parent: Qt-parent object
+        """
+        super().__init__()
+        self.setParent(parent)
+        self.value = initial_value
+
+    @abstractmethod
+    def set_widget_value(self, value: T) -> None:
+        """Set the value of the internal Widget.
+
+        Args:
+            value: The value to set
+
+        """
+
+    def set_value(self, value: T) -> None:
+        """Set the internal value.
+
+        Also updates the widget value.
+        """
+        self.value = value
+        self.set_widget_value(value)
+
+
+class SimpleInputWidget[T](InputWidget[T]):
+    """Parentclass for InputWidgets, that hold exactly one QWidget."""
+
+    _input_widget: QWidget
+
+    @override
+    def __init__(self, widget: QWidget, initial_value: T, parent: QWidget | None = None) -> None:
+        super().__init__(initial_value, parent)
+        self._input_widget = widget
+        layout = QStackedLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        self.setLayout(layout)
+        if layout:
+            layout.addWidget(widget)
+        widget.setParent(self)
+
+
+class LineEdit(SimpleInputWidget[str]):
+    """InputWidget for string values.
+
+    Encapsules a QLineEdit.
+    """
+
+    valueChanged = Signal(str)
+    _input_widget: QLineEdit
+
+    @override
+    def __init__(self, value: str, parent: QWidget | None = None) -> None:
+        super().__init__(QLineEdit(value), value, parent)
+        self._input_widget.textChanged.connect(self.valueChanged.emit)
+
+    @override
+    def set_widget_value(self, value: str) -> None:
+        self._input_widget.setText(value)
+
+
+class PushButton(SimpleInputWidget[None]):
+    """InputWidget that triggers with no data.
+
+    Encapsules a QPushButton.
+    """
+
+    valueChanged = Signal()
+    _input_widget: QPushButton
+
+    @override
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(QPushButton(), None, parent)
+        self._input_widget.clicked.connect(lambda: self.valueChanged.emit())
+
+    @override
+    def set_widget_value(self, value: None) -> None:
+        pass
+
+    def set_icon(self, icon: QIcon) -> None:
+        """Set the icon of the Button.
+
+        Args:
+            icon: The icon to set.
+        """
+        self._input_widget.setIcon(icon)
+
+
+class SplitInputWidget[T, U, V](InputWidget[V]):
+    """Parentclass for InputWidgets with two InputWidgets.
+
+    Generic Variable:
+        T: Value type of the left InputWidget
+        U: Value type of the right InputWidget
+        V: Value type of the combined InputWidget
+
+    Attributes:
+        left_widget: InputWidget on the left
+        right_widget: InputWidget on the right
+    """
+
+    left_widget: InputWidget[T]
+    right_widget: InputWidget[U]
+
+    @override
+    def __init__(
+        self,
+        left_widget: InputWidget[T],
+        right_widget: InputWidget[U],
+        initial_value: V,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(initial_value, parent)
+
+        self.left_widget = left_widget
+        self.right_widget = right_widget
+        self.setParent(parent)
+
+        self.left_widget.setParent(self)
+        self.right_widget.setParent(self)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+        layout.addWidget(left_widget)
+        layout.addWidget(right_widget)
+
+
+class SplitInputWidgetLeft[T](SplitInputWidget[T, None, T]):
+    """Parentclass for InputWidgets with two widgets, where the data comes from the left widget."""
+
+    @override
+    def __init__(
+        self,
+        left_widget: InputWidget[T],
+        right_widget: InputWidget[None],
+        initial_value: T,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(left_widget, right_widget, initial_value, parent)
+        self.left_widget.valueChanged.connect(self.valueChanged.emit)
+
+    @override
+    def set_widget_value(self, value: T) -> None:
+        self.left_widget.set_widget_value(value)
+
+
+class LineButtonInputWidget(SplitInputWidgetLeft[str]):
+    """Parentclass for InputWidgets with a QLineEdit and a QPushButton."""
+
+    valueChanged = Signal(str)
+    left_widget: LineEdit
+    right_widget: PushButton
+
+    @override
+    def __init__(self, value: str, parent: QWidget | None = None) -> None:
+        super().__init__(LineEdit(value), PushButton(), value, parent)
+        self.left_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.right_widget.setFixedWidth(40)
+        self.right_widget.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+
+    def set_button_icon(self, icon: QIcon) -> None:
+        """Set the icon of the button.
+
+        Args:
+            icon: The icon to set
+        """
+        self.right_widget.set_icon(icon)
+
+    def line_edit_setter(self, value: str | None) -> None:
+        """Set the text of a QLineEdit.
+
+        If name is None, nothing happens.
+
+        Args:
+            value: The text to set, or None.
+        """
+        if value:
+            self.set_value(value)
+
+
+class FileInputWidget(LineButtonInputWidget):
+    """InputWidget for string values, that represent a file path.
+
+    Encapsules a QLineEdit and a QPushButton, that opens a QFileDialog for a file.
+    """
+
+    @override
+    def __init__(self, value: str, parent: QWidget | None = None) -> None:
+        super().__init__(value, parent)
+        self.set_button_icon(QIcon.fromTheme("document-open"))
+        self.right_widget.valueChanged.connect(
+            lambda: self.line_edit_setter(
+                QFileDialog.getOpenFileName(self, "Select File", dir=os.path.dirname(self.value))[
+                    0
+                ],
+            )
+        )
+
+
+class FolderInputWidget(LineButtonInputWidget):
+    """InputWidget for string values, that represent a folder path.
+
+    Encapsules a QLineEdit and a QPushButton, that opens a QFileDialog for a directory.
+    """
+
+    @override
+    def __init__(self, value: str, parent: QWidget | None = None) -> None:
+        super().__init__(value, parent)
+        self.set_button_icon(QIcon.fromTheme("folder-open"))
+        self.right_widget.valueChanged.connect(
+            lambda: self.line_edit_setter(
+                QFileDialog.getExistingDirectory(
+                    self, "Select Folder", dir=os.path.dirname(self.value)
+                )
+            )
+        )
+
+
+class PasswordLineEdit(LineEdit):
+    """InputWidget for string values, that can be hidden.
+
+    Adds a clickable Icon to the parent line edit, to hide and show the contents.
+    """
+
+    @override
+    def __init__(self, value: str, parent: QWidget | None = None) -> None:
+        super().__init__(value, parent)
+        self._input_widget.setEchoMode(QLineEdit.EchoMode.Password)
+        self.visibility_action = self._input_widget.addAction(
+            QIcon(":/icons/eye_strike.svg"),
+            QLineEdit.ActionPosition.TrailingPosition,
+        )
+        self.visibility_action.triggered.connect(self.toggle_visibility)
+
+    def toggle_visibility(self) -> None:
+        """Toggle the visibility of the contents of the input field."""
+        self._input_widget.setEchoMode(
+            QLineEdit.EchoMode.Normal
+            if self._input_widget.echoMode() == QLineEdit.EchoMode.Password
+            else QLineEdit.EchoMode.Password
+        )
+        if self._input_widget.echoMode() == QLineEdit.EchoMode.Password:
+            self.visibility_action.setIcon(QIcon(":/icons/eye_strike.svg"))
+        else:
+            self.visibility_action.setIcon(QIcon(":/icons/eye_clear.svg"))
+
+
+class CheckBox(SimpleInputWidget[bool]):
+    """InputWidget for Boolean values.
+
+    Encapsules a QCheckbox.
+    """
+
+    valueChanged = Signal(bool)
+    _input_widget: QCheckBox
+
+    @override
+    def __init__(self, value: bool, parent: QWidget | None = None) -> None:
+        super().__init__(QCheckBox(), value, parent)
+        self._input_widget.setChecked(value)
+        self._input_widget.checkStateChanged.connect(
+            lambda state: self.valueChanged.emit(state == Qt.CheckState.Checked)
+        )
+
+    @override
+    def set_widget_value(self, value: bool) -> None:
+        self._input_widget.setChecked(value)
+
+
+class SpinBox(SimpleInputWidget[int]):
+    """InputWidget for integer values.
+
+    Encapsules a QSpinBox
+    """
+
+    valueChanged = Signal(int)
+    _input_widget: QSpinBox
+
+    @override
+    def __init__(self, value: int, parent: QWidget | None = None) -> None:
+        super().__init__(QSpinBox(value=value), value, parent)
+        self._input_widget.setParent(self)
+        self._input_widget.textChanged.connect(lambda text: self.valueChanged.emit(int(text)))
+
+    @override
+    def set_widget_value(self, value: int) -> None:
+        self._input_widget.setValue(value)
 
 
 class RowWidget[T](QWidget):
@@ -48,28 +504,32 @@ class RowWidget[T](QWidget):
     value: T
     valueChanged: Signal
     _label: QLabel
-    _input_widget: QWidget
+    _input_widget: InputWidget[T]
 
     def __init__(
         self,
-        parent: QWidget,
         initial_value: T,
         description: str,
+        input_widget: InputWidget[T],
+        parent: QWidget,
     ) -> None:
         """Initialize the row.
 
         Args:
-            parent: Qt parent widget
             initial_value: initial value of the widget
-            description: text of the label
+            description: The description text
+            input_widget: The widget on the right
+            parent: Qt parent widget
 
         """
         super().__init__(parent)
         self.value = initial_value
         self._label = QLabel(description, self)
         self.valueChanged.connect(self._set_internal_value)
+        self._input_widget = input_widget
+        self._input_widget.valueChanged.connect(self.valueChanged.emit)
+        self._input_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-    @override
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
 
@@ -90,6 +550,14 @@ class RowWidget[T](QWidget):
         """
         return self._label, self._input_widget
 
+    def set_value(self, value: T) -> None:
+        """Set the value of the input widget.
+
+        Args:
+            value: new value
+        """
+        self._input_widget.set_value(value)
+
     def _set_internal_value(self, value: T) -> None:
         """Update the internal value.
 
@@ -98,197 +566,36 @@ class RowWidget[T](QWidget):
         """
         self.value = value
 
-    @abstractmethod
-    def set_value(self, value: T) -> None:
-        """Set the value of the input widget.
 
-        Args:
-            value: new value
-        """
+def make_row[T](
+    signal: Signal,
+    description: str,
+    input_widget: InputWidget[T],
+    parent: QWidget,
+) -> RowWidget[T]:
+    """Create a settings row for a given input widget.
 
+    We need this work around, to enable the Qt-Signals.
 
-class RowWidgetWithLayout[T](RowWidget[T]):
-    """Base class for a RowWidget, that has a QLayout on the left."""
+    Args:
+        signal: The Qt-Signal type to emit, if the value has changed.
+        description: The text on the description label.
+        input_widget: The input widget on the right.
+        parent: The Qt-parent object.
 
-    _layout: QLayout
+    Returns:
+        A row containing a description label on the right and the input widget on the left.
 
-    @override
-    def to_form_tuple(self) -> tuple[QLabel, QLayout]:
-        return self._label, self._layout
-
-
-class BoolSetting(RowWidget[bool]):
-    """Settings row for a Boolean value."""
-
-    _input_widget: QCheckBox
-    valueChanged: Signal = Signal(bool)
-
-    def __init__(self, parent: QWidget, initial_value: bool, description: str) -> None:
-        """Initialize the row and create a QCheckbox."""
-        super().__init__(parent, initial_value, description)
-        self._input_widget = QCheckBox(self)
-        self._input_widget.setChecked(initial_value)
-        self._input_widget.checkStateChanged.connect(
-            lambda state: self.valueChanged.emit(state == Qt.CheckState.Checked)
-        )
-
-    def set_value(self, value: bool) -> None:
-        """Update the value of the QCheckBox."""
-        self._input_widget.setChecked(value)
-
-
-class IntSetting(RowWidget[int]):
-    """Settings row for an integer value."""
-
-    _input_widget: QSpinBox
-    valueChanged: Signal = Signal(int)
-
-    def __init__(self, parent: QWidget, initial_value: int, description: str) -> None:
-        """Initialize the row and create a QSpinBox."""
-        super().__init__(parent, initial_value, description)
-        self._input_widget = QSpinBox(self, value=initial_value)
-        self._input_widget.textChanged.connect(lambda value: self.valueChanged.emit(int(value)))
-
-    def set_value(self, value: int) -> None:
-        """Update the value of the QSpinBox."""
-        self._input_widget.setValue(value)
-
-
-class StringSetting(RowWidget[str]):
-    """Settings row for an string value."""
-
-    _input_widget: QLineEdit
-    valueChanged: Signal = Signal(str)
-
-    def __init__(
-        self,
-        parent: QWidget,
-        initial_value: str,
-        description: str,
-    ) -> None:
-        """Initialize the row and create a QLineEdit."""
-        super().__init__(parent, initial_value, description)
-        self._input_widget = QLineEdit(initial_value, self)
-        self._input_widget.textChanged.connect(lambda value: self.valueChanged.emit(value.strip()))
-
-    def set_value(self, value: str) -> None:
-        """Update the value of the QLineEdit."""
-        self._input_widget.setText(value)
-
-
-class PasswordSetting(StringSetting):
-    """Settings row for a password value."""
-
-    def toggle_visibility(self) -> None:
-        """Toggle the visibility of the contents of the input field."""
-        self._input_widget.setEchoMode(
-            QLineEdit.EchoMode.Normal
-            if self._input_widget.echoMode() == QLineEdit.EchoMode.Password
-            else QLineEdit.EchoMode.Password
-        )
-        if self._input_widget.echoMode() == QLineEdit.EchoMode.Password:
-            self.visibility_action.setIcon(QIcon(":/icons/eye_strike.svg"))
-        else:
-            self.visibility_action.setIcon(QIcon(":/icons/eye_clear.svg"))
-
-    def __init__(
-        self,
-        parent: QWidget,
-        initial_value: str,
-        description: str,
-    ) -> None:
-        """Initialize the row and add a button to hide the contents of the input field."""
-        super().__init__(parent, initial_value, description)
-        self._input_widget.setEchoMode(QLineEdit.EchoMode.Password)
-        self.visibility_action = self._input_widget.addAction(
-            QIcon(":/icons/eye_strike.svg"),
-            QLineEdit.ActionPosition.TrailingPosition,
-        )
-        self.visibility_action.triggered.connect(self.toggle_visibility)
-
-
-class SettingWithDialogButton(RowWidgetWithLayout[str]):
-    """Settings row for string values with a button.
-
-    The left side consists of a horizontal layout with a line edit and a button.
     """
 
-    valueChanged: Signal = Signal(str)
+    class SettingsRow(RowWidget[T]):
+        valueChanged = signal
 
-    _input_widget: QLineEdit
-    _open_dialog_button: QPushButton
+        def __init__(self) -> None:
+            super().__init__(input_widget.value, description, input_widget, parent)
+            self._input_widget.setParent(self)
 
-    @override
-    def set_value(self, value: str) -> None:
-        self._input_widget.setText(value)
-
-    def line_edit_setter(self, value: str | None) -> None:
-        """Set the text of a QLineEdit.
-
-        If name is None, nothing happens.
-
-        Args:
-            value: The text to set, or None.
-        """
-        if value:
-            self._input_widget.setText(value)
-
-    def __init__(
-        self,
-        parent: QWidget,
-        initial_value: str,
-        description: str,
-        button: QPushButton,
-    ) -> None:
-        """Initialize the row, the layout and the containing widgets."""
-        super().__init__(parent, initial_value, description)
-        self._layout = QHBoxLayout()
-        self._input_widget = QLineEdit(initial_value, self)
-        self._open_dialog_button = button
-
-        self._layout.addWidget(self._input_widget)
-        self._layout.addWidget(self._open_dialog_button)
-        self._input_widget.textChanged.connect(self.valueChanged.emit)
-
-
-class FileSetting(SettingWithDialogButton):
-    """Settings row with a file open dialog."""
-
-    def __init__(self, parent: QWidget, initial_value: str, description: str) -> None:
-        """Initialize the row and set the button to open a file open dialog."""
-        super().__init__(
-            parent,
-            initial_value,
-            description,
-            QPushButton(QIcon.fromTheme("document-open"), ""),
-        )
-        self._open_dialog_button.clicked.connect(
-            lambda: self.line_edit_setter(
-                QFileDialog.getOpenFileName(
-                    self, "Select File", dir=os.path.dirname(self._input_widget.text())
-                )[0],
-            )
-        )
-
-
-class FolderSetting(SettingWithDialogButton):
-    """Settings row with a folder open dialog."""
-
-    def __init__(self, parent: QWidget, initial_value: str, description: str) -> None:
-        """Initialize the row and set the button to open a folder open dialog."""
-        super().__init__(
-            parent,
-            initial_value,
-            description,
-            QPushButton(QIcon.fromTheme("folder-open"), ""),
-        )
-        self._open_dialog_button.clicked.connect(
-            lambda: self.line_edit_setter(
-                QFileDialog.getExistingDirectory(
-                    self, "Select Folder", dir=os.path.dirname(self._input_widget.text())
-                ),
-            )
-        )
+    return SettingsRow()
 
 
 class StrListElement(QWidget):
@@ -413,7 +720,7 @@ class StrListWidget(QWidget):
         del self._values[index]
         self.valueChanged.emit(self._values)
 
-    def __init__(self, parent: QWidget, initial_values: list[str]) -> None:
+    def __init__(self, initial_values: list[str], parent: QWidget | None = None) -> None:
         """Initialize the widget and connect all signals.
 
         Args:
@@ -437,91 +744,175 @@ class StrListWidget(QWidget):
             self.append_value(value)
 
 
-class StrListOption(RowWidget[list[str]]):
-    """Settings row with a list of strings.
+class StrListInputWidget(SimpleInputWidget[list[str]]):
+    """InputWidget for a list of strings.
 
-    Signals:
-        valueChanged: emits, when some of its values has been changed.
-
+    Encapsules a StrListWidget.
     """
 
-    valueChanged: Signal = Signal(list)
+    valueChanged = Signal(list)
     _input_widget: StrListWidget
 
     @override
-    def set_value(self, value: list[str]) -> None:
+    def __init__(self, initial_value: list[str], parent: QWidget | None = None) -> None:
+        super().__init__(StrListWidget(initial_value), initial_value, parent)
+        self._input_widget.valueChanged.connect(self.valueChanged)
+
+    @override
+    def set_widget_value(self, value: list[str]) -> None:
         self._input_widget.set_values(value)
 
-    def __init__(self, parent: QWidget, initial_value: list[str], description: str) -> None:
-        """Initializes the row.
 
-        Args:
-            parent: Qt parent widget
-            initial_value: initial value of the widget
-            description: text of the label
+class ComboBox[T: Enum](SimpleInputWidget[T]):
+    """InputWidget for values from an Enum.
 
-        """
-        super().__init__(parent, initial_value, description)
-        self._input_widget = StrListWidget(self, initial_value)
-        self._input_widget.valueChanged.connect(self.valueChanged.emit)
-
-
-class EnumOption[T: Enum](RowWidget[T]):
-    """Setting row for values from an Enum.
-
-    Options are presented in a QComboBox.
-
-    Generic Types:
-        T: Type of the Enum
-
-    Signals:
-        valueChanged: Emits when the selection has changed
-
+    Options are presented in a QComboxBox.
     """
 
-    valueChanged: Signal = Signal(Enum)
+    valueChanged = Signal(Enum)
     _input_widget: QComboBox
     _enum: type[T]
 
     @override
-    def set_value(self, value: T) -> None:
-        return self._input_widget.setCurrentText(str(value.value))
+    def __init__(
+        self, enum_class: type[T], initial_value: T, parent: QWidget | None = None
+    ) -> None:
+        super().__init__(QComboBox(), initial_value, parent)
+        self._enum = enum_class
+        self._input_widget.addItems([str(v.value) for v in enum_class])
+        self._input_widget.setCurrentText(str(initial_value.value))
+        self._input_widget.currentTextChanged.connect(self.emit_enum)
 
-    def selection_to_value(self, selection: str) -> T:
-        """Try to parse a string into an enum value.
+    def emit_enum(self, value: str) -> None:
+        """Try to emit a string into an enum value.
 
-        Identification is done first via the string representation, then via the int representation.
+        Identification is done first via the string representation, then via the int
+        representation.
 
         Args:
-            selection: value as string
-
-        Returns:
-            value as Enum T
+            value: value as string
 
         """
         try:
-            return self._enum(selection)
+            enum = self._enum(value)
         except ValueError:
-            return self._enum(int(selection))
+            enum = self._enum(int(value))
+        self.valueChanged.emit(enum)
 
+    @override
+    def set_widget_value(self, value: T) -> None:
+        self._input_widget.setCurrentText(str(value.value))
+
+
+class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
+    """Encapsules an InputWidget to be deactivatable.
+
+    This creates a widget, consisting of a left InputWidget and a Checkbox on the right. The
+    Checkbox enables the left widget. If it is disabled, the value of this widget is None, otherwise
+    it is the value of the left widget.
+
+    Attributes:
+        left_widget: The encapsulated Widget
+        right_widget: Always a Checkbox
+
+    """
+
+    left_widget: InputWidget[T]
+    right_widget: CheckBox
+    valueChanged = Signal(object)
+
+    @override
     def __init__(
-        self, parent: QWidget, initial_value: T, description: str, enum_class: type[T]
+        self, left_widget: InputWidget[T], initial_value: T | None, parent: QWidget | None = None
     ) -> None:
-        """Initialize the row.
+        super().__init__(left_widget, CheckBox(initial_value is not None), initial_value, parent)
+
+        self.left_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.left_widget.valueChanged.connect(self.valueChanged.emit)
+        self.left_widget.valueChanged.connect(print)
+        self.right_widget._input_widget.setText("Enabled")
+        self.right_widget.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        self.right_widget.valueChanged.connect(self.toggle_enabled)
+        if initial_value is None:
+            self.left_widget.setEnabled(False)
+
+    def toggle_enabled(self, enabled: bool) -> None:
+        """Enable/Disables the encapsulated widget.
+
+        This will trigger a valueChanged.
 
         Args:
-            parent: Qt parent widget
-            initial_value: Initial state of the QComboBox
-            description: Text of the label
-            enum_class: Class object of the widget
+            enabled: If True, enables the widget, otherwise it disables it.
+        """
+        value = self.left_widget.value if enabled else None
+        self.left_widget.setEnabled(enabled)
+        if value is not None:
+            self.left_widget.set_value(value)
+        self.valueChanged.emit(value)
+
+    @staticmethod
+    def wrap(
+        fallback: T,
+        input_widget_builder: Callable[[T], InputWidget[T]],
+    ) -> Callable[[T | None], DeactivatableInputWidget[T]]:
+        """Transforms a factory function for an input widget to a deactivatable one.
+
+        Args:
+            fallback: Value of the internal widget, in case the value is None
+            input_widget_builder: Factory function for the internal InputWidget
+
+        Returns:
+            Factory function for a deactivatable input widget.
 
         """
-        super().__init__(parent, initial_value, description)
-        self._enum = enum_class
 
-        self._input_widget = QComboBox(self)
-        self._input_widget.addItems([str(v.value) for v in enum_class])
-        self._input_widget.setCurrentText(str(initial_value.value))
-        self._input_widget.currentTextChanged.connect(
-            lambda selection: self.valueChanged.emit(self.selection_to_value(selection))
+        def wrapped(initial_value: T | None) -> DeactivatableInputWidget[T]:
+            value = initial_value if initial_value else fallback
+            input_widget = input_widget_builder(value)
+            deactivatable_input_widget = DeactivatableInputWidget(input_widget, initial_value, None)
+            return deactivatable_input_widget
+
+        return wrapped
+
+    @override
+    def set_widget_value(self, value: T | None) -> None:
+        if value is None:
+            self.left_widget.setEnabled(False)
+            self.right_widget.set_widget_value(False)
+        else:
+            self.left_widget.setEnabled(True)
+            self.right_widget.set_widget_value(True)
+            self.left_widget.set_widget_value(value)
+
+
+class DateTimeEdit(SimpleInputWidget[datetime]):
+    """InputWidget for a datetime object.
+
+    Encapsules a QDateTimeEdit.
+    """
+
+    valueChanged = Signal(datetime)
+    _input_widget: QDateTimeEdit
+
+    @override
+    def __init__(self, initial_value: datetime | None, parent: QWidget | None = None) -> None:
+        super().__init__(
+            QDateTimeEdit(
+                QDateTime.fromString(
+                    (initial_value if initial_value else datetime.now()).isoformat(),
+                    Qt.DateFormat.ISODate,
+                )
+            ),
+            initial_value if initial_value else datetime.now(),
+            parent,
+        )
+        self._input_widget.dateTimeChanged.connect(
+            lambda value: self.valueChanged.emit(value.toPython())
+        )
+        self._input_widget.setCalendarPopup(True)
+
+    @override
+    def set_widget_value(self, value: datetime) -> None:
+        self._input_widget.setDateTime(
+            QDateTime.fromString(value.isoformat(), Qt.DateFormat.ISODate)
         )

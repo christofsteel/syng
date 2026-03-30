@@ -37,22 +37,11 @@ class GeneralConfigTab(OptionFrame):
 
         """
         state = state if isinstance(state, bool) else state > 0
+        self.config.show_advanced = state
 
         for option in self.option_names.difference(self.simple_options):
             if option in self.options:
                 self.options[option].setVisible(state)
-                continue
-
-            self.rows[option][0].setVisible(state)
-            widget_or_layout = self.rows[option][1]
-            if isinstance(widget_or_layout, QWidget):
-                widget_or_layout.setVisible(state)
-            else:
-                for i in range(widget_or_layout.count()):
-                    item = widget_or_layout.itemAt(i)
-                    widget = item.widget() if item else None
-                    if widget:
-                        widget.setVisible(state)
 
     def __init__(
         self,
