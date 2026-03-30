@@ -37,24 +37,17 @@ class GeneralConfigTab(OptionFrame):
 
         """
         state = state if isinstance(state, bool) else state > 0
+        self.config.show_advanced = state
 
         for option in self.option_names.difference(self.simple_options):
-            self.rows[option][0].setVisible(state)
-            widget_or_layout = self.rows[option][1]
-            if isinstance(widget_or_layout, QWidget):
-                widget_or_layout.setVisible(state)
-            else:
-                for i in range(widget_or_layout.count()):
-                    item = widget_or_layout.itemAt(i)
-                    widget = item.widget() if item else None
-                    if widget:
-                        widget.setVisible(state)
+            if option in self.options:
+                self.options[option].setVisible(state)
 
     def __init__(
         self,
         parent: QWidget,
         config: GeneralConfig,
-        callback: Callable[..., None],
+        callback: Callable[[], None],
     ) -> None:
         """Initialize the widget.
 
@@ -74,7 +67,7 @@ class GeneralConfigTab(OptionFrame):
         ]
 
         for name in update_qr_fields:
-            self.string_options[name].textChanged.connect(callback)
+            self.options[name].valueChanged.connect(lambda _: callback())
 
         self.simple_options = [
             field.name for field in fields(config) if field.metadata.get("simple", False)

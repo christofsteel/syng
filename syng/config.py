@@ -84,7 +84,7 @@ class GeneralConfig(Config):
         default_factory=lambda: "".join(
             secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
         ),
-        metadata={"semantics": "password", "desc": "Admin Password", "simple": True},
+        metadata={"semantic": "password", "desc": "Admin Password", "simple": True},
     )
     waiting_room_policy: WaitingRoomPolicy = field(
         default=WaitingRoomPolicy.NONE, metadata={"desc": "Waiting room policy"}
@@ -94,7 +94,7 @@ class GeneralConfig(Config):
     )
     last_song: datetime | None = field(default=None, metadata={"desc": "Last song ends at"})
     key: str = field(
-        default="", metadata={"semantics": "password", "desc": "Key for server (if necessary)"}
+        default="", metadata={"semantic": "password", "desc": "Key for server (if necessary)"}
     )
     buffer_in_advance: int = field(default=2, metadata={"desc": "Buffer the next songs in advance"})
     log_level: LogLevel = field(default=LogLevel.INFO, metadata={"desc": "Log Level"})
