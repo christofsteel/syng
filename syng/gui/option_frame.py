@@ -120,10 +120,13 @@ class OptionFrame(QWidget):
             input_widget = make_input_widget(ty, semantic, value)
 
         origin = get_origin(ty)
+        signal_ty = ty
         if origin is not None:
-            ty = origin
+            signal_ty = origin
+        if optional:
+            signal_ty = object
 
-        settings_row = make_row(Signal(ty), description, input_widget, self)
+        settings_row = make_row(Signal(signal_ty), description, input_widget, self)
 
         self.options[name] = settings_row
         settings_row.valueChanged.connect(partial(self.set_config_field, name))
