@@ -120,7 +120,7 @@ class OptionFrame(QWidget):
             input_widget = make_input_widget(ty, semantic, value)
 
         origin = get_origin(ty)
-        signal_ty = ty
+        signal_ty: type[Any] = ty
         if origin is not None:
             signal_ty = origin
         if optional:
