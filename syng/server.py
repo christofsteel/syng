@@ -62,6 +62,7 @@ from syng.sources.source import EntryNotValid
 DEFAULT_CONFIG = {
     "preview_duration": 3,
     "waiting_room_policy": None,
+    "max_songs_per_person": 1,
     "allow_collab_mode": True,
     "last_song": None,
 }
@@ -167,6 +168,8 @@ class Client:
                 - `optional`, if a performer is already in the queue, they have the option
                             to be put in the waiting room.
                 - `None`, performers are always added to the queue.
+            * `max_songs_per_person`, defines the maximum songs a performer can have in the
+                queue at any given time. If None, this feature is deactivated.
             * `allow_collab_mode` (`bool`): True if users can tag their entries with
                 collaboration requests.
 
@@ -228,7 +231,6 @@ class Server:
         self.sio.on("show-config", self.handle_show_config)
         self.sio.on("update-config", self.handle_update_config)
         self.sio.on("append", self.handle_append)
-        self.sio.on("append-anyway", self.handle_append_anyway)
         self.sio.on("meta-info", self.handle_meta_info)
         self.sio.on("get-first", self.handle_get_first)
         self.sio.on("waiting-room-to-queue", self.handle_waiting_room_to_queue)
@@ -461,6 +463,7 @@ class Server:
         """
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
+
         source_obj = state.client.sources[data["source"]]
         try:
             entry = await source_obj.get_entry(
@@ -485,9 +488,21 @@ class Server:
             )
             return None
 
-        if "uid" not in data or (
-            (data["uid"] is not None and len(list(state.queue.find_by_uid(data["uid"]))) == 0)
-            or (data["uid"] is None and state.queue.find_by_name(data["performer"]) is None)
+        if (
+            "uid" not in data
+            or state.client.config["max_songs_per_person"] is None
+            or (
+                (
+                    data["uid"] is not None
+                    and len(list(state.queue.find_by_uid(data["uid"])))
+                    < state.client.config["max_songs_per_person"]
+                )
+                or (
+                    data["uid"] is None
+                    and len(list(state.queue.find_all_by_name(data["performer"])))
+                    < state.client.config["max_songs_per_person"]
+                )
+            )
         ):
             await self.append_to_queue(state, entry, sid)
             return None
@@ -641,12 +656,18 @@ class Server:
             await self.sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
             return None
 
-        if state.client.config["waiting_room_policy"] and (
-            state.client.config["waiting_room_policy"].lower() == "forced"
-            or state.client.config["waiting_room_policy"].lower() == "optional"
-        ):
-            old_entry = state.queue.find_by_name(data["performer"])
-            if old_entry is not None:
+        if state.client.config["max_songs_per_person"] is not None:
+            songs_in_queue = list(state.queue.find_all_by_name(data["performer"]))
+
+            if len(songs_in_queue) >= state.client.config["max_songs_per_person"]:
+                old_entries = [
+                    {
+                        "artist": old_entry.artist,
+                        "title": old_entry.title,
+                        "performer": old_entry.performer,
+                    }
+                    for old_entry in songs_in_queue
+                ]
                 await self.sio.emit(
                     "ask_for_waitingroom",
                     {
@@ -659,11 +680,7 @@ class Server:
                             "title": data.get("title"),
                             "uid": data.get("uid"),
                         },
-                        "old_entry": {
-                            "artist": old_entry.artist,
-                            "title": old_entry.title,
-                            "performer": old_entry.performer,
-                        },
+                        "old_entries": old_entries,
                     },
                     room=sid,
                 )
@@ -697,77 +714,6 @@ class Server:
             return None
 
         logger.debug(f"Appending {entry} to queue in room {state.sid}")
-        entry.uid = data.get("uid")
-
-        await self.append_to_queue(state, entry, sid)
-        return str(entry.uuid)
-
-    @with_state
-    async def handle_append_anyway(
-        self, state: State, sid: str, data: dict[str, Any]
-    ) -> str | None:
-        """Append a song to the queue, even if the performer is already in queue.
-
-        Works the same as handle_append, but without the check if the performer is already
-        in queue.
-
-        Only if the waiting_room_policy is not configured as forced.
-
-        Args:
-            state: The state of a room.
-            sid: The session id of the client sending this request
-            data: A dictionary encoding the entry, that should be added to the
-                queue.
-
-        Returns:
-            The uuid of the added entry or None if the entry could not be added
-
-        """
-        if len(data["performer"]) > 50:
-            await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
-            return None
-
-        if predict([data["performer"]]) == [1]:
-            await self.sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
-            return None
-
-        if state.client.config["waiting_room_policy"].lower() == "forced":
-            await self.sio.emit(
-                "err",
-                {"type": "WAITING_ROOM_FORCED"},
-                room=sid,
-            )
-            return None
-
-        if not state.client.config["allow_collab_mode"]:
-            data["collab_mode"] = None
-
-        source_obj = state.client.sources[data["source"]]
-
-        try:
-            entry = await source_obj.get_entry(
-                data["performer"],
-                data["ident"],
-                data.get("collab_mode"),
-                artist=data["artist"],
-                title=data["title"],
-            )
-
-            if entry is None:
-                await self.sio.emit(
-                    "msg",
-                    {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
-                    room=sid,
-                )
-                return None
-        except EntryNotValid as e:
-            await self.sio.emit(
-                "msg",
-                {"msg": f"Unable to append {data['ident']}. {e}"},
-                room=sid,
-            )
-            return None
-
         entry.uid = data.get("uid")
 
         await self.append_to_queue(state, entry, sid)
@@ -845,8 +791,8 @@ class Server:
         """Handle the "queue-to-waiting" message.
 
         If on an admin-connection, removes a song from the queue and appends it to
-        the waiting room. If the performer has only one entry in the queue, it is
-        put back into the queue immediately.
+        the waiting room. If the performer has only equal or less entry in the queue than the
+        allowed songs in the queue, this function returns without modifying the data.
 
         Args:
             state: State of the room.
@@ -857,7 +803,15 @@ class Server:
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
             performer_entries = list(state.queue.find_all_by_name(entry.performer))
-            if len(performer_entries) == 1:
+            if state.client.config["max_songs_per_person"] is None or state.client.config[
+                "max_songs_per_person"
+            ] >= len(performer_entries):
+                await self.log_to_playback(
+                    state,
+                    f"Not adding {entry} to waiting room. Performer has only "
+                    f"{len(performer_entries)} entries in the queue",
+                    level="warning",
+                )
                 return
             await state.queue.remove(entry)
             state.waiting_room.append(entry)
@@ -890,7 +844,10 @@ class Server:
     async def add_songs_from_waiting_room(self, state: State) -> None:
         """Add all songs from the waiting room, that should be added to the queue.
 
-        A song should be added if none of its performers are already queued.
+        If max_songs_per_person is not set, this exits immediatly.
+
+        A song should be added if there are less than the maximum amount of songs for that performer
+        in the queue.
 
         This should be called every time a song leaves the queue.
 
@@ -898,9 +855,13 @@ class Server:
             state: State of the room holding the queue.
 
         """
+        if state.client.config["max_songs_per_person"] is None:
+            return
+
         wrs_to_remove = []
         for wr_entry in state.waiting_room:
-            if state.queue.find_by_name(wr_entry.performer) is None:
+            songs_in_queue = list(state.queue.find_all_by_name(wr_entry.performer))
+            if len(songs_in_queue) < state.client.config["max_songs_per_person"]:
                 await self.append_to_queue(state, wr_entry)
                 wrs_to_remove.append(wr_entry)
 

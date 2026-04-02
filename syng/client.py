@@ -227,7 +227,6 @@ class Client:
 
         """
         raise NotImplementedError
-        # self.state.config = default_config() | data
 
     async def handle_skip_current(self, data: dict[str, Any]) -> None:
         """Handle the "skip-current" message.

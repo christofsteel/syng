@@ -16,16 +16,29 @@ from typing import (
     get_origin,
     get_type_hints,
     overload,
+    override,
 )
 
 from yaml import Dumper, Loader, dump, load
+
+from syng.log import logger
 
 
 @dataclass
 class Config:
     """Base class for all configuration objects."""
 
-    pass
+    @staticmethod
+    def migration(config_dict: dict[str, _Parsable]) -> dict[str, _Parsable]:
+        """Migration from old config versions.
+
+        Args:
+            config_dict: Old configuration dictionary
+
+        Returns:
+            migrated configuration dictionary
+        """
+        return config_dict
 
 
 class WaitingRoomPolicy(Enum):
@@ -63,7 +76,7 @@ class GeneralConfig(Config):
         server: Hostname of the server to connect to.
         room: Room to connect to.
         secret: Secret of the room.
-        waiting_room_policy: The waiting room policy.
+        max_songs_per_person: The maximum number of allowed songs in queue for a person
         allow_collab_mode: Allow poerformers to add collaboration tags.
         last_song: Time, after which no songs are accepted into the queue.
         key: Key for the server.
@@ -86,12 +99,8 @@ class GeneralConfig(Config):
         ),
         metadata={"semantic": "password", "desc": "Admin Password", "simple": True},
     )
-    waiting_room_policy: WaitingRoomPolicy = field(
-        default=WaitingRoomPolicy.NONE, metadata={"desc": "Waiting room policy"}
-    )
-    allow_collab_mode: bool = field(
-        default=True, metadata={"desc": "Allow performers to add collaboration tags"}
-    )
+    max_songs_per_person: int | None = field(default=1, metadata={"desc": "Max. songs per person"})
+    allow_collab_mode: bool = field(default=True, metadata={"desc": "Allow collaboration tags"})
     last_song: datetime | None = field(default=None, metadata={"desc": "Last song ends at"})
     key: str = field(
         default="", metadata={"semantic": "password", "desc": "Key for server (if necessary)"}
@@ -101,6 +110,29 @@ class GeneralConfig(Config):
     show_advanced: bool = field(
         default=False, metadata={"desc": "Show Advanced Options", "hidden": True}
     )
+
+    @override
+    @staticmethod
+    def migration(config_dict: dict[str, _Parsable]) -> dict[str, _Parsable]:
+        # Version 2.3.0 to 2.4.0
+        if "waiting_room_policy" in config_dict:
+            max_songs_per_person: int | None
+            match config_dict["waiting_room_policy"]:
+                case None:
+                    max_songs_per_person = None
+                case "forced":
+                    max_songs_per_person = 1
+                case "optional":
+                    max_songs_per_person = 1
+                case _:
+                    max_songs_per_person = None
+            logger.warning(
+                "Migration from earlyer version. 'waiting_room_policy': "
+                f"{config_dict['waiting_room_policy']} -> "
+                f"'max_songs_per_person': {max_songs_per_person}"
+            )
+            config_dict["max_songs_per_person"] = max_songs_per_person
+        return config_dict
 
 
 class QRPosition(Enum):
@@ -177,7 +209,7 @@ class SyngConfig(Config):
 type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None
 
 
-def deserialize_dataclass[T](clas: type[T], data: dict[str, _Parsable]) -> T:
+def deserialize_dataclass[T: Config](clas: type[T], data: dict[str, _Parsable]) -> T:
     """Deserialize a dataclass from a dict.
 
     If a dataclass has an attribute, that is marked as `flatten` in the metadata, it will be
@@ -198,6 +230,8 @@ def deserialize_dataclass[T](clas: type[T], data: dict[str, _Parsable]) -> T:
         raise TypeError(f"got '{data}' of type '{type(data)}, expected 'dict' to create '{clas}'")
     field_types = get_type_hints(clas)
     dataclass_arguments = {}
+
+    data = clas.migration(data)
 
     for data_field in fields(clas):
         if data_field.metadata.get("flatten", False):
@@ -291,7 +325,7 @@ def deserialize_config[T](clas: type[list[T]], data: _Parsable) -> list[T]: ...
 def deserialize_config[T](clas: type[T], data: _Parsable) -> T: ...
 
 
-def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datetime | None:
+def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | int | datetime | None:
     """Deserialize an Object from a dictionary or data.
 
     This checks, that input data is of correct type according to `clas` and relays it to the
@@ -317,7 +351,7 @@ def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datet
         TypeError: If data does not match to the desired outputclass
 
     """
-    if isinstance(data, dict):
+    if isinstance(data, dict) and issubclass(clas, Config):
         return deserialize_dataclass(clas, data)
     if get_origin(clas) is list:
         if not isinstance(data, list):
@@ -334,6 +368,12 @@ def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | datet
         get_args(None | datetime)
     ):
         return deserialize_datetime_or_None(data)
+    if (
+        get_origin(clas) in (Union, UnionType)
+        and set(get_args(clas)) == set(get_args(None | int))
+        and (isinstance(data, int) or data is None)
+    ):
+        return data
     if issubclass(clas, Enum):
         if not isinstance(data, str) and not isinstance(data, int):
             raise TypeError(
