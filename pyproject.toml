@@ -1,6 +1,6 @@
 [project]
 name = "syng"
-version = "2.3.0"
+version = "2.4.0.dev1"
 description = "Easily host karaoke events"
 license = "AGPL-3.0-or-later"
 readme = "README.md"
@@ -69,7 +69,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.9.10,<0.10.0"]
+requires = ["uv_build>=0.9.10,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.pylint."MESSAGES CONTROL"]
