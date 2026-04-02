@@ -17,4 +17,4 @@ except PackageNotFoundError:
     SYNG_VERSION = (0, 0, 0)
 
 
-SYNG_PROTOCOL_VERSION = (2, 2, 0)
+SYNG_PROTOCOL_VERSION = (2, 4, 0)
