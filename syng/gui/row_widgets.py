@@ -830,7 +830,7 @@ class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
         self.left_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.left_widget.valueChanged.connect(self.valueChanged.emit)
         self.right_widget._input_widget.setText("Enabled")
-        self.right_widget.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        self.right_widget.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
         self.right_widget.valueChanged.connect(self.toggle_enabled)
         if initial_value is None:
             self.left_widget.setEnabled(False)
