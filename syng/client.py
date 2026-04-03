@@ -22,6 +22,7 @@ import os
 import signal
 import threading
 from argparse import Namespace
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
 from traceback import print_exc
@@ -63,6 +64,7 @@ class State:
     queue: list[Entry] = field(default_factory=list)
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
+    queue_locked: bool = False
 
 
 class Client:
@@ -102,6 +104,7 @@ class Client:
             self.connection_state,
             self.state.queue,
         )
+        self.state_callbacks: list[Callable[[State], None]] = []
 
     def set_log_level(self, level: LogLevel) -> None:
         """Set the log level.
@@ -271,6 +274,7 @@ class Client:
         self.state.queue.extend([Entry(**entry) for entry in data["queue"]])
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
+        self.state.queue_locked = data["locked"]
 
         for pos, entry in enumerate(self.state.queue[0 : self.config.general.buffer_in_advance]):
             source = self.sources[entry.source]
@@ -293,6 +297,9 @@ class Client:
             except ValueError as e:
                 logger.error("Error buffering: %s", e)
                 await self.sio.emit("skip", {"uuid": entry.uuid})
+
+        for callback in self.state_callbacks:
+            callback(self.state)
 
     async def handle_connect(self) -> None:
         """Handle the "connect" message.
@@ -529,6 +536,20 @@ class Client:
         if room:
             logger.info("Removing room %s from server", room)
             await self.sio.emit("remove-room", {"room": room})
+
+    async def lock_queue(self, locked: bool) -> None:
+        """Locks or unlocks the queue."""
+        logger.info("Locking the queue.")
+        await self.sio.emit("lock_queue", {"locked": locked})
+
+    def add_state_callback(self, callback: Callable[[State], None]) -> None:
+        """Add callback to be called whenever a new state is sent from the server.
+
+        Args:
+            callback: The function to call with the new state.
+
+        """
+        self.state_callbacks.append(callback)
 
     def export_queue(self, filename: str) -> None:
         """Export the current queue to a file.
