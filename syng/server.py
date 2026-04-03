@@ -197,6 +197,7 @@ class State:
         client: The config for the playback client
         last_seen: Timestamp of the last connected client. Used to determine
             if a room is still in use.
+        locked: If the queue is currently locked.
 
     """
 
@@ -206,6 +207,7 @@ class State:
     sid: str
     client: Client
     last_seen: datetime.datetime = field(init=False, default_factory=datetime.datetime.now)
+    locked: bool
 
 
 class Server:
@@ -226,6 +228,7 @@ class Server:
 
     def register_handlers(self) -> None:
         """Register each message to their accompaning handler."""
+        self.sio.on("lock_queue", self.handle_lock_queue)
         self.sio.on("get-state", self.handle_get_state)
         self.sio.on("waiting-room-append", self.handle_waiting_room_append)
         self.sio.on("show-config", self.handle_show_config)
@@ -423,6 +426,7 @@ class Server:
                 "recent": state.recent,
                 "waiting_room": state.waiting_room,
                 "config": safe_config,
+                "locked": state.locked,
             },
             room=sid,
         )
@@ -570,6 +574,30 @@ class Server:
 
     @admin
     @with_state
+    async def handle_lock_queue(self, state: State, sid: str, data: dict[str, Any]) -> None:
+        """Locks or unlocks the queue.
+
+        When the queue is locked, no entries can be added.
+        A truthy value of data['locked'] locks the queue, a falsey value unlocks it.
+
+        Args:
+            state: The state of a room
+            sid: The session id of the client sending this request
+            data: A dict with a boolean enty of 'locked'.
+
+        """
+        if "locked" not in data:
+            await self.log_to_playback(state, "Incompatible call to lock queue", "warning")
+            return
+
+        if data["locked"]:
+            state.locked = True
+        elif not data["locked"]:
+            state.locked = False
+        await self.broadcast_state(state)
+
+    @admin
+    @with_state
     async def handle_show_config(self, state: State, sid: str) -> None:
         """Send the public config to webclient.
 
@@ -620,15 +648,15 @@ class Server:
         entries for the same song. Additionally an id of the web client is saved
         for that entry.
 
-        If the room is configured to no longer accept songs past a certain time
-        (via the :py:attr:`Config.last_song` attribute), it is checked, if the
-        start time of the song would exceed this time. If this is the case, the
-        request is denied and a "msg" message is send to the client, detailing
-        this.
+        Appending is denied if:
+            - The queue is locked
+            - The entry would exceed the `last_song` time
+            - The performers name contains profanity
+            - The performers name is too long (>50 chars)
+            - The number of songs for that performer exceeds the maximum number of songs in queue.
 
-        If a waitingroom is forced or optional, it is checked, if one of the performers is
-        already in queue. In that case, a "ask_for_waitingroom" message is send to the
-        client.
+        If the appending happens on an admin connection, the first two do not apply.
+        If the entry is denied, the user is informed by an "err" message.
 
         Otherwise the song is added to the queue. And all connected clients (web
         and playback client) are informed of the new state with a "state" message.
@@ -648,6 +676,14 @@ class Server:
             The uuid of the added entry or None if the entry could not be added
 
         """
+        if state.locked and not await self.is_admin(state, sid):
+            await self.sio.emit(
+                "err",
+                {"type": "QUEUE_LOCKED"},
+                room=sid,
+            )
+            return None
+
         if len(data["performer"]) > 50:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
             return None
@@ -1308,6 +1344,7 @@ class Server:
                     sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
                 ),
+                locked=data["config"].get("initial_queue_state", "Unlocked") == "Locked",
             )
 
             await self.sio.enter_room(sid, room)

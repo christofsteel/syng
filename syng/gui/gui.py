@@ -13,7 +13,11 @@ from typing import TYPE_CHECKING
 import packaging.version
 
 from syng.config import SourceConfig
-from syng.gui.background_threads import SyngClientWorker, VersionCheckerWorker
+from syng.gui.background_threads import (
+    SyngClientQueueWorker,
+    SyngClientWorker,
+    VersionCheckerWorker,
+)
 from syng.gui.tabs import GeneralConfigTab, SourceTab, UIConfigTab
 
 try:
@@ -54,7 +58,7 @@ from PySide6.QtWidgets import (
 from qrcode.main import QRCode
 
 from syng import __version__, resources  # noqa
-from syng.client import Client
+from syng.client import Client, State
 from syng.config import (
     ClientConfig,
     GeneralConfig,
@@ -85,6 +89,7 @@ class SyngGui(QMainWindow):
         if self.client_thread is not None and self.client_thread.isRunning():
             self.client_thread.cleanup()
 
+        self.syng_client_message_queue_worker.shutdown()
         self.log_label_handler.cleanup()
 
     def add_buttons(self, show_advanced: bool) -> None:
@@ -204,6 +209,12 @@ class SyngGui(QMainWindow):
                 "No Client Running",
                 "You need to start the client before you can remove a room.",
             )
+
+    def lock_queue(self) -> None:
+        """Locks or unlocks the queue."""
+        if self.client_thread.isRunning() and self.client_thread.client:
+            locked = self.client_thread.client.state.queue_locked
+            self.client_thread.lock_queue(not locked)
 
     def toggle_advanced(self, state: bool) -> None:
         """Hide/Show advanced options.
@@ -335,6 +346,11 @@ class SyngGui(QMainWindow):
         self.admin_layout.addWidget(self.remove_room_button)
         self.remove_room_button.setDisabled(True)
 
+        self.lock_queue_button = QPushButton("Lock Queue", self.admin_tab)
+        self.lock_queue_button.clicked.connect(self.lock_queue)
+        self.admin_layout.addWidget(self.lock_queue_button)
+        self.lock_queue_button.setDisabled(True)
+
         self.export_queue_button = QPushButton("Export Queue", self.admin_tab)
         self.export_queue_button.clicked.connect(self.export_queue)
         self.admin_layout.addWidget(self.export_queue_button)
@@ -403,8 +419,6 @@ class SyngGui(QMainWindow):
 
         self.pypi_version: str | None = None
 
-        self.syng_client_logging_listener: QueueListener | None = None
-
         self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
 
         self.central_widget = QWidget(parent=self)
@@ -436,6 +450,12 @@ class SyngGui(QMainWindow):
 
         self.syng_client_logging_listener = QueueListener(self.logqueue, self.log_label_handler)
         self.syng_client_logging_listener.start()
+        self.syng_client_message_queue: Queue[State] = Queue()
+        self.syng_client_message_queue_worker = SyngClientQueueWorker(
+            self.syng_client_message_queue
+        )
+        self.syng_client_message_queue_worker.new_state.connect(self.update_for_state)
+        self.syng_client_message_queue_worker.start()
 
         self.setCentralWidget(self.central_widget)
 
@@ -544,6 +564,7 @@ class SyngGui(QMainWindow):
         self.remove_room_button.setDisabled(False)
         self.export_queue_button.setDisabled(False)
         self.import_queue_button.setDisabled(False)
+        self.lock_queue_button.setDisabled(False)
 
         self.startbutton.setText("Disconnect")
 
@@ -559,6 +580,7 @@ class SyngGui(QMainWindow):
         self.remove_room_button.setDisabled(True)
         self.export_queue_button.setDisabled(True)
         self.import_queue_button.setDisabled(True)
+        self.lock_queue_button.setDisabled(True)
 
         self.startbutton.setText("Connect")
 
@@ -590,6 +612,21 @@ class SyngGui(QMainWindow):
             self.client_thread.set_client(client)
             self.client_thread.start()
             self.set_client_button_stop()
+            client.add_state_callback(self.syng_client_message_queue.put)
+
+    def update_for_state(self, state: State) -> None:
+        """Handle a state update.
+
+        For now, this just sets the label for the "Lock Queue" button.
+
+        Args:
+            state: The state of the client
+
+        """
+        if state.queue_locked:
+            self.lock_queue_button.setText("Unlock Queue")
+        else:
+            self.lock_queue_button.setText("Lock Queue")
 
     @Slot(str, int)
     def print_log(self, log: str, level: int) -> None:

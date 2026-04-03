@@ -68,6 +68,13 @@ class LogLevel(Enum):
     CRITICAL = "critical"
 
 
+class InitialQueueState(Enum):
+    """Initial lockung state of the queue."""
+
+    LOCKED = "Locked"
+    UNLOCKED = "Unlocked"
+
+
 @dataclass
 class GeneralConfig(Config):
     """Configuration of the general behavior of Syng.
@@ -98,6 +105,9 @@ class GeneralConfig(Config):
             secrets.choice(string.ascii_letters + string.digits) for _ in range(8)
         ),
         metadata={"semantic": "password", "desc": "Admin Password", "simple": True},
+    )
+    initial_queue_state: InitialQueueState = field(
+        default=InitialQueueState.UNLOCKED, metadata={"desc": "Initial State of the Queue"}
     )
     max_songs_per_person: int | None = field(default=1, metadata={"desc": "Max. songs per person"})
     allow_collab_mode: bool = field(default=True, metadata={"desc": "Allow collaboration tags"})
