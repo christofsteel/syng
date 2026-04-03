@@ -61,6 +61,7 @@ class Player:
         self.qr_box_size = 1 if config.ui.qr_box_size < 1 else config.ui.qr_box_size
         self.qr_position = config.ui.qr_position
         self.next_up_time = config.ui.next_up_time
+        self.pause_music = config.ui.pause_music
         self.update_qr(
             qr_string,
         )
@@ -94,9 +95,8 @@ class Player:
         self.next_up_y_pos = -120
         self.mpv.title = "Syng.Rocks! - Player"
         self.mpv.keep_open = "yes"
-        self.mpv.play(
-            f"{self.base_dir}/background.png",
-        )
+        self.play_background()
+
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
         self.mpv.observe_property("playtime-remaining", self.playtime_remaining_handler)
@@ -263,6 +263,7 @@ class Player:
 
         for property, value in self.default_options.items():
             self.mpv[property] = value
+        self.mpv._set_property("loop-file", "0")
         self.mpv.image_display_duration = duration
         self.mpv.keep_open = "yes"
         if sub_file:
@@ -301,6 +302,7 @@ class Player:
             self.mpv[property] = value
 
         loop = asyncio.get_running_loop()
+        self.mpv._set_property("loop-file", "0")
         self.mpv.pause = True
         if audio:
             self.callback_audio_load = audio
@@ -310,10 +312,20 @@ class Player:
         self.mpv.pause = False
         try:
             await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
-            self.mpv.image_display_duration = 0
-            self.mpv.play(f"{self.base_dir}/background.png")
+            self.play_background()
         except mpv.ShutdownError:
             self.quit_callback()
+
+    def play_background(self) -> None:
+        """Show the background image and play the background music."""
+        if not self.mpv:
+            return
+        self.mpv.pause = True
+        self.mpv._set_property("loop-file", "inf")
+        self.callback_audio_load = self.pause_music
+        self.mpv.image_display_duration = 0
+        self.mpv.loadfile(f"{self.base_dir}/background.png")
+        self.mpv.pause = False
 
     def skip_current(self) -> None:
         """Skip the currently playing entry."""
@@ -321,7 +333,4 @@ class Player:
             print("MPV is not initialized", file=sys.stderr)
             return
 
-        self.mpv.image_display_duration = 0
-        self.mpv.play(
-            f"{self.base_dir}/background.png",
-        )
+        self.play_background()

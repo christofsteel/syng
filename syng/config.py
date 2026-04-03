@@ -167,12 +167,14 @@ class UIConfig(Config):
     """
 
     preview_duration: int = field(default=3, metadata={"desc": "Preview duration in seconds"})
-    next_up_time: int = field(
-        default=20, metadata={"desc": "Time remaining before Next Up Box is shown"}
-    )
+    next_up_time: int = field(default=20, metadata={"desc": "Time before Next Up Box"})
     qr_box_size: int = field(default=7, metadata={"desc": "QR Code Box Size"})
     qr_position: QRPosition = field(
         default=QRPosition.BOTTOM_RIGHT, metadata={"desc": "QR Code Position"}
+    )
+    pause_music: str | None = field(
+        default=os.path.join(os.path.dirname(__file__), "static", "background.mp3"),
+        metadata={"desc": "Pause Music", "semantic": "file"},
     )
 
 
@@ -335,7 +337,9 @@ def deserialize_config[T](clas: type[list[T]], data: _Parsable) -> list[T]: ...
 def deserialize_config[T](clas: type[T], data: _Parsable) -> T: ...
 
 
-def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | int | datetime | None:
+def deserialize_config[T](
+    clas: type[T], data: _Parsable
+) -> T | list[T] | int | str | datetime | None:
     """Deserialize an Object from a dictionary or data.
 
     This checks, that input data is of correct type according to `clas` and relays it to the
@@ -382,6 +386,12 @@ def deserialize_config[T](clas: type[T], data: _Parsable) -> T | list[T] | int |
         get_origin(clas) in (Union, UnionType)
         and set(get_args(clas)) == set(get_args(None | int))
         and (isinstance(data, int) or data is None)
+    ):
+        return data
+    if (
+        get_origin(clas) in (Union, UnionType)
+        and set(get_args(clas)) == set(get_args(None | str))
+        and (isinstance(data, str) or data is None)
     ):
         return data
     if issubclass(clas, Enum):
