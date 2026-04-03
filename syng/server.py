@@ -1344,7 +1344,7 @@ class Server:
                     sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
                 ),
-                locked=False,
+                locked=data["config"].get("initial_queue_state", "Unlocked") == "Locked",
             )
 
             await self.sio.enter_room(sid, room)
