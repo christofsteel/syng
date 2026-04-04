@@ -42,6 +42,13 @@ def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
     return config_class
 
 
+def get_all_source_config_types() -> dict[str, type[SourceConfig]]:
+    return {
+        source_name: get_source_config_type(source)
+        for source_name, source in available_sources.items()
+    }
+
+
 def configure_sources(configs: dict[str, SourceConfig]) -> dict[str, Source]:
     """Create a Source object for each entry in the given configs dictionary.
 

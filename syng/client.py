@@ -43,7 +43,11 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.player_libmpv import Player
 from syng.runningstates import Lifecycle, RunningState
-from syng.sources import Source, available_sources, configure_sources, get_source_config_type
+from syng.sources import (
+    Source,
+    configure_sources,
+    get_all_source_config_types,
+)
 
 
 @dataclass
@@ -680,11 +684,7 @@ def run_client(args: Namespace) -> None:
         args: The arguments from the command line
 
     """
-    source_config_types = {
-        source_name: get_source_config_type(source)
-        for source_name, source in available_sources.items()
-    }
-    config = load_config(args.config_file, source_config_types)
+    config = load_config(args.config_file, get_all_source_config_types())
 
     if args.room:
         config.config.general.room = args.room
