@@ -571,6 +571,7 @@ class RowWidget[T](QWidget):
         super().setVisible(visible)
         self._label.setVisible(visible)
         self._input_widget.setVisible(visible)
+        self._default_button.setVisible(visible)
 
     def to_form_tuple(self) -> tuple[QLabel, QLayout] | tuple[QLabel, QWidget]:
         """Construct a value, that can be insertet into a form.
