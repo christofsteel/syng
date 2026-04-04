@@ -19,6 +19,7 @@ from typing import (
     override,
 )
 
+import platformdirs
 from yaml import Dumper, Loader, dump, load
 
 from syng.log import logger
@@ -172,9 +173,17 @@ class UIConfig(Config):
     qr_position: QRPosition = field(
         default=QRPosition.BOTTOM_RIGHT, metadata={"desc": "QR Code Position"}
     )
+    pause_background: str = field(
+        default=os.path.join(platformdirs.user_data_dir("syng"), "background.png"),
+        metadata={"desc": "Background during Pause", "semantic": "file"},
+    )
     pause_music: str | None = field(
-        default=os.path.join(os.path.dirname(__file__), "static", "background.mp3"),
+        default=os.path.join(platformdirs.user_data_dir("syng"), "background.mp3"),
         metadata={"desc": "Pause Music", "semantic": "file"},
+    )
+    preview_background: str = field(
+        default=os.path.join(platformdirs.user_data_dir("syng"), "background20perc.png"),
+        metadata={"desc": "Background during\nNext Up Screen", "semantic": "file"},
     )
 
 
