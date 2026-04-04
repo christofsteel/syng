@@ -197,7 +197,7 @@ class Client:
             and self.player.mpv is not None
         ):
             await self.connection_state.set_mpv_state(Lifecycle.ENDING)
-            self.player.mpv.terminate()
+            await self.player.stop_then_end()
             await self.connection_state.set_mpv_state(Lifecycle.ENDED)
         await self.connection_state.set_client_state(Lifecycle.ENDED)
 
