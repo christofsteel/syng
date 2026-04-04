@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSpinBox,
     QStackedLayout,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -544,6 +545,20 @@ class RowWidget[T](QWidget):
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
         self._input_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+        self._default_button = QPushButton(self)
+        self._default_button.setFixedWidth(40)
+        self._default_button.setIcon(self.style().standardIcon(QStyle.SP_DialogResetButton))
+        self._default_button.clicked.connect(self.reset_default)
+
+        self._layout = QHBoxLayout()
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(5)
+        self._layout.addWidget(self._input_widget)
+        self._layout.addWidget(self._default_button)
+
+    def reset_default(self) -> None:
+        self._input_widget.set_value(self._input_widget.default)
+
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
 
@@ -562,7 +577,7 @@ class RowWidget[T](QWidget):
             Tuple of the label and the right hand side widget.
 
         """
-        return self._label, self._input_widget
+        return self._label, self._layout
 
     def set_value(self, value: T) -> None:
         """Set the value of the input widget.
