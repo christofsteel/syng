@@ -87,10 +87,7 @@ module = [
     "minio",
     "qrcode",
     "engineio",
-    "tkcalendar",
-    "customtkinter",
     "aiohttp",
-    "tktimepicker",
     "platformdirs"
 ]
 ignore_missing_imports = true
