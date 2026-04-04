@@ -557,6 +557,7 @@ class RowWidget[T](QWidget):
         self._layout.addWidget(self._default_button)
 
     def reset_default(self) -> None:
+        """Reset the input widget to its default value."""
         self._input_widget.set_value(self._input_widget.default)
 
     def setVisible(self, visible: bool, /) -> None:
