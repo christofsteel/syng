@@ -25,8 +25,11 @@ from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
+from http.client import HTTPSConnection
+from ssl import SSLError
 from traceback import print_exc
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import engineio
@@ -619,6 +622,24 @@ class Client:
                 "version": SYNG_VERSION,
             }
             await self.connection_state.set_connection_state(Lifecycle.STARTING)
+            if not self.config.general.server.startswith("http"):
+                serverstring = f"https://{self.config.general.server}"
+                server_split = urlsplit(serverstring)
+
+                server = server_split.hostname if server_split.hostname else ""
+                port = server_split.port
+                path = server_split.path
+                schema = "http"
+                try:
+                    https_conn = HTTPSConnection(server, port)
+                    https_conn.request("HEAD", path)
+                    schema = "https"
+                except SSLError:
+                    pass
+                except ConnectionRefusedError:
+                    pass
+
+                self.config.general.server = f"{schema}://{self.config.general.server}"
             await self.sio.connect(self.config.general.server, auth=data)
 
             # this is not supported under windows
