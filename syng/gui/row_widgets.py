@@ -242,8 +242,7 @@ class SimpleInputWidget[T](InputWidget[T]):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
-        if layout:
-            layout.addWidget(widget)
+        layout.addWidget(widget)
         widget.setParent(self)
 
 
