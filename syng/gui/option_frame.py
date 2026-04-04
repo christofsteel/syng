@@ -1,7 +1,7 @@
 """Windget, that hold options depending on the types of a configuration object."""
 
 from collections.abc import MutableMapping
-from dataclasses import asdict, fields
+from dataclasses import _MISSING_TYPE, asdict, fields
 from enum import Enum
 from functools import partial
 from types import NoneType, UnionType
@@ -56,9 +56,10 @@ class OptionFrame(QWidget):
             hidden: bool = field.metadata.get("hidden", False)
             default: Any = (
                 field.default
-                if field.default
+                if not isinstance(field.default, _MISSING_TYPE)
                 else field.default_factory()
-                if callable(field.default_factory)
+                if not isinstance(field.default_factory, _MISSING_TYPE)
+                and callable(field.default_factory)
                 else None
             )
             if hidden:

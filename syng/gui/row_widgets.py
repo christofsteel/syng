@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSpinBox,
     QStackedLayout,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -242,8 +243,7 @@ class SimpleInputWidget[T](InputWidget[T]):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
-        if layout:
-            layout.addWidget(widget)
+        layout.addWidget(widget)
         widget.setParent(self)
 
 
@@ -545,6 +545,22 @@ class RowWidget[T](QWidget):
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
         self._input_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+        self._default_button = QPushButton(self)
+        self._default_button.setFixedWidth(40)
+        self._default_button.setIcon(self.style().standardIcon(QStyle.SP_DialogResetButton))  # type: ignore
+        self._default_button.clicked.connect(self.reset_default)
+        self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+
+        self._layout = QHBoxLayout()
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(5)
+        self._layout.addWidget(self._input_widget)
+        self._layout.addWidget(self._default_button)
+
+    def reset_default(self) -> None:
+        """Reset the input widget to its default value."""
+        self._input_widget.set_value(self._input_widget.default)
+
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
 
@@ -555,6 +571,7 @@ class RowWidget[T](QWidget):
         super().setVisible(visible)
         self._label.setVisible(visible)
         self._input_widget.setVisible(visible)
+        self._default_button.setVisible(visible)
 
     def to_form_tuple(self) -> tuple[QLabel, QLayout] | tuple[QLabel, QWidget]:
         """Construct a value, that can be insertet into a form.
@@ -563,7 +580,7 @@ class RowWidget[T](QWidget):
             Tuple of the label and the right hand side widget.
 
         """
-        return self._label, self._input_widget
+        return self._label, self._layout
 
     def set_value(self, value: T) -> None:
         """Set the value of the input widget.
@@ -678,7 +695,7 @@ class StrListWidget(QWidget):
         Args:
             values: new values
         """
-        while self._layout.count() >= 1:
+        while self._layout.count() > 1:
             row = self._layout.itemAt(0)
             if row is not None:
                 widget = row.widget()
@@ -895,7 +912,9 @@ class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
         def wrapped(initial_value: T | None, default: T) -> DeactivatableInputWidget[T]:
             value = initial_value if initial_value else fallback
             input_widget = input_widget_builder(value, default)
-            deactivatable_input_widget = DeactivatableInputWidget(input_widget, initial_value, None)
+            deactivatable_input_widget = DeactivatableInputWidget(
+                input_widget, initial_value, default
+            )
             return deactivatable_input_widget
 
         return wrapped

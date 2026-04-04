@@ -31,7 +31,7 @@ class FileBasedConfig(SourceConfig):
     """
 
     extensions: list[str] = field(
-        default_factory=lambda: ["mp3+cdg"],
+        default_factory=lambda: ["mp3+cdg", "mp4", "mkv", "webm"],
         metadata={"desc": "List of filename extensions\n(mp3+cdg, mp4, ...)"},
     )
 
