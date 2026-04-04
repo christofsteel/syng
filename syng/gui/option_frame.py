@@ -54,6 +54,13 @@ class OptionFrame(QWidget):
             description: str = field.metadata.get("desc", "")
             semantic: str | None = field.metadata.get("semantic", None)
             hidden: bool = field.metadata.get("hidden", False)
+            default: Any = (
+                field.default
+                if field.default
+                else field.default_factory()
+                if callable(field.default_factory)
+                else None
+            )
             if hidden:
                 continue
 
@@ -69,9 +76,8 @@ class OptionFrame(QWidget):
                         optional = True
 
             if field_type is bool and isinstance(value, bool):
-                self.add_config_row(Boolean, name, description, value, semantic, optional)
-            else:
-                self.add_config_row(field_type, name, description, value, semantic, optional)
+                field_type = Boolean
+            self.add_config_row(field_type, name, description, value, semantic, optional, default)
 
     def set_config_field(self, name: str, value: Any) -> None:
         """Set a field of the configuration object, if it exists.
@@ -94,6 +100,7 @@ class OptionFrame(QWidget):
         value: T,
         semantic: str | None,
         optional: bool,
+        default: T,
     ) -> None:
         """Add a row to the form, depending on the type of an option.
 
@@ -112,12 +119,13 @@ class OptionFrame(QWidget):
             value: Initial value
             semantic: Semantic specification of the type (see above)
             optional: If True, the option can be deactivated
+            default: The default value for the setting
 
         """
         if optional:
-            input_widget = make_optional_input_widget(ty, semantic, value)
+            input_widget = make_optional_input_widget(ty, semantic, value, default)
         else:
-            input_widget = make_input_widget(ty, semantic, value)
+            input_widget = make_input_widget(ty, semantic, value, default)
 
         origin = get_origin(ty)
         signal_ty: type[Any] = ty

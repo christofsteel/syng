@@ -33,6 +33,7 @@ The config file for the client should be a yaml file in the following style::
 
 import multiprocessing
 import os
+import shutil
 import traceback
 from argparse import ArgumentParser
 from typing import TYPE_CHECKING
@@ -69,6 +70,23 @@ except ImportError:
         from syng.server import run_server
 
     SERVER_AVAILABLE = False
+
+
+def copy_static_file(filename: str) -> None:
+    """Copy a single file from the package directory to the user data dir."""
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    shutil.copyfile(
+        os.path.join(static_dir, filename),
+        os.path.join(platformdirs.user_data_dir("syng"), filename),
+    )
+
+
+def copy_static_files() -> None:
+    """Copy static files to user data dir."""
+    os.makedirs(platformdirs.user_data_dir("syng"), exist_ok=True)
+    copy_static_file("background.png")
+    copy_static_file("background20perc.png")
+    copy_static_file("background.mp3")
 
 
 def main() -> None:
@@ -118,6 +136,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.action == "client":
+        copy_static_files()
         run_client(args)
     elif args.action == "server":
         run_server(args)
@@ -126,12 +145,14 @@ def main() -> None:
             print("GUI module is not available.")
             print(gui_exception)
         else:
+            copy_static_files()
             run_gui()
     else:
         if not GUI_AVAILABLE:
             print("GUI module is not available.")
             print(gui_exception)
         else:
+            copy_static_files()
             run_gui()
 
 

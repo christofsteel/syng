@@ -62,6 +62,8 @@ class Player:
         self.qr_position = config.ui.qr_position
         self.next_up_time = config.ui.next_up_time
         self.pause_music = config.ui.pause_music
+        self.pause_background = config.ui.pause_background
+        self.preview_background = config.ui.preview_background
         self.update_qr(
             qr_string,
         )
@@ -239,9 +241,7 @@ class Player:
             preview.unregister()
 
         self.mpv.sub_pos = 50
-        self.play_image(
-            f"{self.base_dir}/background20perc.png", 3, sub_file=f"python://{stream_name}"
-        )
+        self.play_image(self.preview_background, 3, sub_file=f"python://{stream_name}")
 
         try:
             await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
@@ -324,7 +324,7 @@ class Player:
         self.mpv._set_property("loop-file", "inf")
         self.callback_audio_load = self.pause_music
         self.mpv.image_display_duration = 0
-        self.mpv.loadfile(f"{self.base_dir}/background.png")
+        self.mpv.loadfile(self.pause_background)
         self.mpv.pause = False
 
     def skip_current(self) -> None:
