@@ -316,6 +316,18 @@ class Player:
         except mpv.ShutdownError:
             self.quit_callback()
 
+    async def stop_then_end(self) -> None:
+        """Stop playing the current song.
+
+        Start the waiting screen.
+        """
+        if not self.mpv:
+            return
+
+        self.play_background()
+        self.mpv.wait_until_playing()
+        self.mpv.terminate()
+
     def play_background(self) -> None:
         """Show the background image and play the background music."""
         if not self.mpv:
