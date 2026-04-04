@@ -645,7 +645,8 @@ class SyngGui(QMainWindow):
             log_msg_box.setWindowTitle("Critical Error")
             log_msg_box.setText(log)
             log_msg_box.exec()
-        self.log_text.append(f"[{datetime.now().strftime('%H:%M:%S')}] {log}")
+        level_name = logging.getLevelName(level)
+        self.log_text.append(f"[{datetime.now().strftime('%H:%M:%S')}] [{level_name}] {log}")
 
     def change_qr(self, data: str) -> None:
         """Change the qr code.
