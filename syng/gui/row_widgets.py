@@ -549,6 +549,7 @@ class RowWidget[T](QWidget):
         self._default_button.setFixedWidth(40)
         self._default_button.setIcon(self.style().standardIcon(QStyle.SP_DialogResetButton))  # type: ignore
         self._default_button.clicked.connect(self.reset_default)
+        self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
         self._layout = QHBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
