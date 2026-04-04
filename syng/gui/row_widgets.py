@@ -910,7 +910,9 @@ class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
         def wrapped(initial_value: T | None, default: T) -> DeactivatableInputWidget[T]:
             value = initial_value if initial_value else fallback
             input_widget = input_widget_builder(value, default)
-            deactivatable_input_widget = DeactivatableInputWidget(input_widget, initial_value, None)
+            deactivatable_input_widget = DeactivatableInputWidget(
+                input_widget, initial_value, default
+            )
             return deactivatable_input_widget
 
         return wrapped
