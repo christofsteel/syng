@@ -26,7 +26,7 @@ dependencies = [
     "python-socketio>=5.14.3",
     "aiohttp>=3.9.1",
     "platformdirs>=4.0.0",
-    "yt-dlp[default]>=2026.02.04",
+    "yt-dlp[default]>=2026.03.17",
     "packaging>=25.0",
 ]
 
