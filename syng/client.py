@@ -20,17 +20,17 @@ import datetime
 import logging
 import os
 import signal
-from ssl import SSLError
 import threading
 from argparse import Namespace
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
+from http.client import HTTPSConnection
+from ssl import SSLError
 from traceback import print_exc
 from typing import Any
-from uuid import UUID
-from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlsplit
+from uuid import UUID
 
 import engineio
 import socketio
