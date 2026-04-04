@@ -693,7 +693,7 @@ class StrListWidget(QWidget):
         Args:
             values: new values
         """
-        while self._layout.count() >= 1:
+        while self._layout.count() > 1:
             row = self._layout.itemAt(0)
             if row is not None:
                 widget = row.widget()
