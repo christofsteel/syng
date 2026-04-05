@@ -32,7 +32,7 @@ class FilesSource(FileBasedSource):
     """
 
     config: FileSourceConfig
-    source_name = "files"
+    source_name: str = "files"
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension.
