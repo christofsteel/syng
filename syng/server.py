@@ -1478,27 +1478,6 @@ class Server:
         )
         return str(search_id)
 
-    async def search_and_emit(
-        self, search_id: uuid.UUID, query: str, state: State, sid: str
-    ) -> None:
-        """Search for a query on all sources and emit the results.
-
-        Args:
-            search_id: The search id
-            query: The query to search for
-            state: The state of the room
-            sid: The session id of the client
-
-        """
-        results_list = await asyncio.gather(
-            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
-        )
-
-        results = [
-            search_result for source_result in results_list for search_result in source_result
-        ]
-        await self.send_search_results(sid, results, search_id)
-
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:
         """Handle the "search-results" message.
