@@ -5,9 +5,7 @@ clients via the socket.io protocol.
 
 It manages multiple independent rooms, each with its own queue and configuration.
 If configured, the server can be in private mode, where only playback clients with
-a valid registration key can connect. It can also be in restricted mode, where only
-search is forwarded to the playback client, unless the client has a valid registration
-key.
+a valid registration key can connect.
 """
 
 from __future__ import annotations
@@ -961,8 +959,7 @@ class Server:
     def check_registration(self, key: str) -> bool:
         """Check if a given key is in the registration keyfile.
 
-        This is used to authenticate a client, if the server is in private or
-        restricted mode.
+        This is used to authenticate a client, if the server is in private mode.
 
         Args:
             key: The key to check
@@ -1239,7 +1236,7 @@ class Server:
         playback client will be replaced if and only if, the new playback
         client has the same secret.
 
-        If registration is restricted, abort, if the given key is not in the
+        If the server is private, abort, if the given key is not in the
         registration keyfile.
 
         If no room is provided, a fresh room id is generated.
@@ -1457,10 +1454,7 @@ class Server:
     async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> str:
         """Handle the "search" message.
 
-        If the session is restricted, this forwards the search to the playback client.
-        Otherwise, the search is forwarded to the :py:func:`Source.search` method of each source,
-        and executed concurrently. The order is given by the :py:attr:`Config.sources_prio`
-        attribute of the state.
+        Forwards the search to the playback client.
 
         To track searches between web client and playback client, a search id is created.
 
@@ -1478,16 +1472,10 @@ class Server:
         """
         query = data["query"]
         search_id = uuid.uuid4()
-        if (
-            self.app["type"] != "restricted"
-            or "key" in state.client.config
-            and self.check_registration(state.client.config["key"])
-        ):
-            asyncio.create_task(self.search_and_emit(search_id, query, state, sid))
-        else:
-            await self.sio.emit(
-                "search", {"query": query, "sid": sid, "search_id": search_id}, room=state.sid
-            )
+
+        await self.sio.emit(
+            "search", {"query": query, "sid": sid, "search_id": search_id}, room=state.sid
+        )
         return str(search_id)
 
     async def search_and_emit(
@@ -1662,16 +1650,13 @@ class Server:
             - `root_folder`, the root folder of the web client
             - `registration_keyfile`, the file containing the registration keys
             - `private`, if the server is private
-            - `restricted`, if the server is restricted
             - `admin_port`, the port for the admin interface
 
         Args:
             args: The command line arguments
 
         """
-        self.app["type"] = (
-            "private" if args.private else "restricted" if args.restricted else "public"
-        )
+        self.app["type"] = "private" if args.private else "public"
         if args.registration_keyfile:
             self.app["registration-keyfile"] = args.registration_keyfile
 

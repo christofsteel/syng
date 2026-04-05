@@ -59,8 +59,7 @@ class FileBasedSource(Source, ABC):
     def is_valid(self, entry: Entry) -> bool:
         """Check if an entry is valid.
 
-        An entry is valid, if it is included in the index and this source is registered as its
-        source.
+        An entry is valid, if it its source is registered as this source.
 
         Args:
             entry: The entry to check.
@@ -69,7 +68,7 @@ class FileBasedSource(Source, ABC):
             True iff. the entry is valud.
 
         """
-        return entry.ident in self._index and entry.source == self.source_name
+        return entry.source == self.source_name
 
     def has_correct_extension(self, path: str | None) -> bool:
         """Check if a `path` has a correct extension.
