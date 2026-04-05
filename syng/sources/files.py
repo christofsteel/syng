@@ -47,7 +47,8 @@ class FilesSource(FileBasedSource):
             for path, _, files in os.walk(self.config.dir):
                 for file in files:
                     if self.has_correct_extension(file):
-                        file_list.append(os.path.join(path, file)[len(self.config.dir) :])
+                        relpath = os.path.relpath(os.path.join(path, file), self.config.dir)
+                        file_list.append(relpath)
             return file_list
 
         return await asyncio.to_thread(_get_file_list)
