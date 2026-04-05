@@ -32,7 +32,7 @@ class FilesSource(FileBasedSource):
     """
 
     config: FileSourceConfig
-    source_name = "files"
+    source_name: str = "files"
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension.
@@ -49,6 +49,7 @@ class FilesSource(FileBasedSource):
                     if self.has_correct_extension(file):
                         relpath = os.path.relpath(os.path.join(path, file), self.config.dir)
                         file_list.append(relpath)
+                        print(relpath)
             return file_list
 
         return await asyncio.to_thread(_get_file_list)

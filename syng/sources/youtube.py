@@ -214,7 +214,7 @@ class YoutubeSource(Source):
 
     config: YouTubeConfig
 
-    source_name = "youtube"
+    source_name: str = "youtube"
 
     def __post_init__(self) -> None:
         """Initialize the YoutubeSource."""
