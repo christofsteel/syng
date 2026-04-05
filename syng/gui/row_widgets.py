@@ -488,7 +488,7 @@ class SpinBox(SimpleInputWidget[int]):
 
     @override
     def __init__(self, value: int, default: int, parent: QWidget | None = None) -> None:
-        super().__init__(QSpinBox(value=value), value, default, parent)
+        super().__init__(QSpinBox(value=value, maximum=1_000_000), value, default, parent)
         self._input_widget.setParent(self)
         self._input_widget.textChanged.connect(lambda text: self.valueChanged.emit(int(text)))
 
