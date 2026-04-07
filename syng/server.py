@@ -52,8 +52,7 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source, available_sources
-from syng.sources.source import EntryNotValid
+from syng.sources import Source
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -171,8 +170,6 @@ class Client:
 
     """
 
-    sources: dict[str, type[Source]]
-    sources_prio: list[str]
     config: dict[str, Any]
 
 
@@ -461,26 +458,18 @@ class Server:
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
 
-        source_obj = state.client.sources[data["source"]]
-        try:
-            entry = source_obj.get_entry(
-                data["performer"],
-                data["ident"],
-                data.get("collab_mode"),
-                artist=data["artist"],
-                title=data["title"],
-            )
-            if entry is None:
-                await self.sio.emit(
-                    "msg",
-                    {"msg": f"Unable to add to the waiting room: {data['ident']}."},
-                    room=sid,
-                )
-                return None
-        except EntryNotValid as e:
+        entry = Source.create_incomplete_entry(
+            data["performer"],
+            data["ident"],
+            data.get("collab_mode"),
+            data["source"],
+            artist=data["artist"],
+            title=data["title"],
+        )
+        if entry is None:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to add to the waiting room: {data['ident']}. {e}"},
+                {"msg": f"Unable to add to the waiting room: {data['ident']}."},
                 room=sid,
             )
             return None
@@ -717,27 +706,19 @@ class Server:
 
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
-        source_obj = state.client.sources[data["source"]]
 
-        try:
-            entry = source_obj.get_entry(
-                data["performer"],
-                data["ident"],
-                data.get("collab_mode"),
-                artist=data.get("artist"),
-                title=data.get("title"),
-            )
-            if entry is None:
-                await self.sio.emit(
-                    "msg",
-                    {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
-                    room=sid,
-                )
-                return None
-        except EntryNotValid as e:
+        entry = Source.create_incomplete_entry(
+            data["performer"],
+            data["ident"],
+            data.get("collab_mode"),
+            data["source"],
+            artist=data.get("artist"),
+            title=data.get("title"),
+        )
+        if entry is None:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to append {data['ident']}. {e}"},
+                {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
                 room=sid,
             )
             return None
@@ -1198,8 +1179,6 @@ class Server:
         if "key" in data["config"]:
             data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
 
-        sources = {source: available_sources[source] for source in data.get("sources", [])}
-
         if self.app["type"] == "private" and (
             "key" not in data["config"] or not self.check_registration(data["config"]["key"])
         ):
@@ -1230,8 +1209,6 @@ class Server:
                 logger.info("Got new playback client connection for %s", room)
                 old_state.sid = sid
                 old_state.client = Client(
-                    sources=old_state.client.sources,
-                    sources_prio=old_state.client.sources_prio,
                     config=DEFAULT_CONFIG | data["config"],
                 )
                 await self.sio.enter_room(sid, room)
@@ -1251,8 +1228,6 @@ class Server:
                 recent=initial_recent,
                 sid=sid,
                 client=Client(
-                    sources=sources,
-                    sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
                 ),
                 locked=data["config"].get("initial_queue_state", "Unlocked") == "Locked",

@@ -176,8 +176,8 @@ class Source(ABC):
         collab_mode: str | None,
         source_name: str,
         /,
-        artist: str,
-        title: str,
+        artist: str | None,
+        title: str | None,
     ) -> Entry:
         """Create an incomplete entry.
 
