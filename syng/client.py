@@ -141,7 +141,6 @@ class Client:
         self.sio.on("get-meta-info", self.handle_get_meta_info)
         self.sio.on("play", self.handle_play)
         self.sio.on("search", self.handle_search)
-        self.sio.on("request-config", self.handle_request_config)
         self.sio.on("msg", self.handle_msg)
         self.sio.on("disconnect", self.handle_disconnect)
         self.sio.on("room-removed", self.handle_room_removed)
@@ -287,8 +286,11 @@ class Client:
             source = self.sources[entry.source]
             if entry.incomplete_data:
                 meta_info = await source.get_missing_metadata(entry)
-                await self.sio.emit("meta-info", {"uuid": entry.uuid, "meta": meta_info})
                 entry.update(**meta_info)
+                valid = source.is_valid(entry)
+                await self.sio.emit(
+                    "meta-info", {"uuid": entry.uuid, "meta": meta_info, "valid": valid}
+                )
 
             if entry.ident in source.downloaded_files:
                 continue
@@ -314,11 +316,6 @@ class Client:
         This is called when the client successfully connects to the server
         and starts the video player.
 
-        Start listing all configured :py:class:`syng.sources.source.Source` to the
-        server via a "sources" message. This message will be handled by the
-        :py:func:`syng.server.handle_sources` function and may request additional
-        configuration for each source.
-
         If there is no song playing, start requesting the first song of the queue
         with a "get-first" message. This will be handled on the server by the
         :py:func:`syng.server.handle_get_first` function.
@@ -341,7 +338,6 @@ class Client:
             qr.make()
             qr.print_ascii()
 
-        await self.sio.emit("sources", {"sources": list(self.sources.keys())})
         if self.state.current_source is None:  # A possible race condition can occur here
             await self.sio.emit("get-first")
         self.connection_event.set()
@@ -360,8 +356,11 @@ class Client:
 
         """
         source: Source = self.sources[data["source"]]
-        meta_info: dict[str, Any] = await source.get_missing_metadata(Entry(**data))
-        await self.sio.emit("meta-info", {"uuid": data["uuid"], "meta": meta_info})
+        entry = Entry(**data)
+        meta_info: dict[str, Any] = await source.get_missing_metadata(entry)
+        entry.update(**meta_info)
+        valid = source.is_valid(entry)
+        await self.sio.emit("meta-info", {"uuid": data["uuid"], "valid": valid, "meta": meta_info})
 
     async def preview(self, entry: Entry) -> None:
         """Generate and play a preview for a given :py:class:`Entry`.
@@ -463,60 +462,10 @@ class Client:
             "search-results", {"results": results, "sid": sid, "search_id": search_id}
         )
 
-    async def handle_request_config(self, data: dict[str, Any]) -> None:
-        """Handle the "request-config" message.
-
-        Sends the specific server side configuration for a given
-        :py:class:`syng.sources.source.Source`.
-
-        A Source can decide, that the config will be split up in multiple Parts.
-        If this is the case, multiple "config-chunk" messages will be send with a
-        running enumerator. Otherwise a single "config" message will be send.
-
-        After the configuration is send, the source is asked to update its
-        configuration. This can also be split up in multiple parts.
-
-        Args:
-            data: A dictionary with the entry `source` and a string, that
-                corresponds to the name of a source.
-
-        """
-        await self.connection_event.wait()
-        if data["source"] in self.sources:
-            config: dict[str, Any] | list[dict[str, Any]] = await self.sources[
-                data["source"]
-            ].get_config()
-            if isinstance(config, list):
-                num_chunks: int = len(config)
-                for current, chunk in enumerate(config):
-                    await self.sio.emit(
-                        "config-chunk",
-                        {
-                            "source": data["source"],
-                            "config": chunk,
-                            "number": current,
-                            "total": num_chunks,
-                        },
-                    )
-                    await asyncio.sleep(0.1)  # Avoiding qasync errors
-            else:
-                await self.sio.emit("config", {"source": data["source"], "config": config})
-
-            updated_config = await self.sources[data["source"]].update_config()
-            if isinstance(updated_config, list):
-                num_chunks = len(updated_config)
-                for current, chunk in enumerate(updated_config):
-                    await self.sio.emit(
-                        "config-chunk",
-                        {
-                            "source": data["source"],
-                            "config": chunk,
-                            "number": current,
-                            "total": num_chunks,
-                        },
-                    )
-            elif updated_config is not None:
-                await self.sio.emit("config", {"source": data["source"], "config": updated_config})
+    async def configure_sources(self) -> None:
+        """Configure all enabled sources."""
+        for _, source in self.sources.items():
+            await source.configure()
 
     def signal_handler(self, loop: asyncio.AbstractEventLoop) -> None:
         """Signal handler for the client.
@@ -615,6 +564,8 @@ class Client:
         self.loop = asyncio.get_running_loop()
 
         print(f"Secret: {self.config.general.secret}")
+        for source in self.sources.values():
+            await source.configure()
 
         try:
             data = {
@@ -624,6 +575,7 @@ class Client:
                 "recent": self.state.recent,
                 "config": self.config,
                 "version": SYNG_VERSION,
+                "sources": list(self.sources.keys()),
             }
             await self.connection_state.set_connection_state(Lifecycle.STARTING)
             if not self.config.general.server.startswith("http"):

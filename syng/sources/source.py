@@ -11,8 +11,7 @@ import os.path
 import shlex
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass, field, fields
-from itertools import zip_longest
+from dataclasses import dataclass, field
 from traceback import print_exc
 from typing import Any
 
@@ -95,6 +94,7 @@ class Source(ABC):
 
     config: SourceConfig
     source_name: str = ""
+    build_index: bool = False
 
     def __post_init__(self) -> None:
         """Initialize basic source options."""
@@ -103,7 +103,7 @@ class Source(ABC):
         self.extra_mpv_options: dict[str, str] = {}
         self._skip_next = False
 
-        self.build_index = False
+        # self.build_index = False
         self._index: list[str] = []
 
     def is_valid(self, entry: Entry) -> bool:
@@ -121,8 +121,9 @@ class Source(ABC):
         """
         return True
 
-    async def get_entry(
-        self,
+    @classmethod
+    def get_entry(
+        cls,
         performer: str,
         ident: str,
         collab_mode: str | None,
@@ -151,16 +152,13 @@ class Source(ABC):
             New entry for the identifier, or None, if the ident is
             invalid.
 
-        Raises:
-            EntryNotValid: If the entry is not valid for the source.
-
         """
-        res: Result = Result.from_filename(ident, self.source_name)
+        res: Result = Result.from_filename(ident, cls.source_name)
         if collab_mode not in ["solo", "group", "duet"]:
             collab_mode = None
         entry = Entry(
             ident=ident,
-            source=self.source_name,
+            source=cls.source_name,
             duration=180,
             album=res.album if res.album else "Unknown",
             title=res.title if res.title else title if title else "Unknown",
@@ -169,9 +167,57 @@ class Source(ABC):
             incomplete_data=True,
             collab_mode=collab_mode,
         )
-        if not self.is_valid(entry):
-            raise EntryNotValid(f"Entry {entry} is not valid for source {self.source_name}")
         return entry
+
+    @staticmethod
+    def create_incomplete_entry(
+        performer: str,
+        ident: str,
+        collab_mode: str | None,
+        source_name: str,
+        /,
+        artist: str,
+        title: str,
+    ) -> Entry:
+        """Create an incomplete entry.
+
+        Attributes are guessed from filename, if applicable.
+
+        Args:
+            performer: Performer of the Song
+            ident: Identifier inside the source
+            collab_mode: The collaboration mode
+            source_name: Source to load the song from
+            artist: Artist to set
+            title: Title to set
+
+        Returns:
+            An entry with some data missing (e.g. duration)
+
+        """
+        res: Result = Result.from_filename(ident, source_name)
+        if collab_mode not in ["solo", "group", "duet"]:
+            collab_mode = None
+        entry = Entry(
+            ident=ident,
+            source=source_name,
+            duration=180,
+            album=res.album if res.album else "Unknown",
+            title=res.title if res.title else title if title else "Unknown",
+            artist=res.artist if res.artist else artist if artist else "Unknown",
+            performer=performer,
+            incomplete_data=True,
+            collab_mode=collab_mode,
+        )
+        return entry
+
+    async def configure(self) -> None:
+        """Run configuration for a source."""
+        if self.build_index:
+            self._index = []
+            logger.info(f"{self.source_name}: generating index")
+            self._index = await self.get_file_list()
+            logger.info(f"{self.source_name}: done")
 
     async def search(self, query: str) -> list[Result]:
         """Search the songs from the source for a query.
@@ -356,108 +402,6 @@ class Source(ABC):
 
         """
         return []
-
-    async def update_file_list(self) -> list[str] | None:
-        """Update the internal list of files.
-
-        This is called after the client sends its initial file list to the
-        server to update the list of files since the last time an index file
-        was written.
-
-        It should return None, if the list is already up to date.
-        Otherwise it should return the new list of files.
-
-        Returns:
-            None
-
-        """
-        return None
-
-    async def update_config(self) -> dict[str, Any] | list[dict[str, Any]] | None:
-        """Update the config of the source.
-
-        This is called after the client sends its initial config to the server to
-        update the config. E.g. to update the list of files, that should be send to
-        the server.
-
-        Returns:
-            ``None``, if the config is already up to date, otherwise the new config.
-
-        """
-        if not self.build_index:
-            return None
-        logger.warning(f"{self.source_name}: updating index")
-        new_index = await self.update_file_list()
-        logger.warning(f"{self.source_name}: done")
-        if new_index is not None:
-            self._index = new_index
-            return await self.get_config()
-        return None
-
-    async def get_config(self) -> dict[str, Any] | list[dict[str, Any]]:
-        """Return the part of the config, that should be sent to the server.
-
-        A configuation option is sent to the server, if its metadata has "server"=True
-        annotated.
-
-        The result can be either a dictionary or a list of dictionaries. If it is a
-        dictionary, a single message will be sent. If it is a list, one message
-        will be sent for each entry in the list.
-
-        By default, this is the list of files handled by the source, split into
-        chunks of 1000 filenames. This list is cached internally, so it does
-        not need to be rebuilt, when the client reconnects.
-
-        But this can be any other values, as long as the respective source can
-        handle that data.
-
-        Returns:
-            The part of the config, that should be sent to the server.
-
-        """
-        packages = []
-
-        if self.build_index:
-            if not self._index:
-                self._index = []
-                logger.warning(f"{self.source_name}: generating index")
-                self._index = await self.get_file_list()
-                logger.warning(f"{self.source_name}: done")
-            chunked = zip_longest(*[iter(self._index)] * 1000, fillvalue="")
-            packages = [{"index": list(filter(lambda x: x != "", chunk))} for chunk in chunked]
-
-        first_package = {
-            field.name: getattr(self.config, field.name)
-            for field in fields(self.config)
-            if field.metadata.get("server", False)
-        }
-        if not packages:
-            packages = [first_package]
-        else:
-            packages[0] |= first_package
-        if len(packages) == 1:
-            return first_package
-        return packages
-
-    def add_to_config(self, config: dict[str, Any], running_number: int) -> None:
-        """Add the config to the own config.
-
-        This is called on the server, if :py:func:`Source.get_config` returns a
-        list.
-
-        In the default configuration, this just adds the index key of the
-        config to the index attribute of the source
-
-        If the running_number is 0, the index will be reset.
-
-        Args:
-            config: The part of the config to add.
-            running_number: The running number of the config
-
-        """
-        if running_number == 0:
-            self._index = []
-        self._index += config["index"]
 
 
 available_sources: dict[str, type[Source]] = {}

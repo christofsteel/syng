@@ -28,8 +28,6 @@ import socketio
 from aiohttp import web
 from socketio.exceptions import ConnectionRefusedError
 
-from syng.config import deserialize_config
-
 try:
     from profanity_check import predict
 except ImportError:
@@ -54,7 +52,7 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source, available_sources, get_source_config_type
+from syng.sources import Source, available_sources
 from syng.sources.source import EntryNotValid
 
 DEFAULT_CONFIG = {
@@ -173,7 +171,7 @@ class Client:
 
     """
 
-    sources: dict[str, Source]
+    sources: dict[str, type[Source]]
     sources_prio: list[str]
     config: dict[str, Any]
 
@@ -237,9 +235,6 @@ class Server:
         self.sio.on("waiting-room-to-queue", self.handle_waiting_room_to_queue)
         self.sio.on("queue-to-waiting-room", self.handle_queue_to_waiting_room)
         self.sio.on("pop-then-get-next", self.handle_pop_then_get_next)
-        self.sio.on("sources", self.handle_sources)
-        self.sio.on("config-chunk", self.handle_config_chunk)
-        self.sio.on("config", self.handle_config)
         self.sio.on("remove-room", self.handle_remove_room)
         self.sio.on("skip-current", self.handle_skip_current)
         self.sio.on("move-to", self.handle_move_to)
@@ -468,7 +463,7 @@ class Server:
 
         source_obj = state.client.sources[data["source"]]
         try:
-            entry = await source_obj.get_entry(
+            entry = source_obj.get_entry(
                 data["performer"],
                 data["ident"],
                 data.get("collab_mode"),
@@ -725,7 +720,7 @@ class Server:
         source_obj = state.client.sources[data["source"]]
 
         try:
-            entry = await source_obj.get_entry(
+            entry = source_obj.get_entry(
                 data["performer"],
                 data["ident"],
                 data.get("collab_mode"),
@@ -778,9 +773,7 @@ class Server:
 
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
-            source = entry.source
-            source_obj = state.client.sources[source]
-            if not source_obj.is_valid(entry):
+            if not data.get("valid", False):
                 await self.log_to_playback(
                     state, f"Entry {entry.ident} is not valid.", level="error"
                 )
@@ -1074,87 +1067,6 @@ class Server:
         del self.clients[room]
         logger.info("Removed room %s", room)
 
-    @playback
-    @with_state
-    async def handle_sources(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Handle the "sources" message.
-
-        Get the list of sources the client wants to use. Update internal list of
-        sources, remove unused sources and query for a config for all uninitialized
-        sources by sending a "request-config" message for each such source to the
-        playback client. This will be handled by the
-        :py:func:`syng.client.request-config` function.
-
-        This will not yet add the sources to the configuration, rather gather what
-        sources need to be configured and request their configuration. The list
-        of sources will set the :py:attr:`Config.sources_prio` attribute.
-
-        Args:
-            state: The state of the room.
-            sid: The session id of the playback client
-            data: A dictionary containing a "sources" key, with the list of
-                sources to use.
-
-        """
-        unused_sources = state.client.sources.keys() - data["sources"]
-        new_sources = data["sources"] - state.client.sources.keys()
-
-        for source in unused_sources:
-            del state.client.sources[source]
-
-        state.client.sources_prio = data["sources"]
-
-        for name in new_sources:
-            await self.sio.emit("request-config", {"source": name}, room=sid)
-
-    @playback
-    @with_state
-    async def handle_config_chunk(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Handle the "config-chunk" message.
-
-        This is called, when a source wants its configuration transmitted in
-        chunks, rather than a single message. If the source already exist
-        (e.g. when this is not the first chunk), the config will be added
-        to the source, otherwise a source will be created with the given
-        configuration.
-
-        Args:
-            state: The state of the room
-            sid: The session id of the playback client
-            data: A dictionary with a "source" (str) and a
-                "config" (dict[str, Any]) entry. The exact content of the config entry
-                depends on the source.
-
-        """
-        if data["source"] not in state.client.sources:
-            state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
-        else:
-            state.client.sources[data["source"]].add_to_config(data["config"], data["number"])
-
-    @playback
-    @with_state
-    async def handle_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Handle the "config" message.
-
-        This is called, when a source wants its configuration transmitted in
-        a single message, rather than chunks. A source will be created with the
-        given configuration.
-
-        Args:
-            state: The state of the room.
-            sid: The session id of the playback client
-            data: A dictionary with a "source" (str) and a
-                "config" (dict[str, Any]) entry. The exact content of the config entry
-                depends on the source.
-
-        """
-        logger.debug("handle_config: %s", data)
-        source_to_configure = available_sources[data["source"]]
-        source_config_type = get_source_config_type(source_to_configure)
-        source_config = deserialize_config(source_config_type, data["config"])
-        logger.debug("Source config %s: %s", data["source"], source_config)
-        state.client.sources[data["source"]] = source_to_configure(source_config)
-
     async def handle_connect(
         self, sid: str, environ: dict[str, Any], auth: None | dict[str, Any] = None
     ) -> None:
@@ -1286,6 +1198,8 @@ class Server:
         if "key" in data["config"]:
             data["config"]["key"] = hashlib.sha256(data["config"]["key"].encode()).hexdigest()
 
+        sources = {source: available_sources[source] for source in data.get("sources", [])}
+
         if self.app["type"] == "private" and (
             "key" not in data["config"] or not self.check_registration(data["config"]["key"])
         ):
@@ -1326,7 +1240,7 @@ class Server:
                 logger.warning("Got wrong secret for %s", room)
                 raise ConnectionRefusedError(f"Wrong secret for room {room}.")
         else:
-            logger.info("Registerd new playback client %s", room)
+            logger.info("Registered new playback client %s", room)
             initial_entries = [Entry(**entry) for entry in data["queue"]]
             initial_waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
             initial_recent = [Entry(**entry) for entry in data["recent"]]
@@ -1337,7 +1251,7 @@ class Server:
                 recent=initial_recent,
                 sid=sid,
                 client=Client(
-                    sources={},
+                    sources=sources,
                     sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
                 ),

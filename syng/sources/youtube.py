@@ -12,7 +12,7 @@ import contextlib
 import enum
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import Any, override
 from urllib.parse import urlencode
 
 from platformdirs import user_cache_dir
@@ -262,8 +262,10 @@ class YoutubeSource(Source):
 
         return await super().ensure_playable(entry)
 
-    async def get_entry(
-        self,
+    @override
+    @classmethod
+    def get_entry(
+        cls,
         performer: str,
         ident: str,
         collab_mode: str | None,

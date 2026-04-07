@@ -18,6 +18,7 @@ except ImportError:
     PYMEDIAINFO_AVAILABLE = False
 
 from syng.config import SourceConfig
+from syng.log import logger
 from syng.sources.source import Source
 
 
@@ -49,11 +50,11 @@ class FileBasedSource(Source, ABC):
     """
 
     config: FileBasedConfig
+    build_index: bool = True
 
     def __post_init__(self) -> None:
         """Initialize the source and set default."""
         super().__post_init__()
-        self.build_index = True
         self.extra_mpv_options = {"scale": "oversample"}
 
     def is_valid(self, entry: Entry) -> bool:
@@ -68,6 +69,8 @@ class FileBasedSource(Source, ABC):
             True iff. the entry is valud.
 
         """
+        logger.debug(entry)
+        logger.debug(self.source_name)
         return entry.source == self.source_name
 
     def has_correct_extension(self, path: str | None) -> bool:
