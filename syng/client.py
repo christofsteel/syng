@@ -462,11 +462,6 @@ class Client:
             "search-results", {"results": results, "sid": sid, "search_id": search_id}
         )
 
-    async def configure_sources(self) -> None:
-        """Configure all enabled sources."""
-        for _, source in self.sources.items():
-            await source.configure()
-
     def signal_handler(self, loop: asyncio.AbstractEventLoop) -> None:
         """Signal handler for the client.
 
