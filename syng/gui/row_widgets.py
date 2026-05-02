@@ -889,7 +889,7 @@ class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
         Args:
             enabled: If True, enables the widget, otherwise it disables it.
         """
-        value = self.left_widget.value if enabled else self.default
+        value = self.left_widget.value if enabled else None
         self.left_widget.setEnabled(enabled)
         if value is not None:
             self.left_widget.set_value(value)
