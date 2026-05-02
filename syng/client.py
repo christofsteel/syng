@@ -195,6 +195,9 @@ class Client:
         if await self.connection_state.connection_is([Lifecycle.STARTED]):
             await self.connection_state.set_connection_state(Lifecycle.ENDING)
             await self.sio.disconnect()
+        if await self.connection_state.mpv_is([Lifecycle.ENDING]):
+            self.player.terminate()
+            await self.connection_state.set_mpv_state(Lifecycle.ENDED)
         if (
             not await self.connection_state.mpv_is([Lifecycle.ENDED, Lifecycle.ENDING])
             and self.player.mpv is not None

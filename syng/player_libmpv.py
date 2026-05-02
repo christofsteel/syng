@@ -154,6 +154,7 @@ class Player:
         """
         e = event.as_dict()
         if e["event"] == b"shutdown":
+            self.connection_state.set_mpv_state_no_lock(Lifecycle.ENDING)
             self.quit_callback()
         elif (
             e["event"] == b"file-loaded"
@@ -315,6 +316,13 @@ class Player:
             self.play_background()
         except mpv.ShutdownError:
             self.quit_callback()
+
+    def terminate(self) -> None:
+        """Terminate the MPV-Player."""
+        if not self.mpv:
+            return
+
+        self.mpv.terminate()
 
     async def stop_then_end(self) -> None:
         """Stop playing the current song.
