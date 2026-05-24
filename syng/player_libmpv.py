@@ -13,6 +13,7 @@ from qrcode.main import QRCode
 from syng.config import ClientConfig, QRPosition
 from syng.entry import Entry
 from syng.runningstates import Lifecycle, RunningState
+from syng.log import logger
 
 
 class Player:
@@ -97,13 +98,14 @@ class Player:
         self.next_up_y_pos = -120
         self.mpv.title = "Syng.Rocks! - Player"
         self.mpv.keep_open = "yes"
-        self.play_background()
 
         self.mpv.observe_property("osd-width", self.osd_size_handler)
         self.mpv.observe_property("osd-height", self.osd_size_handler)
         self.mpv.observe_property("playtime-remaining", self.playtime_remaining_handler)
         self.mpv.register_event_callback(self.event_callback)
         self.connection_state.set_mpv_state_no_lock(Lifecycle.STARTED)
+
+        self.play_background()
 
     def playtime_remaining_handler(self, attribute: str, value: float) -> None:
         """Update the "next up" pop-up, if at the end of a song.
@@ -227,6 +229,7 @@ class Player:
             print("MPV is not initialized", file=sys.stderr)
             return
 
+        logger.debug("MPV queue_next()")
         loop = asyncio.get_running_loop()
 
         frame = sys._getframe()
@@ -242,14 +245,19 @@ class Player:
             preview.unregister()
 
         self.mpv.sub_pos = 50
+        logger.debug("MPV queue_next() show preview")
         self.play_image(self.preview_background, 3, sub_file=f"python://{stream_name}")
 
         try:
+            logger.debug("MPV queue_next() wait for eof")
             await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+            logger.debug("MPV queue_next() eof")
         except mpv.ShutdownError:
             self.quit_callback()
 
-    def play_image(self, image: str, duration: int, sub_file: str | None = None) -> None:
+    def play_image(
+        self, image: str, duration: int, sub_file: str | None = None, loop_file: str = "0"
+    ) -> None:
         """Play a static image.
 
         Args:
@@ -264,13 +272,16 @@ class Player:
 
         for property, value in self.default_options.items():
             self.mpv[property] = value
-        self.mpv._set_property("loop-file", "0")
+        self.mpv._set_property("loop-file", loop_file)
         self.mpv.image_display_duration = duration
         self.mpv.keep_open = "yes"
+        logger.debug("MPV play_image(), pause = True")
+        self.mpv.pause = True
         if sub_file:
             self.mpv.loadfile(image, sub_file=sub_file)
         else:
             self.mpv.loadfile(image)
+        logger.debug("MPV play_image(), pause = False")
         self.mpv.pause = False
 
     async def play(
@@ -293,6 +304,7 @@ class Player:
         if self.mpv is None:
             print("MPV is not initialized", file=sys.stderr)
             return
+        logger.debug("MPV: play()")
 
         if override_options is None:
             override_options = {}
@@ -301,9 +313,12 @@ class Player:
 
         for property, value in override_options.items():
             self.mpv[property] = value
+        logger.debug("MPV: play() set properties: %s", override_options)
 
         loop = asyncio.get_running_loop()
+        logger.debug("MPV: set property loop-file = 0")
         self.mpv._set_property("loop-file", "0")
+        logger.debug("MPV play(), pause = True")
         self.mpv.pause = True
         if audio:
             self.callback_audio_load = audio
@@ -311,6 +326,7 @@ class Player:
         else:
             self.mpv.loadfile(video)
         self.mpv.pause = False
+        logger.debug("MPV play(), pause = False")
         try:
             await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
             self.play_background()
@@ -340,11 +356,10 @@ class Player:
         """Show the background image and play the background music."""
         if not self.mpv:
             return
-        self.mpv.pause = True
-        self.mpv._set_property("loop-file", "inf")
-        self.callback_audio_load = self.pause_music
-        self.mpv.image_display_duration = 0
-        self.mpv.loadfile(self.pause_background)
+        logger.debug("MPV: Starting Background Loop")
+        if self.pause_music is not None:
+            self.callback_audio_load = self.pause_music
+        self.play_image(self.pause_background, 0, None, "inf")
         self.mpv.pause = False
 
     def skip_current(self) -> None:
