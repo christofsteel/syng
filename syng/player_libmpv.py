@@ -12,8 +12,8 @@ from qrcode.main import QRCode
 
 from syng.config import ClientConfig, QRPosition
 from syng.entry import Entry
-from syng.runningstates import Lifecycle, RunningState
 from syng.log import logger
+from syng.runningstates import Lifecycle, RunningState
 
 
 class Player:
@@ -264,6 +264,7 @@ class Player:
             image: Path to the image
             duration: Duration to show the image
             sub_file: Path to a subtitle file, or ``None``
+            loop_file: Argument for mpvs loop-file
 
         """
         if self.mpv is None:
