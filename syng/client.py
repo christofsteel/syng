@@ -96,7 +96,9 @@ class Client:
         """
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
-        self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=5)
+        self.sio = socketio.AsyncClient(
+            json=jsonencoder, reconnection_attempts=5, handle_sigint=False
+        )
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
         self.state = State()
