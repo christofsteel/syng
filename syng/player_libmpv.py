@@ -1,6 +1,7 @@
 """Capsules the mpv based player."""
 
 import asyncio
+import contextlib
 import locale
 import os
 import sys
@@ -14,7 +15,6 @@ from syng.config import ClientConfig, QRPosition
 from syng.entry import Entry
 from syng.log import logger
 from syng.runningstates import Lifecycle, RunningState
-import contextlib
 
 
 class Player:
