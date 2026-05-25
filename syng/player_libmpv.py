@@ -14,6 +14,7 @@ from syng.config import ClientConfig, QRPosition
 from syng.entry import Entry
 from syng.log import logger
 from syng.runningstates import Lifecycle, RunningState
+import contextlib
 
 
 class Player:
@@ -158,13 +159,13 @@ class Player:
         if e["event"] == b"shutdown":
             self.connection_state.set_mpv_state_no_lock(Lifecycle.ENDING)
             self.quit_callback()
-        elif (
-            e["event"] == b"file-loaded"
-            and self.callback_audio_load is not None
-            and self.mpv is not None
-        ):
-            self.mpv.audio_add(self.callback_audio_load)
-            self.callback_audio_load = None
+        elif e["event"] == b"file-loaded" and self.mpv is not None:
+            if self.callback_audio_load is not None:
+                with contextlib.suppress(
+                    SystemError
+                ):  # MPV is weird and sometimes this locks up...
+                    self.mpv.audio_add(self.callback_audio_load)
+                self.callback_audio_load = None
 
     def update_qr(self, qr_string: str) -> None:
         """Update the QR code.
@@ -246,6 +247,7 @@ class Player:
 
         self.mpv.sub_pos = 50
         logger.debug("MPV queue_next() show preview")
+        self.callback_audio_load = None
         self.play_image(self.preview_background, 3, sub_file=f"python://{stream_name}")
 
         try:
