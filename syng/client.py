@@ -96,7 +96,9 @@ class Client:
         """
         self.connection_event = asyncio.Event()
         self.connection_state = RunningState()
-        self.sio = socketio.AsyncClient(json=jsonencoder, reconnection_attempts=-1)
+        self.sio = socketio.AsyncClient(
+            json=jsonencoder, reconnection_attempts=5, handle_sigint=False
+        )
         self.loop: asyncio.AbstractEventLoop | None = None
         self.skipped: list[UUID] = []
         self.state = State()
@@ -159,7 +161,7 @@ class Client:
 
         """
         logger.critical("Connection error: %s", data)
-        await self.ensure_disconnect()
+        self.connection_event.clear()
 
     async def handle_unknown_message(self, event: str, data: dict[str, Any]) -> None:
         """Handle unknown messages.
@@ -182,8 +184,7 @@ class Client:
         closed.
 
         """
-        await self.connection_state.set_connection_state(Lifecycle.ENDED)
-        await self.ensure_disconnect()
+        logger.info("Disconnected from server")
 
     async def ensure_disconnect(self) -> None:
         """Ensure that the client is disconnected from the server and the player is terminated."""
@@ -195,6 +196,9 @@ class Client:
         if await self.connection_state.connection_is([Lifecycle.STARTED]):
             await self.connection_state.set_connection_state(Lifecycle.ENDING)
             await self.sio.disconnect()
+        if await self.connection_state.mpv_is([Lifecycle.ENDING]):
+            self.player.terminate()
+            await self.connection_state.set_mpv_state(Lifecycle.ENDED)
         if (
             not await self.connection_state.mpv_is([Lifecycle.ENDED, Lifecycle.ENDING])
             and self.player.mpv is not None
@@ -321,6 +325,14 @@ class Client:
         :py:func:`syng.server.handle_get_first` function.
 
         """
+        if await self.connection_state.client_is([Lifecycle.STARTED]):
+            logger.info("Reconnected to server: %s", self.config.general.server)
+            await self.connection_state.set_connection_state(Lifecycle.STARTED)
+            if self.state.current_source is None:  # A possible race condition can occur here
+                await self.sio.emit("get-first")
+            self.connection_event.set()
+            return
+
         logger.info("Connected to server: %s", self.config.general.server)
         self.player.start()
         room = self.config.general.room
@@ -599,9 +611,12 @@ class Client:
                 loop.add_signal_handler(signal.SIGINT, partial(self.signal_handler, loop))
 
             await self.sio.wait()
+            logger.info("Wait is over")
         except ConnectionError as e:
             logger.warning("Could not connect to server: %s", e.args[0])
         finally:
+            logger.info("Connection terminated")
+            await self.connection_state.set_connection_state(Lifecycle.ENDED)
             await self.ensure_disconnect()
 
 
