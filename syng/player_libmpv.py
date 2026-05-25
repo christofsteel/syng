@@ -6,6 +6,7 @@ import locale
 import os
 import sys
 from collections.abc import Callable, Iterable
+from datetime import timedelta
 from typing import cast
 
 import mpv
@@ -66,6 +67,7 @@ class Player:
         self.pause_music = config.ui.pause_music
         self.pause_background = config.ui.pause_background
         self.preview_background = config.ui.preview_background
+        self.preview_duration = config.ui.preview_duration
         self.update_qr(
             qr_string,
         )
@@ -235,20 +237,23 @@ class Player:
 
         frame = sys._getframe()
         stream_name = f"__python_mpv_play_generator_{hash(frame)}"
+        preview_duration_time_str = str(timedelta(seconds=self.preview_duration))
 
         @self.mpv.python_stream(stream_name)
         def preview() -> Iterable[bytes]:
             subtitle: str = f"""1
-00:00:00,00 --> 00:05:00,00
+00:00:00,00 --> {preview_duration_time_str},00
 {entry.artist} - {entry.title}
 {entry.performer}"""
             yield subtitle.encode()
             preview.unregister()
 
         self.mpv.sub_pos = 50
-        logger.debug("MPV queue_next() show preview")
+        logger.info("MPV: Show Preview for %d seconds", self.preview_duration)
         self.callback_audio_load = None
-        self.play_image(self.preview_background, 3, sub_file=f"python://{stream_name}")
+        self.play_image(
+            self.preview_background, self.preview_duration, sub_file=f"python://{stream_name}"
+        )
 
         try:
             logger.debug("MPV queue_next() wait for eof")
