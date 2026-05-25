@@ -18,6 +18,7 @@ except ImportError:
     PYMEDIAINFO_AVAILABLE = False
 
 from syng.config import SourceConfig
+from syng.log import logger
 from syng.sources.source import Source
 
 
@@ -49,18 +50,17 @@ class FileBasedSource(Source, ABC):
     """
 
     config: FileBasedConfig
+    build_index: bool = True
 
     def __post_init__(self) -> None:
         """Initialize the source and set default."""
         super().__post_init__()
-        self.build_index = True
         self.extra_mpv_options = {"scale": "oversample"}
 
     def is_valid(self, entry: Entry) -> bool:
         """Check if an entry is valid.
 
-        An entry is valid, if it is included in the index and this source is registered as its
-        source.
+        An entry is valid, if it its source is registered as this source.
 
         Args:
             entry: The entry to check.
@@ -69,7 +69,9 @@ class FileBasedSource(Source, ABC):
             True iff. the entry is valud.
 
         """
-        return entry.ident in self._index and entry.source == self.source_name
+        logger.debug(entry)
+        logger.debug(self.source_name)
+        return entry.source == self.source_name
 
     def has_correct_extension(self, path: str | None) -> bool:
         """Check if a `path` has a correct extension.
@@ -127,7 +129,7 @@ class FileBasedSource(Source, ABC):
             info: str | MediaInfo = MediaInfo.parse(file)
             if isinstance(info, str):
                 return 180
-            duration: int = info.audio_tracks[0].to_data()["duration"]
+            duration: int = int(float(info.audio_tracks[0].to_data()["duration"]))
             return duration // 1000
 
         video_path, audio_path = self.get_video_audio_split(path)

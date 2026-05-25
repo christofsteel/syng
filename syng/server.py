@@ -5,9 +5,7 @@ clients via the socket.io protocol.
 
 It manages multiple independent rooms, each with its own queue and configuration.
 If configured, the server can be in private mode, where only playback clients with
-a valid registration key can connect. It can also be in restricted mode, where only
-search is forwarded to the playback client, unless the client has a valid registration
-key.
+a valid registration key can connect.
 """
 
 from __future__ import annotations
@@ -29,8 +27,6 @@ from typing import Any, Concatenate, Literal, cast
 import socketio
 from aiohttp import web
 from socketio.exceptions import ConnectionRefusedError
-
-from syng.config import deserialize_config
 
 try:
     from profanity_check import predict
@@ -56,8 +52,7 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source, available_sources, get_source_config_type
-from syng.sources.source import EntryNotValid
+from syng.sources import Source
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -175,8 +170,6 @@ class Client:
 
     """
 
-    sources: dict[str, Source]
-    sources_prio: list[str]
     config: dict[str, Any]
 
 
@@ -239,9 +232,6 @@ class Server:
         self.sio.on("waiting-room-to-queue", self.handle_waiting_room_to_queue)
         self.sio.on("queue-to-waiting-room", self.handle_queue_to_waiting_room)
         self.sio.on("pop-then-get-next", self.handle_pop_then_get_next)
-        self.sio.on("sources", self.handle_sources)
-        self.sio.on("config-chunk", self.handle_config_chunk)
-        self.sio.on("config", self.handle_config)
         self.sio.on("remove-room", self.handle_remove_room)
         self.sio.on("skip-current", self.handle_skip_current)
         self.sio.on("move-to", self.handle_move_to)
@@ -468,26 +458,18 @@ class Server:
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
 
-        source_obj = state.client.sources[data["source"]]
-        try:
-            entry = await source_obj.get_entry(
-                data["performer"],
-                data["ident"],
-                data.get("collab_mode"),
-                artist=data["artist"],
-                title=data["title"],
-            )
-            if entry is None:
-                await self.sio.emit(
-                    "msg",
-                    {"msg": f"Unable to add to the waiting room: {data['ident']}."},
-                    room=sid,
-                )
-                return None
-        except EntryNotValid as e:
+        entry = Source.create_incomplete_entry(
+            data["performer"],
+            data["ident"],
+            data.get("collab_mode"),
+            data["source"],
+            artist=data["artist"],
+            title=data["title"],
+        )
+        if entry is None:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to add to the waiting room: {data['ident']}. {e}"},
+                {"msg": f"Unable to add to the waiting room: {data['ident']}."},
                 room=sid,
             )
             return None
@@ -724,27 +706,19 @@ class Server:
 
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
-        source_obj = state.client.sources[data["source"]]
 
-        try:
-            entry = await source_obj.get_entry(
-                data["performer"],
-                data["ident"],
-                data.get("collab_mode"),
-                artist=data.get("artist"),
-                title=data.get("title"),
-            )
-            if entry is None:
-                await self.sio.emit(
-                    "msg",
-                    {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
-                    room=sid,
-                )
-                return None
-        except EntryNotValid as e:
+        entry = Source.create_incomplete_entry(
+            data["performer"],
+            data["ident"],
+            data.get("collab_mode"),
+            data["source"],
+            artist=data.get("artist"),
+            title=data.get("title"),
+        )
+        if entry is None:
             await self.sio.emit(
                 "msg",
-                {"msg": f"Unable to append {data['ident']}. {e}"},
+                {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
                 room=sid,
             )
             return None
@@ -780,9 +754,7 @@ class Server:
 
         entry = state.queue.find_by_uuid(data["uuid"])
         if entry is not None:
-            source = entry.source
-            source_obj = state.client.sources[source]
-            if not source_obj.is_valid(entry):
+            if not data.get("valid", False):
                 await self.log_to_playback(
                     state, f"Entry {entry.ident} is not valid.", level="error"
                 )
@@ -961,8 +933,7 @@ class Server:
     def check_registration(self, key: str) -> bool:
         """Check if a given key is in the registration keyfile.
 
-        This is used to authenticate a client, if the server is in private or
-        restricted mode.
+        This is used to authenticate a client, if the server is in private mode.
 
         Args:
             key: The key to check
@@ -1077,87 +1048,6 @@ class Server:
         del self.clients[room]
         logger.info("Removed room %s", room)
 
-    @playback
-    @with_state
-    async def handle_sources(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Handle the "sources" message.
-
-        Get the list of sources the client wants to use. Update internal list of
-        sources, remove unused sources and query for a config for all uninitialized
-        sources by sending a "request-config" message for each such source to the
-        playback client. This will be handled by the
-        :py:func:`syng.client.request-config` function.
-
-        This will not yet add the sources to the configuration, rather gather what
-        sources need to be configured and request their configuration. The list
-        of sources will set the :py:attr:`Config.sources_prio` attribute.
-
-        Args:
-            state: The state of the room.
-            sid: The session id of the playback client
-            data: A dictionary containing a "sources" key, with the list of
-                sources to use.
-
-        """
-        unused_sources = state.client.sources.keys() - data["sources"]
-        new_sources = data["sources"] - state.client.sources.keys()
-
-        for source in unused_sources:
-            del state.client.sources[source]
-
-        state.client.sources_prio = data["sources"]
-
-        for name in new_sources:
-            await self.sio.emit("request-config", {"source": name}, room=sid)
-
-    @playback
-    @with_state
-    async def handle_config_chunk(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Handle the "config-chunk" message.
-
-        This is called, when a source wants its configuration transmitted in
-        chunks, rather than a single message. If the source already exist
-        (e.g. when this is not the first chunk), the config will be added
-        to the source, otherwise a source will be created with the given
-        configuration.
-
-        Args:
-            state: The state of the room
-            sid: The session id of the playback client
-            data: A dictionary with a "source" (str) and a
-                "config" (dict[str, Any]) entry. The exact content of the config entry
-                depends on the source.
-
-        """
-        if data["source"] not in state.client.sources:
-            state.client.sources[data["source"]] = available_sources[data["source"]](data["config"])
-        else:
-            state.client.sources[data["source"]].add_to_config(data["config"], data["number"])
-
-    @playback
-    @with_state
-    async def handle_config(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Handle the "config" message.
-
-        This is called, when a source wants its configuration transmitted in
-        a single message, rather than chunks. A source will be created with the
-        given configuration.
-
-        Args:
-            state: The state of the room.
-            sid: The session id of the playback client
-            data: A dictionary with a "source" (str) and a
-                "config" (dict[str, Any]) entry. The exact content of the config entry
-                depends on the source.
-
-        """
-        logger.debug("handle_config: %s", data)
-        source_to_configure = available_sources[data["source"]]
-        source_config_type = get_source_config_type(source_to_configure)
-        source_config = deserialize_config(source_config_type, data["config"])
-        logger.debug("Source config %s: %s", data["source"], source_config)
-        state.client.sources[data["source"]] = source_to_configure(source_config)
-
     async def handle_connect(
         self, sid: str, environ: dict[str, Any], auth: None | dict[str, Any] = None
     ) -> None:
@@ -1239,7 +1129,7 @@ class Server:
         playback client will be replaced if and only if, the new playback
         client has the same secret.
 
-        If registration is restricted, abort, if the given key is not in the
+        If the server is private, abort, if the given key is not in the
         registration keyfile.
 
         If no room is provided, a fresh room id is generated.
@@ -1319,8 +1209,6 @@ class Server:
                 logger.info("Got new playback client connection for %s", room)
                 old_state.sid = sid
                 old_state.client = Client(
-                    sources=old_state.client.sources,
-                    sources_prio=old_state.client.sources_prio,
                     config=DEFAULT_CONFIG | data["config"],
                 )
                 await self.sio.enter_room(sid, room)
@@ -1329,7 +1217,7 @@ class Server:
                 logger.warning("Got wrong secret for %s", room)
                 raise ConnectionRefusedError(f"Wrong secret for room {room}.")
         else:
-            logger.info("Registerd new playback client %s", room)
+            logger.info("Registered new playback client %s", room)
             initial_entries = [Entry(**entry) for entry in data["queue"]]
             initial_waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
             initial_recent = [Entry(**entry) for entry in data["recent"]]
@@ -1340,8 +1228,6 @@ class Server:
                 recent=initial_recent,
                 sid=sid,
                 client=Client(
-                    sources={},
-                    sources_prio=[],
                     config=DEFAULT_CONFIG | data["config"],
                 ),
                 locked=data["config"].get("initial_queue_state", "Unlocked") == "Locked",
@@ -1457,10 +1343,7 @@ class Server:
     async def handle_search(self, state: State, sid: str, data: dict[str, Any]) -> str:
         """Handle the "search" message.
 
-        If the session is restricted, this forwards the search to the playback client.
-        Otherwise, the search is forwarded to the :py:func:`Source.search` method of each source,
-        and executed concurrently. The order is given by the :py:attr:`Config.sources_prio`
-        attribute of the state.
+        Forwards the search to the playback client.
 
         To track searches between web client and playback client, a search id is created.
 
@@ -1478,38 +1361,11 @@ class Server:
         """
         query = data["query"]
         search_id = uuid.uuid4()
-        if (
-            self.app["type"] != "restricted"
-            or "key" in state.client.config
-            and self.check_registration(state.client.config["key"])
-        ):
-            asyncio.create_task(self.search_and_emit(search_id, query, state, sid))
-        else:
-            await self.sio.emit(
-                "search", {"query": query, "sid": sid, "search_id": search_id}, room=state.sid
-            )
-        return str(search_id)
 
-    async def search_and_emit(
-        self, search_id: uuid.UUID, query: str, state: State, sid: str
-    ) -> None:
-        """Search for a query on all sources and emit the results.
-
-        Args:
-            search_id: The search id
-            query: The query to search for
-            state: The state of the room
-            sid: The session id of the client
-
-        """
-        results_list = await asyncio.gather(
-            *[state.client.sources[source].search(query) for source in state.client.sources_prio]
+        await self.sio.emit(
+            "search", {"query": query, "sid": sid, "search_id": search_id}, room=state.sid
         )
-
-        results = [
-            search_result for source_result in results_list for search_result in source_result
-        ]
-        await self.send_search_results(sid, results, search_id)
+        return str(search_id)
 
     @playback
     async def handle_search_results(self, sid: str, data: dict[str, Any]) -> None:
@@ -1662,16 +1518,13 @@ class Server:
             - `root_folder`, the root folder of the web client
             - `registration_keyfile`, the file containing the registration keys
             - `private`, if the server is private
-            - `restricted`, if the server is restricted
             - `admin_port`, the port for the admin interface
 
         Args:
             args: The command line arguments
 
         """
-        self.app["type"] = (
-            "private" if args.private else "restricted" if args.restricted else "public"
-        )
+        self.app["type"] = "private" if args.private else "public"
         if args.registration_keyfile:
             self.app["registration-keyfile"] = args.registration_keyfile
 

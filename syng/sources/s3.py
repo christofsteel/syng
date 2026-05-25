@@ -7,7 +7,7 @@ import asyncio
 import os
 from dataclasses import dataclass, field
 from json import dump, load
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, override
 
 from platformdirs import user_cache_dir
 
@@ -21,6 +21,7 @@ except ImportError:
     MINIO_AVAILABE = False
 
 from syng.entry import Entry
+from syng.log import logger
 from syng.sources.filebased import FileBasedConfig, FileBasedSource
 from syng.sources.source import available_sources
 
@@ -96,6 +97,22 @@ class S3Source(FileBasedSource):
         ]
         return file_list
 
+    @override
+    async def configure(self) -> None:
+        async def update_file_list() -> None:
+            logger.info(f"Updating {self.source_name} (background task)")
+            file_list = await asyncio.to_thread(self.load_file_list_from_server)
+            self._index = file_list
+            self.write_index(file_list)
+            logger.info("Done updating")
+
+        def remove_update_task(task: asyncio.Task[None]) -> None:
+            del self.update_task
+
+        await super().configure()
+        self.update_task = asyncio.create_task(update_file_list())
+        self.update_task.add_done_callback(remove_update_task)
+
     def write_index(self, file_list: list[str]) -> None:
         """Write the index file.
 
@@ -126,29 +143,16 @@ class S3Source(FileBasedSource):
             if os.path.isfile(self.config.index_file):
                 with open(self.config.index_file, encoding="utf8") as index_file_handle:
                     return cast(list[str], load(index_file_handle))
+            else:
+                return []
 
-            file_list = self.load_file_list_from_server()
-            if not os.path.isfile(self.config.index_file):
-                self.write_index(file_list)
+            # file_list = self.load_file_list_from_server()
+            # if not os.path.isfile(self.config.index_file):
+            #     self.write_index(file_list)
 
-            return file_list
+            # return file_list
 
         return await asyncio.to_thread(_get_file_list)
-
-    async def update_file_list(self) -> list[str] | None:
-        """Rescan the file list and update the index file.
-
-        Returns:
-            The updated file list
-
-        """
-
-        def _update_file_list() -> list[str]:
-            file_list = self.load_file_list_from_server()
-            self.write_index(file_list)
-            return file_list
-
-        return await asyncio.to_thread(_update_file_list)
 
     async def get_missing_metadata(self, entry: Entry) -> dict[str, Any]:
         """Return the duration for the music file.

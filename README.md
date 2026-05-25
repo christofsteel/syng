@@ -82,7 +82,7 @@ There exists one optional dependency for the server: `alt-profanity-check`. If t
 
 ## Docker
 
-Alternatively you can run the server using docker. It listens on port 8080 and reads a key file at `/app/keys.txt` when configured as private or restricted.
+Alternatively you can run the server using docker. It listens on port 8080 and reads a key file at `/app/keys.txt` when configured as private.
 
     docker run --rm -v /path/to/your/keys.txt:/app/keys.txt -p 8080:8080 ghcr.io/christofsteel/syng -H 0.0.0.0
 

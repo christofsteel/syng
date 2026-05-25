@@ -22,7 +22,7 @@ class Result:
 
     ident: str
     source: str
-    title: str
+    title: str | None
     artist: str | None
     album: str | None
     duration: str | None = None
@@ -47,6 +47,7 @@ class Result:
 
         """
         basename = os.path.splitext(filename)[0]
+        album: str | None
         try:
             splitfile = os.path.basename(basename).split(" - ")
             ident = filename
@@ -55,7 +56,8 @@ class Result:
             album = splitfile[2].strip()
             return cls(ident=ident, source=source, title=title, artist=artist, album=album)
         except IndexError:
-            return cls(ident=filename, source=source, title=basename, artist=None, album=None)
+            album = "YouTube" if source == "youtube" else None
+            return cls(ident=filename, source=source, title=None, artist=None, album=album)
 
     @classmethod
     def from_dict(cls, values: dict[str, str]) -> Result:
@@ -103,7 +105,7 @@ class Result:
         output: dict[str, str] = {
             "ident": self.ident,
             "source": self.source,
-            "title": self.title,
+            "title": self.title if self.title is not None else self.ident,
         }
         if self.album is not None:
             output["album"] = self.album
