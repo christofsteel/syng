@@ -255,7 +255,7 @@ class Client:
 
         match data.get("command"):
             case "resume":
-                self.player.play()
+                self.player.resume()
             case "pause":
                 self.player.pause()
 
