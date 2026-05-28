@@ -328,6 +328,14 @@ class Player:
         self.mpv.wait_until_playing()
         self.mpv.terminate()
 
+    def pause(self) -> None:
+        if self.mpv:
+            self.mpv.pause = True
+
+    def resume(self) -> None:
+        if self.mpv:
+            self.mpv.pause = False
+
     def play_background(self) -> None:
         """Show the background image and play the background music."""
         if not self.mpv:

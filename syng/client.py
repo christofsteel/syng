@@ -136,6 +136,7 @@ class Client:
         """Register handlers for the SocketIO client."""
         self.sio.on("update_config", self.handle_update_config)
         self.sio.on("skip-current", self.handle_skip_current)
+        self.sio.on("media-control", self.handle_media_control)
         self.sio.on("state", self.handle_state)
         self.sio.on("connect", self.handle_connect)
         self.sio.on("get-meta-info", self.handle_get_meta_info)
@@ -236,6 +237,27 @@ class Client:
 
         """
         raise NotImplementedError
+
+    async def handle_media_control(self, data: dict[str, Any]) -> None:
+        """Handle the "media-control" message.
+
+        Valid media control commands are "resume" and "pause".
+
+            - "pause" pauses the player if it is running
+            - "resume" resumes playback
+
+        Args:
+            data: dictionary with at least a key "command"
+
+        """
+        if "command" not in data or data.get("command") not in ["resume", "pause"]:
+            logger.warning(f"Received unsupported command '{data.get('command')}'")
+
+        match data.get("command"):
+            case "resume":
+                self.player.play()
+            case "pause":
+                self.player.pause()
 
     async def handle_skip_current(self, data: dict[str, Any]) -> None:
         """Handle the "skip-current" message.

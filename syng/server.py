@@ -234,6 +234,7 @@ class Server:
         self.sio.on("pop-then-get-next", self.handle_pop_then_get_next)
         self.sio.on("remove-room", self.handle_remove_room)
         self.sio.on("skip-current", self.handle_skip_current)
+        self.sio.on("media-control", self.handle_media_control)
         self.sio.on("move-to", self.handle_move_to)
         self.sio.on("move-up", self.handle_move_up)
         self.sio.on("skip", self.handle_skip)
@@ -1253,6 +1254,26 @@ class Server:
         old_entry = await self.discard_first(state)
         await self.sio.emit("skip-current", old_entry, room=state.sid)
         await self.broadcast_state(state, sid=sid)
+
+    @admin
+    @with_state
+    async def handle_media_control(self, state: State, sid: str, data: dict[str, Any]) -> None:
+        """Forward a "media-control" message to the playback client.
+
+        Args:
+            state: The state of the room.
+            sid: The session id of the client, requesting.
+            data: A dictionary with at least a "command" key with a value of:
+                "resume", "pause".
+
+        """
+        if "command" not in data or data["command"] not in ["resume", "pause"]:
+            await self.sio.emit(
+                "msg",
+                {"type": "error", "msg": f"Unsupported command '{data.get('command')}'"},
+                room=sid,
+            )
+        await self.sio.emit("media-control", {"command": data["command"]}, room=state.sid)
 
     @admin
     @with_state
