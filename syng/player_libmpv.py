@@ -329,10 +329,12 @@ class Player:
         self.mpv.terminate()
 
     def pause(self) -> None:
+        """Pause the playback."""
         if self.mpv:
             self.mpv.pause = True
 
     def resume(self) -> None:
+        """Resume the playback."""
         if self.mpv:
             self.mpv.pause = False
 
