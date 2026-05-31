@@ -191,6 +191,8 @@ class State:
         last_seen: Timestamp of the last connected client. Used to determine
             if a room is still in use.
         locked: If the queue is currently locked.
+        is_playing: If the player is currently playing
+        playback_connected: If the playback client is currently connected
 
     """
 
@@ -201,6 +203,8 @@ class State:
     client: Client
     last_seen: datetime.datetime = field(init=False, default_factory=datetime.datetime.now)
     locked: bool
+    is_playing: bool
+    playback_connected: bool
 
 
 class Server:
@@ -418,6 +422,8 @@ class Server:
                 "waiting_room": state.waiting_room,
                 "config": safe_config,
                 "locked": state.locked,
+                "is_playing": state.is_playing,
+                "playback_connected": state.playback_connected,
             },
             room=sid,
         )
@@ -1212,6 +1218,8 @@ class Server:
                 old_state.client = Client(
                     config=DEFAULT_CONFIG | data["config"],
                 )
+                old_state.playback_connected = True
+                old_state.is_playing = True
                 await self.sio.enter_room(sid, room)
                 await self.send_state(self.clients[room], sid)
             else:
@@ -1232,6 +1240,8 @@ class Server:
                     config=DEFAULT_CONFIG | data["config"],
                 ),
                 locked=data["config"].get("initial_queue_state", "Unlocked") == "Locked",
+                is_playing=True,
+                playback_connected=True,
             )
 
             await self.sio.enter_room(sid, room)
@@ -1258,7 +1268,7 @@ class Server:
     @admin
     @with_state
     async def handle_media_control(self, state: State, sid: str, data: dict[str, Any]) -> None:
-        """Forward a "media-control" message to the playback client.
+        """Forward a "media-control" message to all clients.
 
         Args:
             state: The state of the room.
@@ -1267,13 +1277,23 @@ class Server:
                 "resume", "pause".
 
         """
+        logger.debug("Media-control: %s", data)
+        if not state.playback_connected:
+            await self.sio.emit(
+                "msg", {"type": "error", "msg": "No playback client connected"}, room=sid
+            )
+            return
+
         if "command" not in data or data["command"] not in ["resume", "pause"]:
             await self.sio.emit(
                 "msg",
                 {"type": "error", "msg": f"Unsupported command '{data.get('command')}'"},
                 room=sid,
             )
+            return
+        state.is_playing = data["command"] == "resume"
         await self.sio.emit("media-control", {"command": data["command"]}, room=state.sid)
+        await self.broadcast_state(state, sid)
 
     @admin
     @with_state
@@ -1358,6 +1378,10 @@ class Server:
         async with self.sio.session(sid) as session:
             room = session.get("room")
         if room is not None:
+            state = self.clients[room]
+            if sid == state.sid:
+                state.is_playing = False
+                state.playback_connected = False
             await self.sio.leave_room(sid, room)
 
     @with_state

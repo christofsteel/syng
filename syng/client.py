@@ -72,6 +72,7 @@ class State:
     waiting_room: list[Entry] = field(default_factory=list)
     recent: list[Entry] = field(default_factory=list)
     queue_locked: bool = False
+    is_playing: bool = True
 
 
 class Client:
@@ -256,6 +257,7 @@ class Client:
         """
         if "command" not in data or data.get("command") not in ["resume", "pause"]:
             logger.warning(f"Received unsupported command '{data.get('command')}'")
+        logger.debug("Client: Media-control: %s", data.get("command"))
 
         match data.get("command"):
             case "resume":
@@ -307,6 +309,7 @@ class Client:
         self.state.waiting_room = [Entry(**entry) for entry in data["waiting_room"]]
         self.state.recent = [Entry(**entry) for entry in data["recent"]]
         self.state.queue_locked = data["locked"]
+        self.state.is_playing = data["is_playing"]
 
         for pos, entry in enumerate(self.state.queue[0 : self.config.general.buffer_in_advance]):
             source = self.sources[entry.source]
