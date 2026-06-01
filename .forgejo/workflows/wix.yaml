@@ -128,6 +128,7 @@ jobs:
           cp -r syng work/syng
           # cp requirements-client.txt work/reqs.txt
           cp resources/icons/syng.ico work/
+          cp syng/static/background.mp3 work/
           cp syng/static/background.png work/
           cp syng/static/background20perc.png work/
           cp downloads/libmpv-2.dll work/
@@ -144,11 +145,11 @@ jobs:
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
         # if: steps.cache-syng.outputs.cache-hit != 'true'
-        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.mp3;static' --add-data='.\background.png;static' --add-data='.\background20perc.png;static' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
       - name: run PyInstaller (standalone)
         # if: steps.cache-syng.outputs.cache-hit != 'true'
-        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.mp3;static' --add-data='.\background.png;static' --add-data='.\background20perc.png;static' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
       - name: Find wix binaries
         run: |
