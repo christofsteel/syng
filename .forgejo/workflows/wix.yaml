@@ -104,7 +104,7 @@ jobs:
         working-directory: downloads
       - name: Find python
         run: |
-          PYTHON=$(find /wineprefix -iname "python.exe" -exec readlink -f {} \;)
+          PYTHON=$(find /tmp/wineprefix -iname "python.exe" -exec readlink -f {} \;)
           echo "python=$PYTHON" >> $GITHUB_ENV
         working-directory: downloads
 
@@ -114,7 +114,7 @@ jobs:
           ${{ env.wine }} ${{ env.python }} -m pip install pyinstaller
       - name: Find pyinstaller
         run: |
-          PYINSTALLER=$(find /wineprefix -iname "pyinstaller.exe" -exec readlink -f {} \;)
+          PYINSTALLER=$(find /tmp/wineprefix -iname "pyinstaller.exe" -exec readlink -f {} \;)
           echo "pyinstaller=$PYINSTALLER" >> $GITHUB_ENV
       - name: Install wine-mono
         # if: steps.cache-dl.outputs.cache-hit != 'true'
