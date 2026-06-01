@@ -1,22 +1,15 @@
 on:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc'
   workflow_dispatch: {}
 
 env:
-  WINEPREFIX: /wineprefix
+  WINEPREFIX: /tmp/wineprefix
   WINEDLLOVERRIDES: mshtml=
   WINEARCH: win64
   WINEDEBUG: -all
-  WINE_VERSION: 11.1
-  MPV_NIGHTLY: 20260122
-  MPV_HASH: 6e54aa3
-  FFMPEG_HASH: 0c3afc7e5
-  PYTHON_VERSION: 3.13.12
-  MONO_VERSION: 10.4.1
-  DENO_VERSION: 2.6.7
-  PYSIDE_VERSION: 6.9.2
 
 
 jobs:
@@ -29,7 +22,6 @@ jobs:
         run: |
           echo "synghash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "syngversion=$(grep "^version = .*" pyproject.toml | sed "s/version = \"\(.*\)\"/\1/g")" >> $GITHUB_ENV
-          
       - name: Update Ubuntu Repo
         run: apt update -y
       - name: Install dependencies
@@ -37,7 +29,14 @@ jobs:
         # uses: https://github.com/awalsh128/cache-apt-pkgs-action@latest
         # with:
         #   packages: xvfb 7zip
-        run: apt install -y xvfb 7zip
+        run: apt install -y xvfb 7zip jq
+      - name: Get 7z command
+        run: |
+          if which 7z; then echo "P7Z=7z" >> $GITHUB_ENV; else echo "P7Z=7zz" >> $GITHUB_ENV; fi
+      - run: echo 7z command is ${P7Z}
+      - name: Get updated versions for build dependencies
+        run: |
+          cat resources/windows/latest-win-deps >> $GITHUB_ENV
       - name: Create workdirs
         run: |
           mkdir -p wix
@@ -56,13 +55,15 @@ jobs:
       - name: Download everything
         if: steps.cache-dl.outputs.cache-hit != 'true'
         run: |
+          rm -rf *
           wget https://github.com/Kron4ek/Wine-Builds/releases/download/${{ env.WINE_VERSION }}/wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
           tar xvf wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
           rm wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/ffmpeg-x86_64-git-${{ env.FFMPEG_HASH }}.7z -O ffmpeg.7z
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/mpv-dev-x86_64-${{ env.MPV_NIGHTLY }}-git-${{ env.MPV_HASH }}.7z -O mpv.7z
-          7zz x ffmpeg.7z
-          7zz x mpv.7z
+          ls -alh
+          ${P7Z} x ffmpeg.7z
+          ${P7Z} x mpv.7z
           rm ffmpeg.7z mpv.7z
           wget https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-amd64.exe -O python-installer.exe
           wget https://github.com/wine-mono/wine-mono/releases/download/wine-mono-${{ env.MONO_VERSION }}/wine-mono-${{ env.MONO_VERSION }}-x86.msi -O wine-mono.msi
@@ -98,6 +99,7 @@ jobs:
       - name: Run python installer
         # if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
+          echo xvfb-run ${{ env.wine }} python-installer.exe /quiet Include_pip=1
           xvfb-run ${{ env.wine }} python-installer.exe /quiet Include_pip=1
         working-directory: downloads
       - name: Find python
