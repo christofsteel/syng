@@ -17,9 +17,18 @@ function get_latest_python() {
   curl -s https://www.python.org/api/v2/downloads/release/?format=json | jq '.[] | .name' | grep -P "^\"Python \d+.\d+.\d+\"$" | sed 's/"Python \(.*\)"/\1/' | sort --version-sort | tail -n 1
 }
 
+function unquote() {
+  sed 's/\"\(.*\)\"/\1/'
+}
+
+function get_latest_pypi() {
+  PACKAGE=$1
+  curl -s -H "Accept: application/vnd.pypi.simple.v1+json" https://pypi.org/simple/$PACKAGE/ | jq ".versions[]" | sort --version-sort | tail -n 1 | unquote
+}
+
 function get_latest_tag() {
   PROJECT=$1
-  curl -s https://api.github.com/repos/$PROJECT/releases/latest | jq '.tag_name' | sed 's/\"\(.*\)\"/\1/'
+  curl -s https://api.github.com/repos/$PROJECT/releases/latest | jq '.tag_name' | unquote 
 }
 
 echo get wine version 1>&2
@@ -37,6 +46,8 @@ echo get mono version 1>&2
 MONO_VERSION=$(get_latest_tag wine-mono/wine-mono | sed "s/wine-mono-\(.*\)/\1/")
 echo get deno version 1>&2
 DENO_VERSION=$(get_latest_tag denoland/deno | sed "s/v\(.*\)/\1/") 
+echo get pyside version 1>&2
+PYSIDE_VERSION=$(get_latest_pypi pyside6)
 
 
 echo WINE_VERSION=$WINE_VERSION
@@ -46,4 +57,4 @@ echo FFMPEG_HASH=$FFMPEG_HASH
 echo PYTHON_VERSION=$PYTHON_VERSION
 echo MONO_VERSION=$MONO_VERSION
 echo DENO_VERSION=$DENO_VERSION
-
+echo PYSIDE_VERSION=$PYSIDE_VERSION
