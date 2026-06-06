@@ -45,7 +45,7 @@ try:
     from syng.gui import run_gui
 
     GUI_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     if TYPE_CHECKING:
         from syng.gui import run_gui
     gui_exception = traceback.format_exc()
@@ -55,7 +55,7 @@ try:
     from syng.client import run_client
 
     CLIENT_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     if TYPE_CHECKING:
         from syng.client import run_client
 
@@ -65,7 +65,7 @@ try:
     from syng.server import run_server
 
     SERVER_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     if TYPE_CHECKING:
         from syng.server import run_server
 
