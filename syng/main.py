@@ -34,42 +34,9 @@ The config file for the client should be a yaml file in the following style::
 import multiprocessing
 import os
 import shutil
-import traceback
 from argparse import ArgumentParser
-from typing import TYPE_CHECKING
 
 import platformdirs
-
-gui_exception = ""
-try:
-    from syng.gui import run_gui
-
-    GUI_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    if TYPE_CHECKING:
-        from syng.gui import run_gui
-    gui_exception = traceback.format_exc()
-    GUI_AVAILABLE = False
-
-try:
-    from syng.client import run_client
-
-    CLIENT_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    if TYPE_CHECKING:
-        from syng.client import run_client
-
-    CLIENT_AVAILABLE = False
-
-try:
-    from syng.server import run_server
-
-    SERVER_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    if TYPE_CHECKING:
-        from syng.server import run_server
-
-    SERVER_AVAILABLE = False
 
 
 def copy_static_file(filename: str) -> None:
@@ -100,59 +67,56 @@ def main() -> None:
     parser: ArgumentParser = ArgumentParser()
     sub_parsers = parser.add_subparsers(dest="action")
 
-    if CLIENT_AVAILABLE:
-        client_parser = sub_parsers.add_parser("client")
+    client_parser = sub_parsers.add_parser("client")
 
-        client_parser.add_argument("--room", "-r")
-        client_parser.add_argument("--secret", "-s")
-        client_parser.add_argument(
-            "--config-file",
-            "-C",
-            default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
-        )
-        # client_parser.add_argument("--key", "-k", default=None)
-        client_parser.add_argument("--server", "-S")
+    client_parser.add_argument("--room", "-r")
+    client_parser.add_argument("--secret", "-s")
+    client_parser.add_argument(
+        "--config-file",
+        "-C",
+        default=f"{os.path.join(platformdirs.user_config_dir('syng'), 'config.yaml')}",
+    )
+    # client_parser.add_argument("--key", "-k", default=None)
+    client_parser.add_argument("--server", "-S")
 
-    if GUI_AVAILABLE:
-        sub_parsers.add_parser("gui")
+    sub_parsers.add_parser("gui")
 
-    if SERVER_AVAILABLE:
-        root_path = os.path.join(os.path.dirname(__file__), "static")
-        server_parser = sub_parsers.add_parser("server")
-        server_parser.add_argument("--host", "-H", default="localhost")
-        server_parser.add_argument("--port", "-p", type=int, default=8080)
-        server_parser.add_argument("--root-folder", "-r", default=root_path)
-        server_parser.add_argument("--registration-keyfile", "-k", default=None)
-        server_parser.add_argument("--private", "-P", action="store_true", default=False)
-        server_parser.add_argument("--admin-port", "-a", type=int, default=None)
-        server_parser.add_argument(
-            "--log-level",
-            "-l",
-            default="INFO",
-            choices=["DEBUG", "INFO", "WARNING", "ERROR", "FATAL"],
-        )
+    root_path = os.path.join(os.path.dirname(__file__), "static")
+    server_parser = sub_parsers.add_parser("server")
+    server_parser.add_argument("--host", "-H", default="localhost")
+    server_parser.add_argument("--port", "-p", type=int, default=8080)
+    server_parser.add_argument("--root-folder", "-r", default=root_path)
+    server_parser.add_argument("--registration-keyfile", "-k", default=None)
+    server_parser.add_argument("--private", "-P", action="store_true", default=False)
+    server_parser.add_argument("--admin-port", "-a", type=int, default=None)
+    server_parser.add_argument(
+        "--log-level",
+        "-l",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "FATAL"],
+    )
 
     args = parser.parse_args()
 
     if args.action == "client":
+        from syng.client import run_client
+
         copy_static_files()
         run_client(args)
     elif args.action == "server":
+        from syng.server import run_server
+
         run_server(args)
     elif args.action == "gui":
-        if not GUI_AVAILABLE:
-            print("GUI module is not available.")
-            print(gui_exception)
-        else:
-            copy_static_files()
-            run_gui()
+        from syng.gui import run_gui
+
+        copy_static_files()
+        run_gui()
     else:
-        if not GUI_AVAILABLE:
-            print("GUI module is not available.")
-            print(gui_exception)
-        else:
-            copy_static_files()
-            run_gui()
+        from syng.gui import run_gui
+
+        copy_static_files()
+        run_gui()
 
 
 if __name__ == "__main__":
