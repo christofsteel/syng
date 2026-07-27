@@ -298,11 +298,7 @@ class Source(ABC):
         self.downloaded_files[entry.ident].ready.set()
 
     async def skip_current(self, entry: Entry) -> None:
-        """Skips first song in the queue.
-
-        If it is played, the player is killed, if it is still buffered, the
-        buffering is aborted. Then a flag is set to keep the player from
-        playing it.
+        """Skips buffering the first song in the queue.
 
         Args:
             entry: A reference to the first entry of the queue
