@@ -233,7 +233,6 @@ class Player:
             return
 
         logger.debug("MPV queue_next()")
-        loop = asyncio.get_running_loop()
 
         frame = sys._getframe()
         stream_name = f"__python_mpv_play_generator_{hash(frame)}"
@@ -257,7 +256,7 @@ class Player:
 
         try:
             logger.debug("MPV queue_next() wait for eof")
-            await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+            await self.wait_for_current_playback_to_end()
             logger.debug("MPV queue_next() eof")
         except mpv.ShutdownError:
             self.quit_callback()
@@ -323,7 +322,6 @@ class Player:
             self.mpv[property] = value
         logger.debug("MPV: play() set properties: %s", override_options)
 
-        loop = asyncio.get_running_loop()
         logger.debug("MPV: set property loop-file = 0")
         self.mpv._set_property("loop-file", "0")
         logger.debug("MPV play(), pause = True")
@@ -336,10 +334,16 @@ class Player:
         self.mpv.pause = False
         logger.debug("MPV play(), pause = False")
         try:
-            await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
+            await self.wait_for_current_playback_to_end()
             self.play_background()
         except mpv.ShutdownError:
             self.quit_callback()
+
+    async def wait_for_current_playback_to_end(self) -> None:
+        """Block until playback is done."""
+        if self.mpv is not None:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.mpv.wait_for_property, "eof-reached")
 
     def terminate(self) -> None:
         """Terminate the MPV-Player."""
@@ -376,4 +380,4 @@ class Player:
             print("MPV is not initialized", file=sys.stderr)
             return
 
-        self.play_background()
+        self.mpv.seek(-0.01, reference="absolute+exact")
