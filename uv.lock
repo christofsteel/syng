@@ -1454,6 +1454,7 @@ dependencies = [
     { name = "packaging" },
     { name = "platformdirs" },
     { name = "python-socketio" },
+    { name = "pyyaml" },
     { name = "yt-dlp", extra = ["default"] },
 ]
 
@@ -1464,7 +1465,6 @@ client = [
     { name = "pillow" },
     { name = "pymediainfo" },
     { name = "pyside6" },
-    { name = "pyyaml" },
     { name = "qrcode" },
 ]
 profanity = [
@@ -1493,7 +1493,7 @@ requires-dist = [
     { name = "pymediainfo", marker = "extra == 'client'", specifier = ">=6.1.0" },
     { name = "pyside6", marker = "extra == 'client'", specifier = ">=6.7.0" },
     { name = "python-socketio", specifier = ">=5.14.3" },
-    { name = "pyyaml", marker = "extra == 'client'", specifier = ">=6.0.1" },
+    { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "qrcode", marker = "extra == 'client'", specifier = ">=8.2" },
     { name = "yt-dlp", extras = ["default"], specifier = ">=2026.3.17" },
 ]
