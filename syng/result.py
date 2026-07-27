@@ -79,12 +79,12 @@ class Result:
 
         """
         return cls(
-            ident=values["ident"],
-            source=values["source"],
-            title=values["title"],
-            artist=values["artist"],
-            album=values["album"],
-            duration=values.get("duration"),
+            ident=values.get("ident", ""),
+            source=values.get("source", ""),
+            title=values.get("title", ""),
+            artist=values.get("artist", ""),
+            album=values.get("album", ""),
+            duration=values.get("duration", ""),
         )
 
     def to_dict(self) -> dict[str, str]:
