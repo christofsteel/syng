@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
+from platformdirs import user_videos_dir
+
 from syng.entry import Entry
 from syng.sources.filebased import FileBasedConfig, FileBasedSource
 from syng.sources.source import available_sources
@@ -21,18 +23,16 @@ class FileSourceConfig(FileBasedConfig):
 
     __help__ = """<h3>Source for local files.</h3>
     <p>The directory will be scanned for files with the given filename extension, when the<br/>
-    connects. A plus (+) in the extensions means files a common name, but different<br/>
-    extensions. The first part will be used as audio, the latter will be used as video.</p>
-
-    <p>The following attributes can be used for filename matching:
-        <pre>{artist}, {title}, {album}, {extension}</pre>
+    playback client connects. If the contents of the directory changes, you will need to <br/>
+    disconnect and reconnect.</p>
     """
 
     dir: str = field(
-        default=".",
+        default=user_videos_dir(),
         metadata={
             "desc": "Directory to index",
             "semantic": "folder",
+            "help": "Directory where your karaoke files are stored.",
         },
     )
 

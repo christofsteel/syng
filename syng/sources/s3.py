@@ -44,28 +44,47 @@ class S3Config(FileBasedConfig):
     __help__ = """<h3>Source for files on a s3 bucket.</h3>
     <p>The bucket will be scanned for files with the given filename extension, when the client<br/>
     connects. The index file caches all indexed names accross sessions, and is updated in the<br/>
-    background on each new connection.  A plus (+) in the extensions means files a common name,<br/>
-    but different extensions. The first part will be used as audio, the latter will be used as<br/>
-    video.</p>
-
-    <p>The following attributes can be used for filename matching:
-        <pre>{artist}, {title}, {album}, {extension}</pre>
+    background on each new connection.</p>
     """
 
-    endpoint: str = field(default="", metadata={"desc": "Endpoint of the s3"})
-    access_key: str = field(default="", metadata={"desc": "Access key of the s3 (username)"})
-    secret_key: str = field(
-        default="", metadata={"desc": "Secret key of the s3 (password)", "semantic": "password"}
+    endpoint: str = field(
+        default="", metadata={"desc": "Endpoint", "help": """URL to the s3 endpoint"""}
     )
-    secure: bool = field(default=True, metadata={"desc": "Use SSL"})
-    bucket: str = field(default="", metadata={"desc": "Bucket of the s3"})
+    access_key: str = field(
+        default="", metadata={"desc": "Access key", "help": """Access Key or username"""}
+    )
+    secret_key: str = field(
+        default="",
+        metadata={
+            "desc": "Secret key",
+            "semantic": "password",
+            "help": """Secret key or password""",
+        },
+    )
+    secure: bool = field(
+        default=True, metadata={"desc": "SSL", "help": """Use SSL/HTTPS to access the bucket"""}
+    )
+    bucket: str = field(
+        default="", metadata={"desc": "Bucket", "help": """The name of the S3 bucket"""}
+    )
     tmp_dir: str = field(
         default=user_cache_dir("syng"),
-        metadata={"desc": "Folder for\ntemporary download", "semantic": "folder"},
+        metadata={
+            "desc": "Download Directory",
+            "semantic": "folder",
+            "help": """<p>All videos are downloaded before playback. This specifies the download
+            directory for this source.</p>""",
+        },
     )
     index_file: str = field(
-        default=os.path.join(user_cache_dir("syng"), "s3-index"),
-        metadata={"desc": "Index file", "semantic": "file"},
+        default=os.path.join(user_cache_dir("syng"), "s3-cache"),
+        metadata={
+            "desc": "Index cache",
+            "semantic": "file",
+            "help": """<p>Indexing a large s3 can be time consuming.</p>
+            <p>Therefore an index is saved between sessions and updated once the event starts.
+            </p>""",
+        },
     )
 
 

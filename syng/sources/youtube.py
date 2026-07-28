@@ -176,26 +176,50 @@ class YouTubeConfig(SourceConfig):
 
     """
 
-    __help__ = """<h3>Source for accessing YouTube</h3>"""
+    __help__ = """<h3>Source for accessing YouTube</h3>
+    <p>YouTube offers a large collection of free karaoke songs.</p>
+    <p>There are even some channels specialized on karaoke.</p>
+    """
 
     enabled: bool = field(default=True, metadata={"desc": "Enable this source"})
     channels: list[str] = field(
         default_factory=list,
         metadata={
             "desc": "Channel list",
-            "help": "A list of channels to search in. If empty, all of YouTube will be searched.",
+            "help": """<p>A list of channels to restrict the search.</p><p>If no channels are 
+            configured, all of YouTube will be searched.</p>""",
             "server": True,
         },
     )
     tmp_dir: str = field(
         default=user_cache_dir("syng"),
-        metadata={"desc": "Folder for\ntemporary download", "semantic": "folder"},
+        metadata={
+            "desc": "Download Directory",
+            "semantic": "folder",
+            "help": """<p>All videos will be downloaded to this directory prior to playing. Make 
+            sure, that you have enough space in that directory.</p>""",
+        },
     )
     max_res: Resolution = field(
-        default=Resolution.RES720, metadata={"desc": "Maximum resolution\nto download"}
+        default=Resolution.RES720,
+        metadata={
+            "desc": "Maximum resolution",
+            "help": """<p>A lower resolution helps with download speed.</p>
+            <p>Additionally, YouTube restricts some higher quality videos. A value of 720p is 
+            usually enough for karaoke.""",
+        },
     )
     start_streaming: bool = field(
-        default=False, metadata={"desc": "Start streaming if\ndownload is not complete"}
+        default=False,
+        metadata={
+            "desc": "Start streaming",
+            "help": """<p>In general, a video is first downloaded completely before it is played. 
+                    This avoids buffering during playback, especially on slow internet connections,
+                    but may lead to waiting times, if a video is scheduled to be played, directly 
+                    after being added to the queue.</p>
+                    <p>This option allows a video to be streamed, if it should be played, but is
+                    not downloaded completely</p>""",
+        },
     )
     search_suffix: str = field(
         default="karaoke",
