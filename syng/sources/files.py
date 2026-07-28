@@ -24,6 +24,8 @@ class FileSourceConfig(FileBasedConfig):
     connects. A plus (+) in the extensions means files a common name, but different<br/>
     extensions. The first part will be used as audio, the latter will be used as video.</p>
 
+    <p>The following attributes can be used for filename matching:
+        <pre>{artist}, {title}, {album}, {extension}</pre>
     """
 
     dir: str = field(

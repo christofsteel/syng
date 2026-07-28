@@ -61,7 +61,7 @@ class Source(ABC):
     """Parentclass for all sources.
 
     A new source should subclass this, and at least implement
-    :py:func:`Source.do_buffer`, :py:func:`Song.get_entry` and
+    :py:func:`Source.do_buffer`, :py:func:`Source.data_from_ident`,
     :py:func:`Source.get_file_list`, and set the ``source_name``
     attribute.
 
@@ -70,16 +70,6 @@ class Source(ABC):
         - Searching for a query
         - Getting an entry from an identifier
         - Handling the skipping of currently played song
-
-    Some methods of a source will be called by the server and some will be
-    called by the playback client.
-
-    Specific server methods:
-    ``get_entry``, ``search``, ``add_to_config``
-
-    Specific client methods:
-    ``buffer``, ``do_buffer``, ``skip_current``, ``ensure_playable``,
-    ``get_missing_metadata``, ``get_config``
 
     Each source has a reference to all files, that are currently queued to
     download via the :py:attr:`Source.downloaded_files` attribute.
@@ -121,96 +111,6 @@ class Source(ABC):
         """
         return True
 
-    @classmethod
-    def get_entry(
-        cls,
-        performer: str,
-        ident: str,
-        collab_mode: str | None,
-        /,
-        artist: str | None = None,
-        title: str | None = None,
-    ) -> Entry | None:
-        """Create an :py:class:`syng.entry.Entry` from a given identifier.
-
-        By default, this confirmes, that the ident is a valid entry (i.e. part
-        of the indexed list), and builds an Entry by parsing the file name.
-
-        Since the server does not have access to the actual file, only to the
-        file name, ``duration`` can not be set. It will be approximated with
-        180 seconds. When added to the queue, the server will ask the client
-        for additional metadata, like this.
-
-        Args:
-            performer: The performer of the song
-            ident: Unique identifier of the song.
-            collab_mode: Configured collaboration mode
-            artist: Fallback Artist
-            title: Fallback Title
-
-        Returns:
-            New entry for the identifier, or None, if the ident is
-            invalid.
-
-        """
-        res: Result = Result.from_filename(ident, cls.source_name)
-        if collab_mode not in ["solo", "group", "duet"]:
-            collab_mode = None
-        entry = Entry(
-            ident=ident,
-            source=cls.source_name,
-            duration=180,
-            album=res.album if res.album else "Unknown",
-            title=res.title if res.title else title if title else "Unknown",
-            artist=res.artist if res.artist else artist if artist else "Unknown",
-            performer=performer,
-            incomplete_data=True,
-            collab_mode=collab_mode,
-        )
-        return entry
-
-    @staticmethod
-    def create_incomplete_entry(
-        performer: str,
-        ident: str,
-        collab_mode: str | None,
-        source_name: str,
-        /,
-        artist: str | None,
-        title: str | None,
-    ) -> Entry:
-        """Create an incomplete entry.
-
-        Attributes are guessed from filename, if applicable.
-
-        Args:
-            performer: Performer of the Song
-            ident: Identifier inside the source
-            collab_mode: The collaboration mode
-            source_name: Source to load the song from
-            artist: Artist to set
-            title: Title to set
-
-        Returns:
-            An entry with some data missing (e.g. duration)
-
-        """
-        res: Result = Result.from_filename(ident, source_name)
-        if collab_mode not in ["solo", "group", "duet"]:
-            collab_mode = None
-        entry = Entry(
-            ident=ident,
-            source=source_name,
-            duration=180,
-            album=res.album if res.album else "Unknown",
-            title=res.title if res.title else title if title else "Unknown",
-            artist=res.artist if res.artist else artist if artist else "Unknown",
-            performer=performer,
-            incomplete_data=True,
-            collab_mode=collab_mode,
-        )
-        return entry
-
     async def configure(self) -> None:
         """Run configuration for a source."""
         if self.build_index:
@@ -234,8 +134,15 @@ class Source(ABC):
         filtered: list[str] = self.filter_data_by_query(query, self._index)
         results: list[Result] = []
         for filename in filtered:
-            results.append(Result.from_filename(filename, self.source_name))
+            metadata = self.data_from_ident(filename)
+            results.append(
+                Result.from_dict(metadata | {"ident": filename, "source": self.source_name})
+            )
         return results
+
+    @abstractmethod
+    def data_from_ident(self, ident: str) -> dict[str, str]:
+        """Return all known information from the ident in a dictionary."""
 
     @abstractmethod
     async def do_buffer(self, entry: Entry, pos: int) -> tuple[str, str | None]:

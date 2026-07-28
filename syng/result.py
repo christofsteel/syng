@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os.path
 from dataclasses import dataclass
 
 
@@ -26,38 +25,6 @@ class Result:
     artist: str | None
     album: str | None
     duration: str | None = None
-
-    @classmethod
-    def from_filename(cls, filename: str, source: str) -> Result:
-        """Infer some attributes from the filename.
-
-        The filename must be in this form::
-
-            {artist} - {title} - {album}.ext
-
-        If parsing failes, the filename will be used as the title and the
-        artist and album will be set to "Unknown".
-
-        Args:
-            filename: The filename to parse
-            source: The name of the source
-
-        Returns:
-            A ``Result`` with the parsed results
-
-        """
-        basename = os.path.splitext(filename)[0]
-        album: str | None
-        try:
-            splitfile = os.path.basename(basename).split(" - ")
-            ident = filename
-            artist = splitfile[0].strip()
-            title = splitfile[1].strip()
-            album = splitfile[2].strip()
-            return cls(ident=ident, source=source, title=title, artist=artist, album=album)
-        except IndexError:
-            album = "YouTube" if source == "youtube" else None
-            return cls(ident=filename, source=source, title=None, artist=None, album=album)
 
     @classmethod
     def from_dict(cls, values: dict[str, str]) -> Result:

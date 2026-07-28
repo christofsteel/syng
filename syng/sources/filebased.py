@@ -2,9 +2,10 @@
 
 import asyncio
 import os
+import re
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from syng.entry import Entry
 
@@ -35,6 +36,12 @@ class FileBasedConfig(SourceConfig):
         default_factory=lambda: ["mp3+cdg", "mp4", "mkv", "webm"],
         metadata={"desc": "List of filename extensions\n(mp3+cdg, mp4, ...)"},
     )
+    filename_schema: str = field(
+        default="{artist} - {title} - {album}.{extension}",
+        metadata={
+            "desc": "Filename Schema",
+        },
+    )
 
 
 @dataclass
@@ -56,6 +63,40 @@ class FileBasedSource(Source, ABC):
         """Initialize the source and set default."""
         super().__post_init__()
         self.extra_mpv_options = {"scale": "oversample"}
+
+    @staticmethod
+    def __match_re__(match_string: str, ident: str) -> dict[str, str]:
+        """Match against the {var} syntax.
+
+        Args:
+            match_string: Schema in {var} syntax
+            ident: string to match
+
+        Returns:
+            A dictionary with all matches
+
+        """
+        m = re.match(
+            match_string.replace("+", "\\+")
+            .replace("*", "\\*")
+            .replace("(", "\\(")
+            .replace(")", "\\)")
+            .replace("[", "\\[")
+            .replace("]", "\\]")
+            .replace(".", "\\.")
+            .replace("{", "(?P<")
+            .replace("}", ">.+)"),
+            ident,
+        )
+        if m is not None:
+            return m.groupdict()
+        return {}
+
+    @override
+    def data_from_ident(self, ident: str) -> dict[str, str]:
+        return {"artist": "Unknown", "title": ident, "album": "Unknown"} | self.__match_re__(
+            self.config.filename_schema, ident
+        )
 
     def is_valid(self, entry: Entry) -> bool:
         """Check if an entry is valid.
