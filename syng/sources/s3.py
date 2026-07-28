@@ -48,6 +48,8 @@ class S3Config(FileBasedConfig):
     but different extensions. The first part will be used as audio, the latter will be used as<br/>
     video.</p>
 
+    <p>The following attributes can be used for filename matching:
+        <pre>{artist}, {title}, {album}, {extension}</pre>
     """
 
     endpoint: str = field(default="", metadata={"desc": "Endpoint of the s3"})

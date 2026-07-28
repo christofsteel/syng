@@ -52,7 +52,6 @@ from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
 from syng.song_queue import Queue
-from syng.sources import Source
 
 DEFAULT_CONFIG = {
     "preview_duration": 3,
@@ -473,21 +472,20 @@ class Server:
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
 
-        entry = Source.create_incomplete_entry(
-            data["performer"],
-            data["ident"],
-            data.get("collab_mode"),
-            data["source"],
-            artist=data["artist"],
-            title=data["title"],
+        if data.get("collab_mode") not in ["solo", "group", "duet"]:
+            data["collab_mode"] = None
+
+        entry = Entry(
+            ident=data["ident"],
+            source=data["source"],
+            duration=data.get("duration", 180),
+            title=data.get("title"),
+            artist=data.get("artist"),
+            album=data["album"],
+            performer=data["performer"],
+            collab_mode=data.get("collab_mode"),
+            incomplete_data=True,
         )
-        if entry is None:
-            await self.sio.emit(
-                "msg",
-                {"msg": f"Unable to add to the waiting room: {data['ident']}."},
-                room=sid,
-            )
-            return None
 
         if (
             "uid" not in data
@@ -767,21 +765,20 @@ class Server:
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
 
-        entry = Source.create_incomplete_entry(
-            data["performer"],
-            data["ident"],
-            data.get("collab_mode"),
-            data["source"],
-            artist=data.get("artist"),
+        if data.get("collab_mode") not in ["solo", "group", "duet"]:
+            data["collab_mode"] = None
+
+        entry = Entry(
+            ident=data["ident"],
+            source=data["source"],
+            duration=data.get("duration", 180),
             title=data.get("title"),
+            artist=data.get("artist"),
+            album=data["album"],
+            performer=data["performer"],
+            collab_mode=data.get("collab_mode"),
+            incomplete_data=True,
         )
-        if entry is None:
-            await self.sio.emit(
-                "msg",
-                {"msg": f"Unable to append {data['ident']}. Maybe try again?"},
-                room=sid,
-            )
-            return None
 
         logger.debug(f"Appending {entry} to queue in room {state.sid}")
         entry.uid = data.get("uid")

@@ -245,6 +245,10 @@ class YoutubeSource(Source):
             }
         )
 
+    @override
+    def data_from_ident(self, ident: str) -> dict[str, str]:
+        return {"album": "YouTube"}
+
     async def ensure_playable(self, entry: Entry) -> tuple[str, str | None]:
         """Ensure that the entry is playable.
 
@@ -273,45 +277,6 @@ class YoutubeSource(Source):
             return entry.ident, None
 
         return await super().ensure_playable(entry)
-
-    @override
-    @classmethod
-    def get_entry(
-        cls,
-        performer: str,
-        ident: str,
-        collab_mode: str | None,
-        /,
-        artist: str | None = None,
-        title: str | None = None,
-    ) -> Entry | None:
-        """Create an :py:class:`syng.entry.Entry` for the identifier.
-
-        The identifier should be a youtube url. An entry is created with
-        all available metadata for the video.
-
-        Args:
-            performer: The person singing.
-            ident: A url to a YouTube video.
-            collab_mode: The collaboration mode
-            artist: Channel of the video
-            title: Title of the video
-
-        Returns:
-            An entry with the data.
-
-        """
-        return Entry(
-            ident=ident,
-            source="youtube",
-            duration=180,
-            album="YouTube",
-            title=title,
-            artist=artist,
-            performer=performer,
-            incomplete_data=True,
-            collab_mode=collab_mode,
-        )
 
     async def search(self, query: str) -> list[Result]:
         """Search YouTube and the configured channels for the query.
