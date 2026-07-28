@@ -110,6 +110,34 @@ class Player:
 
         self.play_background()
 
+    def pause(self) -> None:
+        """Pause current playback."""
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+
+        self.mpv.pause = True
+
+    def unpause(self) -> None:
+        """Unpause current playback."""
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return
+
+        self.mpv.pause = False
+
+    def get_is_playing(self) -> bool:
+        """Check if the player is currently playing.
+
+        Returns:
+            True, iff the player is currently playing.
+        """
+        if self.mpv is None:
+            print("MPV is not initialized", file=sys.stderr)
+            return False
+
+        return not self.mpv.pause
+
     def playtime_remaining_handler(self, attribute: str, value: float) -> None:
         """Update the "next up" pop-up, if at the end of a song.
 

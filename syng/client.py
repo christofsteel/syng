@@ -146,6 +146,7 @@ class Client:
         self.sio.on("msg", self.handle_msg)
         self.sio.on("disconnect", self.handle_disconnect)
         self.sio.on("room-removed", self.handle_room_removed)
+        self.sio.on("media-control", self.handle_media_control)
         self.sio.on("*", self.handle_unknown_message)
         self.sio.on("connect_error", self.handle_connect_error)
 
@@ -423,6 +424,7 @@ class Client:
         )
         if entry.uuid not in self.skipped:
             try:
+                await self.set_playing(True)
                 if self.config.ui.preview_duration > 0:
                     await self.preview(entry)
                 video, audio = await source.ensure_playable(entry)
@@ -440,6 +442,7 @@ class Client:
         else:
             with contextlib.suppress(BadNamespaceError):
                 await self.sio.emit("pop-then-get-next")
+        await self.set_playing(False)
 
     async def handle_search(self, data: dict[str, Any]) -> None:
         """Handle the "search" message.
@@ -560,6 +563,38 @@ class Client:
 
         """
         logger.info("Room removed: %s", data["room"])
+
+    async def set_playing(self, playing: bool) -> None:
+        """Send playing state to the server.
+
+        Args:
+            playing: playing-state
+        """
+        await self.sio.emit("set-playing", {"playing": playing})
+
+    async def handle_media_control(self, data: dict[str, Any]) -> None:
+        """Handle the "media-control" message.
+
+        data should contain the entry 'command' with the following possible values:
+
+            - play -> start the playback
+            - pause -> pause the playback
+
+        play/pause is ignored, if the playback is already playing or paused. Every change is
+        reported back to the server.
+
+        Args:
+            data: A dictionary with the `command` entry.
+
+        """
+        logger.info("Set playback to: %s", data.get("command"))
+        match data.get("command"):
+            case "play":
+                self.player.unpause()
+            case "pause":
+                self.player.pause()
+
+        await self.set_playing(self.player.get_is_playing())
 
     async def start_client(self) -> None:
         """Initialize the client and connect to the server.
