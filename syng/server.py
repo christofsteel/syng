@@ -191,6 +191,7 @@ class State:
         last_seen: Timestamp of the last connected client. Used to determine
             if a room is still in use.
         locked: If the queue is currently locked.
+        playing: Indicates, if the Playback client is currently playing
 
     """
 
@@ -201,6 +202,7 @@ class State:
     client: Client
     last_seen: datetime.datetime = field(init=False, default_factory=datetime.datetime.now)
     locked: bool
+    playing: bool
 
 
 class Server:
@@ -243,6 +245,8 @@ class Server:
         self.sio.on("search-results", self.handle_search_results)
         self.sio.on("import-queue", self.handle_import_queue)
         self.sio.on("client-msg", self.handle_client_msg)
+        self.sio.on("media-control", self.handle_media_control)
+        self.sio.on("set-playing", self.handle_set_playing)
 
     async def is_admin(self, state: State, sid: str) -> bool:
         """Check if a given sid is an admin in a room.
@@ -427,6 +431,7 @@ class Server:
                 "waiting_room": state.waiting_room,
                 "config": safe_config,
                 "locked": state.locked,
+                "playing": state.playing,
             },
             room=sid,
         )
@@ -563,6 +568,51 @@ class Server:
             entry,
             room=state.sid,
         )
+
+    @admin
+    @with_state
+    async def handle_media_control(self, state: State, sid: str, data: dict[str, Any]) -> None:
+        """Forward media control messages to Playback client.
+
+        Control command is stored in data['command']. Possible values are:
+
+            - play
+            - pause
+
+        Args:
+            state: The state of a room
+            sid: The session id of the client sending this request
+            data: A dict with a string value of 'command'
+
+        """
+        if "command" not in data:
+            await self.send_message("'command' not in data", sid)
+            return
+        if data["command"] not in ["play", "pause"]:
+            await self.send_message("command not play or pause", sid)
+            return
+
+        await self.sio.emit("media-control", {"command": data["command"]}, room=state.sid)
+
+    @playback
+    @with_state
+    async def handle_set_playing(self, state: State, sid: str, data: dict[str, Any]) -> None:
+        """Handle the "set_playing" message.
+
+        Set the playing state to the contents of data['playing'].
+
+        Args:
+            state: The state of a room.
+            sid: The session id of the client sending this request.
+            data: A dictionary with a `playing` key.
+
+        """
+        if "playing" not in data or type(data["playing"]) is not bool:
+            await self.log_to_playback(state, "Incomplete set-playing message", level="error")
+            return
+
+        state.playing = data["playing"]
+        await self.broadcast_state(state)
 
     @admin
     @with_state
@@ -1241,6 +1291,7 @@ class Server:
                     config=DEFAULT_CONFIG | data["config"],
                 ),
                 locked=data["config"].get("initial_queue_state", "Unlocked") == "Locked",
+                playing=False,
             )
 
             await self.sio.enter_room(sid, room)
