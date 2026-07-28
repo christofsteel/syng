@@ -53,7 +53,7 @@ class OptionFrame(QWidget):
         for field in fields(config):
             name = field.name
             description: str = field.metadata.get("desc", "")
-            help: str | None = field.metadata.get("help")
+            help: str = field.metadata.get("help", "")
             semantic: str | None = field.metadata.get("semantic", None)
             hidden: bool = field.metadata.get("hidden", False)
             default: Any = (
@@ -107,7 +107,7 @@ class OptionFrame(QWidget):
         semantic: str | None,
         optional: bool,
         default: T,
-        help: str | None = None,
+        help: str,
     ) -> None:
         """Add a row to the form, depending on the type of an option.
 
@@ -142,12 +142,10 @@ class OptionFrame(QWidget):
         if optional:
             signal_ty = object
 
-        settings_row = make_row(Signal(signal_ty), description, input_widget, self)
+        settings_row = make_row(Signal(signal_ty), description, help, input_widget, self)
 
         self.options[name] = settings_row
         settings_row.valueChanged.connect(partial(self.set_config_field, name))
-        if help is not None:
-            self.form_layout.addRow(QLabel(f"<b>{help}</b>", self))
         self.form_layout.addRow(*settings_row.to_form_tuple())
 
     def __init__(self, parent: QWidget | None, config: Config) -> None:
@@ -164,11 +162,12 @@ class OptionFrame(QWidget):
         self.form_layout = QFormLayout(self)
         self.setLayout(self.form_layout)
         self.options: MutableMapping[str, RowWidget[Any]] = {}
+        self.help_label: QLabel | None = None
 
         self.config = config
         if hasattr(self.config, "__help__") and self.config.__help__:
-            help_label = QLabel(self.config.__help__, self)
-            self.form_layout.addRow(help_label)
+            self.help_label = QLabel(self.config.__help__, self)
+            self.form_layout.addRow(self.help_label)
         self.add_rows_from_config(config)
 
     @property

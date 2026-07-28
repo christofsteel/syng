@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStackedLayout,
     QStyle,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -526,6 +527,7 @@ class RowWidget[T](QWidget):
         self,
         initial_value: T,
         description: str,
+        help: str,
         input_widget: InputWidget[T],
         parent: QWidget,
     ) -> None:
@@ -534,12 +536,15 @@ class RowWidget[T](QWidget):
         Args:
             initial_value: initial value of the widget
             description: The description text
+            help: An optional help text
             input_widget: The widget on the right
             parent: Qt parent widget
 
         """
         super().__init__(parent)
         self.value = initial_value
+        self.help = help
+        self.description = description
         self._label = QLabel(description, self)
         self.valueChanged.connect(self._set_internal_value)
         self._input_widget = input_widget
@@ -554,15 +559,29 @@ class RowWidget[T](QWidget):
         self._default_button.clicked.connect(self.reset_default)
         self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
+        self._help_button = QPushButton(self)
+        self._help_button.setFixedWidth(30)
+        self._help_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarContextHelpButton)
+        )
+        self._help_button.clicked.connect(self.show_help)
+        self._help_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+
         self._layout = QHBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(5)
         self._layout.addWidget(self._input_widget)
         self._layout.addWidget(self._default_button)
+        self._layout.addWidget(self._help_button)
 
     def reset_default(self) -> None:
         """Reset the input widget to its default value."""
         self._input_widget.set_value(self._input_widget.default)
+
+    def show_help(self) -> None:
+        """Open a dialog, showing help."""
+        pos = self.mapToGlobal(self._help_button.pos())
+        QToolTip.showText(pos, self.help)
 
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
@@ -575,6 +594,7 @@ class RowWidget[T](QWidget):
         self._label.setVisible(visible)
         self._input_widget.setVisible(visible)
         self._default_button.setVisible(visible)
+        self._help_button.setVisible(visible)
 
     def to_form_tuple(self) -> tuple[QLabel, QLayout] | tuple[QLabel, QWidget]:
         """Construct a value, that can be insertet into a form.
@@ -605,6 +625,7 @@ class RowWidget[T](QWidget):
 def make_row[T](
     signal: Signal,
     description: str,
+    help: str,
     input_widget: InputWidget[T],
     parent: QWidget,
 ) -> RowWidget[T]:
@@ -615,6 +636,7 @@ def make_row[T](
     Args:
         signal: The Qt-Signal type to emit, if the value has changed.
         description: The text on the description label.
+        help: A helpful text for the option.
         input_widget: The input widget on the right.
         parent: The Qt-parent object.
 
@@ -627,7 +649,7 @@ def make_row[T](
         valueChanged = signal
 
         def __init__(self) -> None:
-            super().__init__(input_widget.value, description, input_widget, parent)
+            super().__init__(input_widget.value, description, help, input_widget, parent)
             self._input_widget.setParent(self)
 
     return SettingsRow()

@@ -34,12 +34,22 @@ class FileBasedConfig(SourceConfig):
 
     extensions: list[str] = field(
         default_factory=lambda: ["mp3+cdg", "mp4", "mkv", "webm"],
-        metadata={"desc": "List of filename extensions\n(mp3+cdg, mp4, ...)"},
+        metadata={
+            "desc": "Filename Extensions",
+            "help": """<p>Only files with these filename extensions will be indexed</p>
+            <p>For files, that have their audio and video parts seperate, you can use the "+" 
+            notation, e.g. mp3+cdg. Files, that belong together must have the same file name, 
+            except the extension. The first part will be used as audio, the latter will be 
+            used as video.</p>""",
+        },
     )
     filename_schema: str = field(
         default="{artist} - {title} - {album}.{extension}",
         metadata={
             "desc": "Filename Schema",
+            "help": """<p>Schema to infer some metadata of the files. The filename will be used 
+            as title, if parsing failes.</p>
+            <p>You can use {artist}, {title}, {album} and {extension} as fields.</p>""",
         },
     )
 
