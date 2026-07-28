@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import os.path
 from dataclasses import dataclass
 
@@ -27,6 +28,25 @@ class Result:
     album: str | None
     duration: str | None = None
 
+    @staticmethod
+    def __match_re__(match_string: str, ident: str) -> dict[str, str]:
+        """Match against the {var} syntax.
+
+        Args:
+            match_string: Schema in {var} syntax
+            ident: string to match
+
+        Returns:
+            A dictionary with all matches
+
+        """
+        m = re.match(
+            match_string.replace(".", "\\.").replace("{", "(?P<").replace("}", ">.+)"), ident
+        )
+        if m is not None:
+            return m.groupdict()
+        return {}
+
     @classmethod
     def from_filename(cls, filename: str, source: str) -> Result:
         """Infer some attributes from the filename.
@@ -46,16 +66,17 @@ class Result:
             A ``Result`` with the parsed results
 
         """
-        basename = os.path.splitext(filename)[0]
+        match_string = "{artist} - {title} - {collection}.{extension}"
+
+        matched = Result.__match_re__(match_string, filename)
+
         album: str | None
         try:
-            splitfile = os.path.basename(basename).split(" - ")
-            ident = filename
-            artist = splitfile[0].strip()
-            title = splitfile[1].strip()
-            album = splitfile[2].strip()
-            return cls(ident=ident, source=source, title=title, artist=artist, album=album)
-        except IndexError:
+            artist = matched["artist"].strip()
+            title = matched["title"].strip()
+            album = matched["collection"].strip()
+            return cls(ident=filename, source=source, title=title, artist=artist, album=album)
+        except KeyError:
             album = "YouTube" if source == "youtube" else None
             return cls(ident=filename, source=source, title=None, artist=None, album=album)
 
