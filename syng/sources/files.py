@@ -19,7 +19,20 @@ class FileSourceConfig(FileBasedConfig):
 
     """
 
-    dir: str = field(default=".", metadata={"desc": "Directory to index", "semantic": "folder"})
+    __help__ = """<h3>Source for local files.</h3>
+    <p>The directory will be scanned for files with the given filename extension, when the<br/>
+    connects. A plus (+) in the extensions means files a common name, but different<br/>
+    extensions. The first part will be used as audio, the latter will be used as video.</p>
+
+    """
+
+    dir: str = field(
+        default=".",
+        metadata={
+            "desc": "Directory to index",
+            "semantic": "folder",
+        },
+    )
 
 
 @dataclass

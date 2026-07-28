@@ -176,9 +176,16 @@ class YouTubeConfig(SourceConfig):
 
     """
 
+    __help__ = """<h3>Source for accessing YouTube</h3>"""
+
     enabled: bool = field(default=True, metadata={"desc": "Enable this source"})
     channels: list[str] = field(
-        default_factory=list, metadata={"desc": "A list of channels\nto search in", "server": True}
+        default_factory=list,
+        metadata={
+            "desc": "Channel list",
+            "help": "A list of channels to search in. If empty, all of YouTube will be searched.",
+            "server": True,
+        },
     )
     tmp_dir: str = field(
         default=user_cache_dir("syng"),
@@ -192,12 +199,17 @@ class YouTubeConfig(SourceConfig):
     )
     search_suffix: str = field(
         default="karaoke",
-        metadata={"desc": "A string that is appended\nto each search query", "server": True},
+        metadata={
+            "help": "A string that is appended to each search query, to filter for karaoke songs.",
+            "server": True,
+            "desc": "Seach suffix",
+        },
     )
     max_duration: int = field(
         default=1800,
         metadata={
-            "desc": "The maximum duration\nof a video in seconds\nA value of 0 disables this",
+            "help": "The maximum duration of a video in seconds. A value of 0 disables this.",
+            "desc": "Maximum length",
             "server": True,
         },
     )
