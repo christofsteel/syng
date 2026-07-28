@@ -41,6 +41,15 @@ class S3Config(FileBasedConfig):
 
     """
 
+    __help__ = """<h3>Source for files on a s3 bucket.</h3>
+    <p>The bucket will be scanned for files with the given filename extension, when the client<br/>
+    connects. The index file caches all indexed names accross sessions, and is updated in the<br/>
+    background on each new connection.  A plus (+) in the extensions means files a common name,<br/>
+    but different extensions. The first part will be used as audio, the latter will be used as<br/>
+    video.</p>
+
+    """
+
     endpoint: str = field(default="", metadata={"desc": "Endpoint of the s3"})
     access_key: str = field(default="", metadata={"desc": "Access key of the s3 (username)"})
     secret_key: str = field(
