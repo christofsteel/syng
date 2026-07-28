@@ -393,6 +393,16 @@ class Server:
         """
         await self.sio.emit("msg", {"msg": msg, "type": level}, room=state.sid)
 
+    async def send_message(self, msg: str, sid: str) -> None:
+        """Send a message to some client.
+
+        Args:
+            msg: The message to send
+            sid: The recepient of the message
+
+        """
+        await self.sio.emit("msg", {"msg": msg}, room=sid)
+
     async def send_state(self, state: State, sid: str) -> None:
         """Send the current state (queue and recent-list) to sid.
 
@@ -1408,11 +1418,7 @@ class Server:
         """
         logger.debug(msg=f"Client-msg: {sid}, {data}")
         if "target_sid" in data:
-            await self.sio.emit(
-                "msg",
-                {"msg": data.get("msg")},
-                room=data.get("target_sid"),
-            )
+            await self.send_message(data.get("msg", ""), data["target_sid"])
         else:
             logger.log(level=data.get("type", 1), msg=f"Client-msg: {sid}, {data.get('msg')}")
 
