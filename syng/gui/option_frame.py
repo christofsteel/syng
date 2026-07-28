@@ -10,8 +10,8 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFormLayout,
-    QWidget,
     QLabel,
+    QWidget,
 )
 
 from syng.config import Config
