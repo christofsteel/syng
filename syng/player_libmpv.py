@@ -96,6 +96,7 @@ class Player:
             osd_shadow_offset=10,
             osd_align_x="center",
             osd_align_y="top",
+            autofit_smaller="40%x40%"
         )
         self.next_up_overlay_id = self.mpv.allocate_overlay_id()
         self.next_up_y_pos = -120
