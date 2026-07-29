@@ -547,6 +547,7 @@ class RowWidget[T](QWidget):
         self.description = description
         self._label = QLabel(description, self)
         self._label.setToolTip(help)
+        self._label.setCursor(Qt.WhatsThisCursor)
         self.valueChanged.connect(self._set_internal_value)
         self._input_widget = input_widget
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
