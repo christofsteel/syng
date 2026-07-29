@@ -550,7 +550,6 @@ class RowWidget[T](QWidget):
         self._input_widget = input_widget
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
         self._input_widget.valueChanged.connect(self.set_default_button_enable)
-        self._input_widget.valueChanged.connect(self.set_default_button_enable)
         self._input_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self._default_button = QPushButton(self)
@@ -560,7 +559,6 @@ class RowWidget[T](QWidget):
         )
         self._default_button.clicked.connect(self.reset_default)
         self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self._default_button.setEnabled(False)
         self._default_button.setEnabled(False)
 
         self._help_button = QPushButton(self)
