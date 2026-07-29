@@ -549,6 +549,7 @@ class RowWidget[T](QWidget):
         self.valueChanged.connect(self._set_internal_value)
         self._input_widget = input_widget
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
+        self._input_widget.valueChanged.connect(self.set_default_button_enable)
         self._input_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self._default_button = QPushButton(self)
@@ -558,6 +559,7 @@ class RowWidget[T](QWidget):
         )
         self._default_button.clicked.connect(self.reset_default)
         self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self._default_button.setEnabled(False)
 
         self._help_button = QPushButton(self)
         self._help_button.setFixedWidth(30)
@@ -582,6 +584,18 @@ class RowWidget[T](QWidget):
         """Open a dialog, showing help."""
         pos = self.mapToGlobal(self._help_button.pos())
         QToolTip.showText(pos, self.help)
+    
+    def set_default_button_enable(self, value: T):
+        """ Enables  default buttons if default value got changed
+
+        Args:
+            value: New value that was set in the input widget
+        """
+
+        if value != self._input_widget.default:
+            self._default_button.setEnabled(True)
+        else:
+            self._default_button.setEnabled(False)
 
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
