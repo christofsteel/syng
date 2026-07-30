@@ -563,7 +563,7 @@ class RowWidget[T](QWidget):
         self.valueChanged.connect(self._set_internal_value)
         self._input_widget = input_widget
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
-        self._input_widget.valueChanged.connect(self.set_default_button_enable)
+        self._input_widget.valueChanged.connect(self.update_default_button_enable_flag)
         self._input_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self._default_button = QPushButton(self)
@@ -573,7 +573,7 @@ class RowWidget[T](QWidget):
         )
         self._default_button.clicked.connect(self.reset_default)
         self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.set_default_button_enable()
+        self.update_default_button_enable_flag()
 
         self._help_button = QPushButton(self)
         self._help_button.setFixedWidth(30)
@@ -599,8 +599,12 @@ class RowWidget[T](QWidget):
         pos = self.mapToGlobal(self._help_button.pos())
         QToolTip.showText(pos, self.help)
     
-    def set_default_button_enable(self) -> None:
-        """Enables  default buttons if default value got changed."""
+    def update_default_button_enable_flag(self) -> None:
+        """Update Enable Flag of default buttons.
+
+        If 'value' differs from the 'default' value, the setEnabled Flag gets set to True.
+        Otherwise the Flag gets set to False.
+        """
         self._default_button.setEnabled(self.value != self._input_widget.default)
 
     def setVisible(self, visible: bool, /) -> None:
