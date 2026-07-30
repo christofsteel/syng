@@ -32,7 +32,6 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStackedLayout,
     QStyle,
-    QToolTip,
     QVBoxLayout,
     QWidget,
 )
