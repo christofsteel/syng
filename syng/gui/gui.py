@@ -238,6 +238,11 @@ class SyngGui(QMainWindow):
             if tabbar is not None:
                 tabbar.show()
             self.frm.addWidget(self.qr_widget)
+        # Mypy somehow does not recognize WindowMaximized
+        if self.windowState() & Qt.WindowMaximized != Qt.WindowMaximized:  # type: ignore
+            QApplication.processEvents()
+            QApplication.processEvents()  # Testing showed, we need do do this at least twice...
+            self.resize(self.minimumSizeHint())
 
     def init_tabs(self, show_advanced: bool) -> None:
         """Initialize the tabbar.
