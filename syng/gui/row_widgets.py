@@ -210,7 +210,7 @@ class InputWidget[T](QWidget):
         self.setParent(parent)
         self.value = initial_value
         self.default = default
-        self.valueChanged.connect(self.set_value)
+        self.valueChanged.connect(self._set_internal_value)
 
     @abstractmethod
     def set_widget_value(self, value: T) -> None:
@@ -221,12 +221,23 @@ class InputWidget[T](QWidget):
 
         """
 
+    def _set_internal_value(self, value: T) -> None:
+        """Update the internally stored value.
+
+        Args:
+            value: The new value
+        """
+        self.value = value
+
     def set_value(self, value: T) -> None:
         """Set the internal value.
 
         Also updates the widget value.
+
+        Args:
+            value: The new value
         """
-        self.value = value
+        self._set_internal_value(value)
         self.set_widget_value(value)
 
 
