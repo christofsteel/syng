@@ -914,8 +914,6 @@ class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
         """
         value = self.left_widget.value if enabled else None
         self.left_widget.setEnabled(enabled)
-        if value is not None:
-            self.left_widget.set_value(value)
         self.valueChanged.emit(value)
 
     @staticmethod
