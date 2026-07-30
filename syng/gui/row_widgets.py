@@ -603,7 +603,7 @@ class RowWidget[T](QWidget):
         """Update Enable Flag of default buttons.
 
         If 'value' differs from the 'default' value, the setEnabled Flag gets set to True.
-        Otherwise the Flag gets set to False.
+        Otherwise the Flag gets set to False. As default the button is disabled.
         """
         self._default_button.setEnabled(self.value != self._input_widget.default)
 
