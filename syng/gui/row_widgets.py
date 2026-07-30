@@ -210,6 +210,7 @@ class InputWidget[T](QWidget):
         self.setParent(parent)
         self.value = initial_value
         self.default = default
+        self.valueChanged.connect(self.set_value)
 
     @abstractmethod
     def set_widget_value(self, value: T) -> None:
@@ -720,6 +721,9 @@ class StrListWidget(QWidget):
         Args:
             values: new values
         """
+        if self._values == values:
+            return
+
         while self._layout.count() > 1:
             row = self._layout.itemAt(0)
             if row is not None:
@@ -914,8 +918,6 @@ class DeactivatableInputWidget[T](SplitInputWidget[T, bool, T | None]):
         """
         value = self.left_widget.value if enabled else None
         self.left_widget.setEnabled(enabled)
-        if value is not None:
-            self.left_widget.set_value(value)
         self.valueChanged.emit(value)
 
     @staticmethod
