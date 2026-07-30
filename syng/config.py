@@ -97,7 +97,8 @@ class GeneralConfig(Config):
     __help__ = """<h3>Welcome to Syng.Rocks!</h3>
 
     <p>You can start right up by pressing "connect" and have a YouTube powered karaoke party, <br/>
-    or enable <i>Advanced Options</i> to configure Syng.Rocks! to your liking</p>
+    or enable <i>Advanced Options</i> to configure Syng.Rocks! to your liking.</p>
+    <p><b>Hint:</b> Hover over each option below to find further explanations.</p>
     """
 
     server: str = field(
