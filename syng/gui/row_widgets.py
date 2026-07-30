@@ -210,6 +210,7 @@ class InputWidget[T](QWidget):
         self.setParent(parent)
         self.value = initial_value
         self.default = default
+        self.valueChanged.connect(self.set_value)
 
     @abstractmethod
     def set_widget_value(self, value: T) -> None:
