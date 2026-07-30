@@ -550,7 +550,6 @@ class RowWidget[T](QWidget):
         self._label.setToolTip(help)
         self._label.setCursor(Qt.CursorShape.WhatsThisCursor)
         self.valueChanged.connect(self._set_internal_value)
-        self.valueChanged.connect(self.set_value)
         self._input_widget = input_widget
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
         self._input_widget.valueChanged.connect(self.set_default_button_enable)
@@ -621,8 +620,7 @@ class RowWidget[T](QWidget):
         Args:
             value: new value
         """
-        if self._input_widget.value != value:
-            self._input_widget.set_value(value)
+        self._input_widget.set_value(value)
 
     def _set_internal_value(self, value: T) -> None:
         """Update the internal value.
