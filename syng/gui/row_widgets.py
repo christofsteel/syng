@@ -590,7 +590,7 @@ class RowWidget[T](QWidget):
     
     def set_default_button_enable(self) -> None:
         """Enables  default buttons if default value got changed."""
-        self._default_button.setEnabled(self._input_widget.value != self._input_widget.default)
+        self._default_button.setEnabled(self.value != self._input_widget.default)
 
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
