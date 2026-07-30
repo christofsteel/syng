@@ -547,6 +547,7 @@ class RowWidget[T](QWidget):
         self.description = description
         self._label = QLabel(description, self)
         self.valueChanged.connect(self._set_internal_value)
+        self.valueChanged.connect(self.set_value)
         self._input_widget = input_widget
         self._input_widget.valueChanged.connect(self.valueChanged.emit)
         self._input_widget.valueChanged.connect(self.set_default_button_enable)
@@ -559,7 +560,7 @@ class RowWidget[T](QWidget):
         )
         self._default_button.clicked.connect(self.reset_default)
         self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self._default_button.setEnabled(False)
+        self.set_default_button_enable()
 
         self._help_button = QPushButton(self)
         self._help_button.setFixedWidth(30)
@@ -585,13 +586,9 @@ class RowWidget[T](QWidget):
         pos = self.mapToGlobal(self._help_button.pos())
         QToolTip.showText(pos, self.help)
     
-    def set_default_button_enable(self, value: T) -> None:
-        """Enables  default buttons if default value got changed.
-
-        Args:
-            value: New value that was set in the input widget
-        """
-        self._default_button.setEnabled(value != self._input_widget.default)
+    def set_default_button_enable(self) -> None:
+        """Enables  default buttons if default value got changed."""
+        self._default_button.setEnabled(self._input_widget.value != self._input_widget.default)
 
     def setVisible(self, visible: bool, /) -> None:
         """Set the visibility of the row.
@@ -621,7 +618,8 @@ class RowWidget[T](QWidget):
         Args:
             value: new value
         """
-        self._input_widget.set_value(value)
+        if self._input_widget.value != value:
+            self._input_widget.set_value(value)
 
     def _set_internal_value(self, value: T) -> None:
         """Update the internal value.
