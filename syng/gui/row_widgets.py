@@ -225,6 +225,9 @@ class InputWidget[T](QWidget):
         """Set the internal value.
 
         Also updates the widget value.
+
+        Args:
+            value: The new value
         """
         self.value = value
         self.set_widget_value(value)
