@@ -545,7 +545,8 @@ class Server:
         if (
             (report_to is None or not await self.is_admin(state, report_to))
             and state.client.config.get("last_song") is not None
-            and state.client.config["last_song"] < start_time
+            and datetime.datetime.fromisoformat(state.client.config["last_song"]).timestamp()
+            < start_time
         ):
             if report_to is not None:
                 await self.sio.emit(
