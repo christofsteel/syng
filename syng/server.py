@@ -732,36 +732,6 @@ class Server:
             await self.sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
             return None
 
-        if state.client.config["max_songs_per_person"] is not None:
-            songs_in_queue = list(state.queue.find_all_by_name(data["performer"]))
-
-            if len(songs_in_queue) >= state.client.config["max_songs_per_person"]:
-                old_entries = [
-                    {
-                        "artist": old_entry.artist,
-                        "title": old_entry.title,
-                        "performer": old_entry.performer,
-                    }
-                    for old_entry in songs_in_queue
-                ]
-                await self.sio.emit(
-                    "ask_for_waitingroom",
-                    {
-                        "current_entry": {
-                            "source": data["source"],
-                            "performer": data["performer"],
-                            "ident": data["ident"],
-                            "collab_mode": data.get("collab_mode"),
-                            "artist": data.get("artist"),
-                            "title": data.get("title"),
-                            "uid": data.get("uid"),
-                        },
-                        "old_entries": old_entries,
-                    },
-                    room=sid,
-                )
-                return None
-
         if not state.client.config["allow_collab_mode"]:
             data["collab_mode"] = None
 
@@ -779,6 +749,28 @@ class Server:
             collab_mode=data.get("collab_mode"),
             incomplete_data=True,
         )
+
+        if state.client.config["max_songs_per_person"] is not None:
+            songs_in_queue = list(state.queue.find_all_by_name(entry.performer))
+
+            if len(songs_in_queue) >= state.client.config["max_songs_per_person"]:
+                old_entries = [
+                    {
+                        "artist": old_entry.artist,
+                        "title": old_entry.title,
+                        "performer": old_entry.performer,
+                    }
+                    for old_entry in songs_in_queue
+                ]
+                await self.sio.emit(
+                    "ask_for_waitingroom",
+                    {
+                        "current_entry": entry,
+                        "old_entries": old_entries,
+                    },
+                    room=sid,
+                )
+                return None
 
         logger.debug(f"Appending {entry} to queue in room {state.sid}")
         entry.uid = data.get("uid")
