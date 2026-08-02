@@ -1,8 +1,8 @@
-FROM python:3.14-slim
+FROM python:3.12-bullseye
 
-# ENV PYTHONDONTWRITEBYTECODE=1 \
-#     PYTHONUNBUFFERED=1 \
-ENV PATH=/app/.local/bin:$PATH
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/app/.local/bin:$PATH
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
