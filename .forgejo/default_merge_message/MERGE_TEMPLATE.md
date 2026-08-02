@@ -1,1 +1,1 @@
-Merge pull request '${PullRequestTitle}' from ${HeadOwnerName}/{HeadRepoName}:${HeadBranch} into ${BaseBranch}.
+Merge pull request '${PullRequestTitle}' from ${HeadRepoOwnerName}/${HeadRepoName}:${HeadBranch} into ${BaseBranch}.
