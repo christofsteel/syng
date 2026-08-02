@@ -48,6 +48,7 @@ class FilesSource(FileBasedSource):
 
     config: FileSourceConfig
     source_name: str = "files"
+    display_name: str = "Local Folder"
 
     async def get_file_list(self) -> list[str]:
         """Collect all files in ``dir``, that have the correct filename extension.

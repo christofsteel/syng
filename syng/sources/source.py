@@ -63,7 +63,7 @@ class Source(ABC):
     A new source should subclass this, and at least implement
     :py:func:`Source.do_buffer`, :py:func:`Source.data_from_ident`,
     :py:func:`Source.get_file_list`, and set the ``source_name``
-    attribute.
+    as well as the ``display_name`` attribute.
 
     Source specific tasks will be forwarded to the respective source, like:
         - Buffering the audio/video
@@ -84,6 +84,7 @@ class Source(ABC):
 
     config: SourceConfig
     source_name: str = ""
+    display_name: str = ""
     build_index: bool = False
 
     def __post_init__(self) -> None:

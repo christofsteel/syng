@@ -316,7 +316,8 @@ class SyngGui(QMainWindow):
 
         """
         self.tabs[source_name] = source_tab
-        self.tabview.addTab(self.tabs[source_name], source_name)
+        display_name = available_sources[source_name].display_name
+        self.tabview.addTab(self.tabs[source_name], QIcon(":icons/source.svg"), f"{display_name}")
 
     def add_log_tab(self) -> None:
         """Initialize the logging tab."""

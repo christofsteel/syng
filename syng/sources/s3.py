@@ -99,6 +99,7 @@ class S3Source(FileBasedSource):
 
     config: S3Config
     source_name: str = "s3"
+    display_name: str = "S3 Bucket"
 
     def __post_init__(self) -> None:
         """Initialize the minio client."""
