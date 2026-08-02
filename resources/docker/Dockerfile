@@ -15,7 +15,7 @@ COPY --chown=syng:syng . /app
 
 USER syng
 
-RUN pip install --no-cache-dir --user . \
+RUN pip install --no-cache-dir --user . alt-profanity-check \
     && touch /app/keys.txt
 
 EXPOSE 8080
