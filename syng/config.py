@@ -288,7 +288,8 @@ class UIConfig(Config):
         default=7,
         metadata={
             "desc": "QR Code Box Size",
-            "help": """<p>The size of the qr code, that is shown during performance to join.</p>""",
+            "help": """<p>The number of pixels for every \"block\" of the qr code. This is used to 
+            size of the qr code, that is shown during performance to join.</p>""",
         },
     )
     qr_position: QRPosition = field(
