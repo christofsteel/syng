@@ -1554,7 +1554,12 @@ class Server:
             await self.admin_runner.setup()
             admin_site = web.TCPSite(self.admin_runner, host, admin_port)
             await admin_site.start()
-        logger.info("Starting main server on port %d", port)
+        logger.info(
+            "Starting main server on port %d (version: %s, commit: %s)",
+            port,
+            __version__,
+            self.app.get("commit"),
+        )
         print(f"==== Server on {host}:{port} ====")
         await self.runner.setup()
         site = web.TCPSite(self.runner, host, port)
@@ -1578,8 +1583,16 @@ class Server:
             args: The command line arguments
 
         """
-        git_proc = subprocess.run(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE)
-        git_sha = git_proc.stdout.decode("utf8").strip()
+        try:
+            git_proc = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE
+            )
+            git_sha = git_proc.stdout.decode("utf8").strip()
+        except FileNotFoundError:
+            git_sha = ""
+
+        if not git_sha:
+            git_sha = "unknown"
 
         self.app["commit"] = git_sha
         self.app["type"] = "private" if args.private else "public"
