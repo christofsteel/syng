@@ -2,7 +2,11 @@ name: Check
 
 on:
   push:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
+enable-email-notifications: true
 
 jobs:
   mypy:
