@@ -78,6 +78,7 @@ too-many-ancestors
 
 [tool.mypy]
 mypy_path = "typings"
+exclude = "syng/resources.py"
 
 [[tool.mypy.overrides]]
 module = [
