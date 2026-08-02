@@ -181,6 +181,10 @@ class YouTubeConfig(SourceConfig):
     <p>There are even some channels specialized on karaoke.</p>
     """
 
+    enabled: bool = field(
+        default=True, metadata=SourceConfig.__dataclass_fields__["enabled"].metadata
+    )
+
     channels: list[str] = field(
         default_factory=list,
         metadata={
