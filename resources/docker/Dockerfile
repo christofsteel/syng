@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # RUN apt-get update \
 #     && apt-get install -y --no-install-recommends git \
 #     && rm -rf /var/lib/apt/lists/* \
-RUN useradd -m -d /app syng
+RUN adduser -m -d /app syng
 
 WORKDIR /app
 
