@@ -254,10 +254,6 @@ class SyngGui(QMainWindow):
         self.tabview.setTabsClosable(False)
         self.tabview.setObjectName("tabWidget")
 
-        self.tabview.setTabText(0, "General")
-        for i, source in enumerate(available_sources):
-            self.tabview.setTabText(i + 1, source)
-
         if not show_advanced:
             tabbar = self.tabview.tabBar()
             if tabbar is not None:
@@ -299,7 +295,7 @@ class SyngGui(QMainWindow):
 
         """
         self.general_config = GeneralConfigTab(self, config, self.update_qr)
-        self.tabview.addTab(self.general_config, "General")
+        self.tabview.addTab(self.general_config, QIcon(":icons/settings.svg"), "General")
 
     def add_ui_config(self, config: UIConfig) -> None:
         """Initialize the UI config tab.
@@ -309,18 +305,19 @@ class SyngGui(QMainWindow):
 
         """
         self.ui_config = UIConfigTab(self, config)
-        self.tabview.addTab(self.ui_config, "UI")
+        self.tabview.addTab(self.ui_config, QIcon(":icons/settings.svg"), "UI")
 
-    def add_source_config(self, source_name: str, source_config: SourceConfig) -> None:
-        """Initialize a source config tab.
+    def add_source_tab(self, source_name: str, source_tab: SourceTab) -> None:
+        """Adds a source config tab.
 
         Args:
             source_name: Name of the source
-            source_config: Initial configuration to show.
+            source_tab: Initial configuration to show.
 
         """
-        self.tabs[source_name] = SourceTab(self, source_config)
-        self.tabview.addTab(self.tabs[source_name], source_name)
+        self.tabs[source_name] = source_tab
+        display_name = available_sources[source_name].display_name
+        self.tabview.addTab(self.tabs[source_name], QIcon(":icons/source.svg"), f"{display_name}")
 
     def add_log_tab(self) -> None:
         """Initialize the logging tab."""
@@ -332,7 +329,7 @@ class SyngGui(QMainWindow):
         self.log_text.setReadOnly(True)
         self.log_layout.addWidget(self.log_text)
 
-        self.tabview.addTab(self.log_tab, "Logs")
+        self.tabview.addTab(self.log_tab, QIcon(":icons/logs.svg"), "Logs")
 
     def add_admin_tab(self) -> None:
         """Initialize the admin tab."""
@@ -376,7 +373,7 @@ class SyngGui(QMainWindow):
         )
         self.admin_layout.addWidget(self.version_label)
 
-        self.tabview.addTab(self.admin_tab, "Admin")
+        self.tabview.addTab(self.admin_tab, QIcon(":icons/admin.svg"), "Admin")
 
     def update_version_label(
         self,
@@ -436,7 +433,7 @@ class SyngGui(QMainWindow):
         self.tabs: dict[str, SourceTab] = {}
 
         for source_name, source_config in config.source_configs.items():
-            self.add_source_config(source_name, source_config)
+            self.add_source_tab(source_name, SourceTab(self, source_config))
 
         self.add_admin_tab()
         self.add_log_tab()

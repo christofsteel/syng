@@ -3,5 +3,9 @@
         <file>icons/eye_strike.svg</file>
         <file>icons/eye_clear.svg</file>
         <file>icons/syng.ico</file>
+        <file>icons/admin.svg</file>
+        <file>icons/logs.svg</file>
+        <file>icons/settings.svg</file>
+        <file>icons/source.svg</file>
     </qresource>
 </RCC>
