@@ -1,10 +1,23 @@
-FROM python:3.12-bullseye
-RUN useradd -m -d /app syng
+FROM python:3.14-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/app/.local/bin:$PATH
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -d /app syng
+
+WORKDIR /app
+
+COPY --chown=syng:syng . /app
+
 USER syng
-ENV PATH="/app/.local/bin:${PATH}"
-WORKDIR /app/
-RUN pip install --user alt-profanity-check
-RUN pip install --user "syng[server]@git+https://github.com/christofsteel/syng.git"
-RUN touch /app/keys.txt
+
+RUN pip install --no-cache-dir --user . \
+    && touch /app/keys.txt
+
 EXPOSE 8080
+
 ENTRYPOINT ["syng", "server", "-k", "/app/keys.txt"]
