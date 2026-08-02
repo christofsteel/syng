@@ -17,6 +17,7 @@ import logging
 import os
 import random
 import string
+import subprocess
 import uuid
 from argparse import Namespace
 from collections.abc import AsyncGenerator, Awaitable, Callable
@@ -47,7 +48,7 @@ except ImportError:
         return [0]
 
 
-from syng import SYNG_PROTOCOL_VERSION, SYNG_VERSION, jsonencoder
+from syng import SYNG_PROTOCOL_VERSION, SYNG_VERSION, __version__, jsonencoder
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -263,10 +264,11 @@ class Server:
         async with self.sio.session(sid) as session:
             return "admin" in session and session["admin"]
 
-    async def root_handler(self, request: web.Request) -> web.FileResponse:
+    async def root_handler(self, request: web.Request) -> web.StreamResponse:
         """Handle the index and favicon requests.
 
         If the path of the request ends with "/favicon.ico" return the favicon,
+        if it ends with ".version", it shows information on the server version,
         otherwise the index.html. This way the javascript can read the room code
         from the url.
 
@@ -279,6 +281,10 @@ class Server:
         """
         if request.path.endswith("/favicon.ico"):
             return web.FileResponse(os.path.join(self.app["root_folder"], "favicon.ico"))
+        if request.path.endswith(".version"):
+            return web.json_response(
+                data={"version": __version__, "commit": self.app.get("commit")}
+            )
         return web.FileResponse(os.path.join(self.app["root_folder"], "index.html"))
 
     def get_number_connections(self) -> int:
@@ -355,7 +361,8 @@ class Server:
             for room, state in self.clients.items()
         ]
         info_dict = {
-            "version": SYNG_VERSION,
+            "version": __version__,
+            "hash": self.app.get("commit"),
             "protocol_version": SYNG_PROTOCOL_VERSION,
             "num_connections": self.get_number_connections(),
             "connections": self.get_connections(),
@@ -1571,6 +1578,10 @@ class Server:
             args: The command line arguments
 
         """
+        git_proc = subprocess.run(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE)
+        git_sha = git_proc.stdout.decode("utf8").strip()
+
+        self.app["commit"] = git_sha
         self.app["type"] = "private" if args.private else "public"
         if args.registration_keyfile:
             self.app["registration-keyfile"] = args.registration_keyfile
