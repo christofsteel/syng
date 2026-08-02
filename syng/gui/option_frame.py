@@ -168,6 +168,10 @@ class OptionFrame(QWidget):
         if hasattr(self.config, "__help__") and self.config.__help__:
             self.help_label = QLabel(self.config.__help__, self)
             self.form_layout.addRow(self.help_label)
+            self.help_hover_label = QLabel(
+                "<p><b>Hint:</b> Hover over each option below for help.</p>"
+            )
+            self.form_layout.addRow(self.help_hover_label)
         self.add_rows_from_config(config)
 
     @property

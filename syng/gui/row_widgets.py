@@ -32,7 +32,6 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStackedLayout,
     QStyle,
-    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -575,30 +574,16 @@ class RowWidget[T](QWidget):
         self._default_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.update_default_button_enable_flag()
 
-        self._help_button = QPushButton(self)
-        self._help_button.setFixedWidth(30)
-        self._help_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarContextHelpButton)
-        )
-        self._help_button.clicked.connect(self.show_help)
-        self._help_button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-
         self._layout = QHBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(5)
         self._layout.addWidget(self._input_widget)
         self._layout.addWidget(self._default_button)
-        self._layout.addWidget(self._help_button)
 
     def reset_default(self) -> None:
         """Reset the input widget to its default value."""
         self._input_widget.set_value(self._input_widget.default)
 
-    def show_help(self) -> None:
-        """Open a dialog, showing help."""
-        pos = self.mapToGlobal(self._help_button.pos())
-        QToolTip.showText(pos, self.help)
-    
     def update_default_button_enable_flag(self) -> None:
         """Update Enable Flag of default buttons.
 
@@ -618,7 +603,6 @@ class RowWidget[T](QWidget):
         self._label.setVisible(visible)
         self._input_widget.setVisible(visible)
         self._default_button.setVisible(visible)
-        self._help_button.setVisible(visible)
 
     def to_form_tuple(self) -> tuple[QLabel, QLayout] | tuple[QLabel, QWidget]:
         """Construct a value, that can be insertet into a form.
