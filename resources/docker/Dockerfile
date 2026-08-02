@@ -1,13 +1,13 @@
-FROM python:3.14-slim
+FROM python:3.14-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH=/app/.local/bin:$PATH
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -d /app syng
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends git \
+#     && rm -rf /var/lib/apt/lists/* \
+RUN useradd -m -d /app syng
 
 WORKDIR /app
 
