@@ -307,15 +307,15 @@ class SyngGui(QMainWindow):
         self.ui_config = UIConfigTab(self, config)
         self.tabview.addTab(self.ui_config, "UI")
 
-    def add_source_config(self, source_name: str, source_config: SourceConfig) -> None:
-        """Initialize a source config tab.
+    def add_source_tab(self, source_name: str, source_tab: SourceTab) -> None:
+        """Adds a source config tab.
 
         Args:
             source_name: Name of the source
-            source_config: Initial configuration to show.
+            source_tab: Initial configuration to show.
 
         """
-        self.tabs[source_name] = SourceTab(self, source_config)
+        self.tabs[source_name] = source_tab
         self.tabview.addTab(self.tabs[source_name], source_name)
 
     def add_log_tab(self) -> None:
@@ -432,7 +432,7 @@ class SyngGui(QMainWindow):
         self.tabs: dict[str, SourceTab] = {}
 
         for source_name, source_config in config.source_configs.items():
-            self.add_source_config(source_name, source_config)
+            self.add_source_tab(source_name, SourceTab(self, source_config))
 
         self.add_admin_tab()
         self.add_log_tab()
