@@ -8,7 +8,7 @@ from datetime import datetime
 from io import BytesIO
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import packaging.version
 
@@ -31,13 +31,8 @@ except ImportError:
 
 
 import platformdirs
-from PySide6.QtCore import (
-    QObject,
-    Qt,
-    Signal,
-    Slot,
-)
-from PySide6.QtGui import QCloseEvent, QIcon, QPixmap
+from PySide6.QtCore import QObject, QResource, Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent, QIcon, QImage, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -287,6 +282,27 @@ class SyngGui(QMainWindow):
         else:
             self.frm.addWidget(self.qr_widget)
 
+    def _colorize_icon(self, resource_path: str, color: str | None = None) -> QIcon:
+        """Colorize an svg icon from a resource.
+
+        Since Qt6 does not implement `currentColor`, we need to change the color of some icons
+        manually for light/dark mode, by replacing currentColor with another color.
+
+        By default, it is colored as the default button text color.
+
+        Args:
+            resource_path: The resource path of the svg
+            color: the color to colorize (default is the current button text color)
+
+        Returns:
+            A QIcon with the svg rendered in the specified color.
+        """
+        if color is None:
+            color = self.palette().color(QPalette.ColorRole.ButtonText).name()
+        resource_data: Any = QResource(resource_path).data()
+        colored_svg_data = resource_data.tobytes().replace(b"currentColor", color.encode())
+        return QIcon(QPixmap.fromImage(QImage.fromData(colored_svg_data)))
+
     def add_general_config(self, config: GeneralConfig) -> None:
         """Initialize the general config tab.
 
@@ -295,7 +311,9 @@ class SyngGui(QMainWindow):
 
         """
         self.general_config = GeneralConfigTab(self, config, self.update_qr)
-        self.tabview.addTab(self.general_config, QIcon(":icons/settings.svg"), "General")
+        self.tabview.addTab(
+            self.general_config, self._colorize_icon(":icons/settings.svg"), "General"
+        )
 
     def add_ui_config(self, config: UIConfig) -> None:
         """Initialize the UI config tab.
@@ -305,7 +323,7 @@ class SyngGui(QMainWindow):
 
         """
         self.ui_config = UIConfigTab(self, config)
-        self.tabview.addTab(self.ui_config, QIcon(":icons/settings.svg"), "UI")
+        self.tabview.addTab(self.ui_config, self._colorize_icon(":icons/settings.svg"), "UI")
 
     def add_source_tab(self, source_name: str, source_tab: SourceTab) -> None:
         """Adds a source config tab.
@@ -317,7 +335,9 @@ class SyngGui(QMainWindow):
         """
         self.tabs[source_name] = source_tab
         display_name = available_sources[source_name].display_name
-        self.tabview.addTab(self.tabs[source_name], QIcon(":icons/source.svg"), f"{display_name}")
+        self.tabview.addTab(
+            self.tabs[source_name], self._colorize_icon(":icons/source.svg"), f"{display_name}"
+        )
 
     def add_log_tab(self) -> None:
         """Initialize the logging tab."""
@@ -329,7 +349,7 @@ class SyngGui(QMainWindow):
         self.log_text.setReadOnly(True)
         self.log_layout.addWidget(self.log_text)
 
-        self.tabview.addTab(self.log_tab, QIcon(":icons/logs.svg"), "Logs")
+        self.tabview.addTab(self.log_tab, self._colorize_icon(":icons/logs.svg"), "Logs")
 
     def add_admin_tab(self) -> None:
         """Initialize the admin tab."""
@@ -373,7 +393,7 @@ class SyngGui(QMainWindow):
         )
         self.admin_layout.addWidget(self.version_label)
 
-        self.tabview.addTab(self.admin_tab, QIcon(":icons/admin.svg"), "Admin")
+        self.tabview.addTab(self.admin_tab, self._colorize_icon(":icons/admin.svg"), "Admin")
 
     def update_version_label(
         self,
