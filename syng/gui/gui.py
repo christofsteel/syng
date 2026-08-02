@@ -254,10 +254,6 @@ class SyngGui(QMainWindow):
         self.tabview.setTabsClosable(False)
         self.tabview.setObjectName("tabWidget")
 
-        self.tabview.setTabText(0, "General")
-        for i, source in enumerate(available_sources):
-            self.tabview.setTabText(i + 1, source)
-
         if not show_advanced:
             tabbar = self.tabview.tabBar()
             if tabbar is not None:
