@@ -295,7 +295,7 @@ class SyngGui(QMainWindow):
 
         """
         self.general_config = GeneralConfigTab(self, config, self.update_qr)
-        self.tabview.addTab(self.general_config, "General")
+        self.tabview.addTab(self.general_config, QIcon(":icons/settings.svg"), "General")
 
     def add_ui_config(self, config: UIConfig) -> None:
         """Initialize the UI config tab.
@@ -305,7 +305,7 @@ class SyngGui(QMainWindow):
 
         """
         self.ui_config = UIConfigTab(self, config)
-        self.tabview.addTab(self.ui_config, "UI")
+        self.tabview.addTab(self.ui_config, QIcon(":icons/settings.svg"), "UI")
 
     def add_source_tab(self, source_name: str, source_tab: SourceTab) -> None:
         """Adds a source config tab.
@@ -329,7 +329,7 @@ class SyngGui(QMainWindow):
         self.log_text.setReadOnly(True)
         self.log_layout.addWidget(self.log_text)
 
-        self.tabview.addTab(self.log_tab, "Logs")
+        self.tabview.addTab(self.log_tab, QIcon(":icons/logs.svg"), "Logs")
 
     def add_admin_tab(self) -> None:
         """Initialize the admin tab."""
@@ -373,7 +373,7 @@ class SyngGui(QMainWindow):
         )
         self.admin_layout.addWidget(self.version_label)
 
-        self.tabview.addTab(self.admin_tab, "Admin")
+        self.tabview.addTab(self.admin_tab, QIcon(":icons/admin.svg"), "Admin")
 
     def update_version_label(
         self,

@@ -1,11 +1,100 @@
 # Resource object code (Python 3)
 # Created by: object code
-# Created by: The Resource Compiler for Qt version 6.7.2
+# Created by: The Resource Compiler for Qt version 6.11.1
 # WARNING! All changes made in this file will be lost!
 
 from PySide6 import QtCore
 
 qt_resource_data = b"\
+\x00\x00\x01b\
+<\
+svg xmlns=\x22http:\
+//www.w3.org/200\
+0/svg\x22 width=\x2224\
+\x22 height=\x2224\x22 fi\
+ll=\x22none\x22 stroke\
+=\x22currentColor\x22 \
+stroke-linecap=\x22\
+round\x22 stroke-li\
+nejoin=\x22round\x22 s\
+troke-width=\x221.8\
+\x22 data-attributi\
+on=\x22cc0-icons\x22 v\
+iewBox=\x220 0 24 2\
+4\x22>\x0a  <path d=\x22M\
+16 18H8m8-4H8m3-\
+4H8m6-8v6h5\x22/>\x0a \
+ <path d=\x22M15 2H\
+6.5c-1.09 0-2 .9\
+1-2 2v16c0 1.09.\
+91 2 2 2h11c1.09\
+ 0 2-.91 2-2V7.5\
+L15 2Z\x22/>\x0a</svg>\
+\x0a\
+\x00\x00\x03\xd8\
+<\
+svg xmlns=\x22http:\
+//www.w3.org/200\
+0/svg\x22 width=\x2224\
+\x22 height=\x2224\x22 fi\
+ll=\x22none\x22 stroke\
+=\x22currentColor\x22 \
+stroke-linecap=\x22\
+round\x22 stroke-li\
+nejoin=\x22round\x22 s\
+troke-width=\x221.8\
+\x22 data-attributi\
+on=\x22cc0-icons\x22 v\
+iewBox=\x220 0 24 2\
+4\x22>\x0a  <g clip-pa\
+th=\x22url(#a)\x22>\x0a  \
+  <path d=\x22M13.6\
+88 2.866c1.267-1\
+.718 3.988-.576 \
+3.649 1.531-.216\
+ 1.34.995 2.537 \
+2.315 2.338 2.11\
+-.319 3.228 2.41\
+2 1.498 3.664-1.\
+099.795-1.088 2.\
+497-.016 3.289 1\
+.718 1.267.576 3\
+.988-1.531 3.649\
+-1.34-.216-2.537\
+.995-2.338 2.315\
+.319 2.11-2.412 \
+3.228-3.665 1.49\
+8-.794-1.099-2.4\
+96-1.088-3.288-.\
+016-1.267 1.718-\
+3.988.576-3.649-\
+1.531.216-1.34-.\
+996-2.537-2.315-\
+2.338-2.11.319-3\
+.228-2.412-1.498\
+-3.665 1.099-.79\
+4 1.089-2.496.01\
+6-3.288-1.718-1.\
+267-.576-3.988 1\
+.531-3.649 1.34.\
+216 2.537-.996 2\
+.338-2.315-.319-\
+2.11 2.412-3.228\
+ 3.664-1.498a2.0\
+36 2.036 0 0 0 3\
+.289.016Z\x22/>\x0a   \
+ <path d=\x22M15.25\
+ 12a3.25 3.25 0 \
+1 1-6.5 0 3.25 3\
+.25 0 0 1 6.5 0Z\
+\x22/>\x0a  </g>\x0a  <de\
+fs>\x0a    <clipPat\
+h id=\x22a\x22>\x0a      \
+<path fill=\x22#fff\
+\x22 d=\x22M0 0h24v24H\
+0z\x22/>\x0a    </clip\
+Path>\x0a  </defs>\x0a\
+</svg>\x0a\
 \x00\x00\x1cc\
 <\
 ?xml version=\x221.\
@@ -1831,6 +1920,62 @@ r\xc9\xce1\xf3\xea\xa7\xdbQ\xa0\x9e:\x99\xa6\xbc\x93\
 \xe6'\x0dD\xe1\xbf\xff\x7f\xc9\xc9<\x0c}\xa5G\x91\
 \x9b\x85\xe1#>\xd8\xf9;\x80\xfe\xd5\x95\xa4\xf3\x1d\x19\
 \x82b\x02\
+\x00\x00\x01\xac\
+<\
+svg xmlns=\x22http:\
+//www.w3.org/200\
+0/svg\x22 width=\x2224\
+\x22 height=\x2224\x22 fi\
+ll=\x22none\x22 stroke\
+=\x22currentColor\x22 \
+stroke-linecap=\x22\
+round\x22 stroke-li\
+nejoin=\x22round\x22 s\
+troke-width=\x221.8\
+\x22 data-attributi\
+on=\x22cc0-icons\x22 v\
+iewBox=\x220 0 24 2\
+4\x22>\x0a  <path d=\x22M\
+12 22s8-2 8-9V5s\
+-2.438-.414-4-1c\
+-1.562-.586-4-2-\
+4-2S9.562 3.414 \
+8 4c-1.562.586-4\
+ 1-4 1v8c0 7 8 9\
+ 8 9Z\x22/>\x0a  <path\
+ d=\x22M17.5 18.5c-\
+1-4.047-10-4.047\
+-11 0M12 12a2.5 \
+2.5 0 1 0 0-5 2.\
+5 2.5 0 0 0 0 5Z\
+\x22/>\x0a</svg>\x0a\
+\x00\x00\x01\x86\
+<\
+svg xmlns=\x22http:\
+//www.w3.org/200\
+0/svg\x22 width=\x2224\
+\x22 height=\x2224\x22 fi\
+ll=\x22none\x22 stroke\
+=\x22currentColor\x22 \
+stroke-linecap=\x22\
+round\x22 stroke-li\
+nejoin=\x22round\x22 s\
+troke-width=\x221.8\
+\x22 data-attributi\
+on=\x22cc0-icons\x22 v\
+iewBox=\x220 0 24 2\
+4\x22>\x0a  <path d=\x22M\
+20.5 5.896v6.267\
+m0-6.267c0-5.195\
+-17-5.195-17 0m1\
+7 0c0 4.65-17 4.\
+65-17 0m17 6.267\
+v5.607c0 5.64-17\
+ 5.64-17 0v-5.60\
+7m17 0c0 4.815-1\
+7 4.815-17 0m0-6\
+.267v6.267\x22/>\x0a</\
+svg>\x0a\
 \x00\x00\x1du\
 <\
 ?xml version=\x221.\
@@ -2312,6 +2457,14 @@ qt_resource_name = b"\
 \x00o\xa6S\
 \x00i\
 \x00c\x00o\x00n\x00s\
+\x00\x08\
+\x05\xe6T\xa7\
+\x00l\
+\x00o\x00g\x00s\x00.\x00s\x00v\x00g\
+\x00\x0c\
+\x0b\xdf,\xc7\
+\x00s\
+\x00e\x00t\x00t\x00i\x00n\x00g\x00s\x00.\x00s\x00v\x00g\
 \x00\x0d\
 \x02s\xef'\
 \x00e\
@@ -2320,6 +2473,14 @@ qt_resource_name = b"\
 \x00J@\xff\
 \x00s\
 \x00y\x00n\x00g\x00.\x00i\x00c\x00o\
+\x00\x09\
+\x04\x01\x95\xa7\
+\x00a\
+\x00d\x00m\x00i\x00n\x00.\x00s\x00v\x00g\
+\x00\x0a\
+\x08\x9b\x17G\
+\x00s\
+\x00o\x00u\x00r\x00c\x00e\x00.\x00s\x00v\x00g\
 \x00\x0e\
 \x03}\x16\xe7\
 \x00e\
@@ -2329,23 +2490,28 @@ qt_resource_name = b"\
 qt_resource_struct = b"\
 \x00\x00\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x01\
 \x00\x00\x00\x00\x00\x00\x00\x00\
-\x00\x00\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00\x02\
+\x00\x00\x00\x00\x00\x02\x00\x00\x00\x07\x00\x00\x00\x02\
 \x00\x00\x00\x00\x00\x00\x00\x00\
-\x00\x00\x000\x00\x04\x00\x00\x00\x01\x00\x00\x1cg\
-\x00\x00\x01\x92R\x83\xf9\xb0\
+\x00\x00\x00d\x00\x04\x00\x00\x00\x01\x00\x00!\xa9\
+\x00\x00\x01\x9a\xaa\xe7\xb4 \
+\x00\x00\x00D\x00\x00\x00\x00\x00\x01\x00\x00\x05B\
+\x00\x00\x01\x9a\xaa\xe7\xb4\x1d\
+\x00\x00\x00\xac\x00\x00\x00\x00\x00\x01\x00\x00z;\
+\x00\x00\x01\x9a\xaa\xe7\xb4\x1e\
+\x00\x00\x00z\x00\x00\x00\x00\x00\x01\x00\x00w\x01\
+\x00\x00\x01\x9f\xc2E\x93X\
 \x00\x00\x00\x10\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\
-\x00\x00\x01\x92^\xabr)\
-\x00\x00\x00F\x00\x00\x00\x00\x00\x01\x00\x00q\xbf\
-\x00\x00\x01\x92^\xb1\x10\xa9\
+\x00\x00\x01\x9f\xc2E\x93X\
+\x00\x00\x00\x92\x00\x00\x00\x00\x00\x01\x00\x00x\xb1\
+\x00\x00\x01\x9f\xc2E\x93X\
+\x00\x00\x00&\x00\x00\x00\x00\x00\x01\x00\x00\x01f\
+\x00\x00\x01\x9f\xc2E\x93X\
 "
 
-
-def qInitResources() -> None:
+def qInitResources():
     QtCore.qRegisterResourceData(0x03, qt_resource_struct, qt_resource_name, qt_resource_data)
 
-
-def qCleanupResources() -> None:
+def qCleanupResources():
     QtCore.qUnregisterResourceData(0x03, qt_resource_struct, qt_resource_name, qt_resource_data)
-
 
 qInitResources()
