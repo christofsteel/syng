@@ -24,7 +24,7 @@ jobs:
         run: |
           pip install uv --quiet
       - name: Run mypy
-        run: uv run --extra client mypy syng --strict
+        run: uv run --all-extras mypy syng --strict
 
   ruff:
     runs-on: ubuntu-latest
