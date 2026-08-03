@@ -40,8 +40,8 @@ client = [
     "mpv>=1.0.7",
     "pyside6>=6.7.0",
 ]
-profanity = [
-    "alt-profanity-check>=1.4.1",
+server = [
+    "glin-profanity>=3.4.0",
 ]
 
 [project.urls]
@@ -83,15 +83,11 @@ exclude = "syng/resources.py"
 [[tool.mypy.overrides]]
 module = [
     "yt_dlp",
-    "yt_dlp.utils",
-    "pymediainfo",
-    "minio",
-    "qrcode",
+    "yt_dlp.utils.*",
     "engineio",
-    "aiohttp",
-    "platformdirs"
+    "glin_profanity.*"
 ]
-ignore_missing_imports = true
+follow_untyped_imports = true
 
 [tool.ruff]
 line-length = 100

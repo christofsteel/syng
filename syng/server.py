@@ -23,30 +23,12 @@ from argparse import Namespace
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from dataclasses import dataclass, field
 from json.decoder import JSONDecodeError
-from typing import Any, Concatenate, Literal, cast
+from typing import Any, Concatenate, cast
 
 import socketio
 from aiohttp import web
+from glin_profanity import Filter
 from socketio.exceptions import ConnectionRefusedError
-
-try:
-    from profanity_check import predict
-except ImportError:
-
-    def predict(strings: list[str]) -> list[Literal[0, 1]]:
-        """Mock predict function from profanity_check.
-
-        This is only used, if profanity_check does not exist.
-
-        Args:
-            strings: List of strings to check
-
-        Returns:
-            Always [0]
-
-        """
-        return [0]
-
 
 from syng import SYNG_PROTOCOL_VERSION, SYNG_VERSION, __version__, jsonencoder
 from syng.entry import Entry
@@ -736,7 +718,7 @@ class Server:
             await self.sio.emit("err", {"type": "NAME_LENGTH", "name": data["performer"]}, room=sid)
             return None
 
-        if predict([data["performer"]]) == [1]:
+        if Filter().is_profane(data["performer"]):
             await self.sio.emit("err", {"type": "PROFANITY", "name": data["performer"]}, room=sid)
             return None
 
