@@ -40,8 +40,8 @@ client = [
     "mpv>=1.0.7",
     "pyside6>=6.7.0",
 ]
-profanity = [
-    "alt-profanity-check>=1.4.1",
+server = [
+    "glin-profanity>=3.4.0",
 ]
 
 [project.urls]
@@ -85,6 +85,7 @@ module = [
     "yt_dlp",
     "yt_dlp.utils.*",
     "engineio",
+    "glin_profanity.*"
 ]
 follow_untyped_imports = true
 
