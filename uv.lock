@@ -1279,7 +1279,6 @@ dependencies = [
     { name = "platformdirs" },
     { name = "python-socketio" },
     { name = "pyyaml" },
-    { name = "yt-dlp", extra = ["default"] },
 ]
 
 [package.optional-dependencies]
@@ -1290,6 +1289,7 @@ client = [
     { name = "pymediainfo" },
     { name = "pyside6" },
     { name = "qrcode" },
+    { name = "yt-dlp", extra = ["default"] },
 ]
 server = [
     { name = "glin-profanity" },
@@ -1319,7 +1319,7 @@ requires-dist = [
     { name = "python-socketio", specifier = ">=5.14.3" },
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "qrcode", marker = "extra == 'client'", specifier = ">=8.2" },
-    { name = "yt-dlp", extras = ["default"], specifier = ">=2026.3.17" },
+    { name = "yt-dlp", extras = ["default"], marker = "extra == 'client'", specifier = ">=2026.3.17" },
 ]
 provides-extras = ["client", "server"]
 
