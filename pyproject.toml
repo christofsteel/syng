@@ -26,7 +26,6 @@ dependencies = [
     "python-socketio>=5.14.3",
     "aiohttp>=3.9.1",
     "platformdirs>=4.0.0",
-    "yt-dlp[default]>=2026.03.17",
     "packaging>=25.0",
     "pyyaml>=6.0.1",
 ]
@@ -39,6 +38,7 @@ client = [
     "pymediainfo>=6.1.0",
     "mpv>=1.0.7",
     "pyside6>=6.7.0",
+    "yt-dlp[default]>=2026.03.17",
 ]
 server = [
     "glin-profanity>=3.4.0",
