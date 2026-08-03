@@ -3,7 +3,7 @@ RUN adduser -D -h /app syng
 USER syng
 WORKDIR /build
 COPY --chown=syng:syng . /build
-RUN pip install --no-cache-dir --extra server --user . \
+RUN pip install --no-cache-dir --user .[server] \
     && touch /app/keys \
     && cp -r /build/.git /app/.git
 
