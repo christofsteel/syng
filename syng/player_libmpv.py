@@ -229,19 +229,23 @@ class Player:
         osd_width: int = cast(int, self.mpv.osd_width)
         osd_height: int = cast(int, self.mpv.osd_height)
 
+        # offset in pixels from the screen edge
+        qr_code_offset = 10
+        
+        # calculate the position based on the qr_code_offset
         match self.qr_position:
             case QRPosition.BOTTOM_RIGHT:
-                x_pos = osd_width - self.qr.width - 10
-                y_pos = osd_height - self.qr.height - 10
+                x_pos = osd_width - self.qr.width - qr_code_offset
+                y_pos = osd_height - self.qr.height - qr_code_offset
             case QRPosition.BOTTOM_LEFT:
-                x_pos = 10
-                y_pos = osd_height - self.qr.height - 10
+                x_pos = qr_code_offset
+                y_pos = osd_height - self.qr.height - qr_code_offset
             case QRPosition.TOP_RIGHT:
-                x_pos = osd_width - self.qr.width - 10
-                y_pos = 10
+                x_pos = osd_width - self.qr.width - qr_code_offset
+                y_pos = qr_code_offset
             case QRPosition.TOP_LEFT:
-                x_pos = 10
-                y_pos = 10
+                x_pos = qr_code_offset
+                y_pos = qr_code_offset
 
         self.qr_overlay = self.mpv.create_image_overlay(self.qr, pos=(x_pos, y_pos))
 
