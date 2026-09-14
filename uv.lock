@@ -1319,7 +1319,7 @@ requires-dist = [
     { name = "python-socketio", specifier = ">=5.14.3" },
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "qrcode", marker = "extra == 'client'", specifier = ">=8.2" },
-    { name = "yt-dlp", extras = ["default"], marker = "extra == 'client'", specifier = ">=2026.3.17" },
+    { name = "yt-dlp", extras = ["default"], marker = "extra == 'client'", specifier = ">=2026.8.19" },
 ]
 provides-extras = ["client", "server"]
 
@@ -1541,16 +1541,16 @@ wheels = [
 
 [[package]]
 name = "yt-dlp"
-version = "2026.3.17"
+version = "2026.8.19"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8b/34/7c6b4e3f89cb6416d2cd7ab6dab141a1df97ab0fb22d15816db2c92148c9/yt_dlp-2026.3.17.tar.gz", hash = "sha256:ba7aa31d533f1ffccfe70e421596d7ca8ff0bf1398dc6bb658b7d9dec057d2c9", size = 3119221, upload-time = "2026-03-17T23:43:00.244Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/e0/832fa4ca334b766a06933a196066edc3dba37cdb6f14cd98d59bcc69a4b4/yt_dlp-2026.8.19.tar.gz", hash = "sha256:9e213e48cea35c66b378e4447903f118f6392a5fa380a2b6d7070ec86f4e0af1", size = 3052025, upload-time = "2026-08-19T23:48:59.291Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/13/5093bcb954878e50f7217fd2ab94282b53934022e4e4a03265582da83bf5/yt_dlp-2026.3.17-py3-none-any.whl", hash = "sha256:32992db94303a8a5d211a183f2174834fe7f8c29d83ed2e7a324eae97a8f26d8", size = 3315134, upload-time = "2026-03-17T23:42:57.863Z" },
+    { url = "https://files.pythonhosted.org/packages/69/b2/8cd1613f56eed7ceb64fbd4df3f1c01246bfb098e6f398228bafda22b80b/yt_dlp-2026.8.19-py3-none-any.whl", hash = "sha256:1d57897e94c6665a0a6f9bc54b34e584284e32c034ffab3a7df25d8f7b24eedf", size = 3185533, upload-time = "2026-08-19T23:48:56.925Z" },
 ]
 
 [package.optional-dependencies]
 default = [
-    { name = "brotli", marker = "implementation_name == 'cpython'" },
+    { name = "brotli", marker = "implementation_name == 'cpython' and sys_platform != 'ios'" },
     { name = "brotlicffi", marker = "implementation_name != 'cpython'" },
     { name = "certifi" },
     { name = "mutagen" },
