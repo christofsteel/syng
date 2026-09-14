@@ -38,7 +38,7 @@ client = [
     "pymediainfo>=6.1.0",
     "mpv>=1.0.7",
     "pyside6>=6.7.0",
-    "yt-dlp[default]>=2026.03.17",
+    "yt-dlp[default]>=2026.08.19",
 ]
 server = [
     "glin-profanity>=3.4.0",
