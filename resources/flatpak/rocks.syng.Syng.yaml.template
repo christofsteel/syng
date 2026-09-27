@@ -244,5 +244,5 @@ modules:
       # - install -Dm644 resources/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg 
     sources:
       - type: git
-        url: https://git.k-fortytwo.de/christofsteel/syng-deploytest.git
+        url: https://git.k-fortytwo.de/christofsteel/syng.git
         commit: ${SYNG_COMMIT}
