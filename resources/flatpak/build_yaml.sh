@@ -23,6 +23,7 @@ envsubst '$YT_DLP_URL $YT_DLP_SHA $YT_DLP_EJS_URL $YT_DLP_EJS_SHA $DENO_AARCH64_
 WHEELS="uv_build,python-socketio,aiohttp,multidict,yarl,platformdirs,yt-dlp,packaging,pyyaml,minio,pillow,qrcode,pymediainfo,mpv,aiohappyeyeballs,aiosignal,attrs,bidict,frozenlist,idna,propcache,python-engineio,simple-websocket,yt-dlp-ejs,requests,charset_normalizer,urllib3,certifi,websockets,argon2-cffi,argon2-cffi-bindings,cffi,brotli,mutagen,pycparser,pycryptodome,pycryptodomex,typing-extensions,wsproto,h11"
 
 # ./flatpak-pip-generator --yaml setuptools_scm[toml] # for argon2-cffi-bindings
+flatpak install -y --user org.kde.Sdk/x86_64/6.11
 ./flatpak-pip-generator --yaml --pyproject-file ../../pyproject.toml --ignore-pkg=PySide6 --prefer-wheels=$WHEELS --optdep-groups client --runtime org.kde.Sdk//6.11
 cp -rf patches dist
 mv *.yaml dist
