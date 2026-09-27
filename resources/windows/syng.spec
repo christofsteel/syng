@@ -3,12 +3,10 @@ a = Analysis(
     pathex=[],
     binaries=[("deno.exe", "."), ("libmpv-2.dll", "."), ("ffmpeg.exe", ".")],
     datas=[
-        (
-            "syng.ico",
-            ".",
-            ("background.mp3", "static"),
-            ("background.png", "static", ("background20perc.png", "static")),
-        )
+        ("syng.ico", "."),
+        ("background.mp3", "static"),
+        ("background.png", "static"),
+        ("background20perc.png", "static"),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -36,7 +34,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['syng.ico'],
+    icon=["syng.ico"],
 )
 coll = COLLECT(
     exe,
