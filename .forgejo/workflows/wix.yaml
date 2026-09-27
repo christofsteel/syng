@@ -145,7 +145,7 @@ jobs:
           cp resources/windows/syng-onefile.spec work/
           ls -R work/ >> /dev/stderr
       - name: install syng
-        run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
+        run: ${{ env.wine }} ${{ env.python }} -m pip install .[client,server]
       - name: run PyInstaller (folder)
         run: ${{ env.wine }} ${{ env.pyinstaller }} syng.spec
         working-directory: ./work
