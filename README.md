@@ -51,7 +51,8 @@ This installs both the playback client (`syng client`) and a configuration GUI (
 
 **Note:** When installing via PyPI, you need to have [libmpv](https://mpv.io/) installed on machine of the playback client. Additionally, since version 2.2.1, you also need to have [deno](https://github.com/denoland/deno/) installed for proper YouTube support.
 
-The Syng.Rocks! client is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-client)
+The Syng.Rocks! client is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-client). The package is maintaned by *topas-rec* and not by the Syng.Rocks developers.
+
 
 ### Windows
 
@@ -70,15 +71,13 @@ If you want to host your own Syng.Rocks! server, you can do that, but you can al
 
 You can install the server via pip:
 
-    pip install syng
+    pip install syng[server]
 
 and then run via:
 
     syng server
 
 The server is also automatically available if you install the client. 
-
-There exists one optional dependency for the server: `alt-profanity-check`. If this package is installed, each username is checked for profanity, otherwise no such check happens.
 
 ## Docker
 
@@ -88,7 +87,7 @@ Alternatively you can run the server using docker. It listens on port 8080 and r
 
 ## Arch Linux
 
-The Syng.Rocks! server is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-server)
+The Syng.Rocks! server is also packaged for Arch Linux in the [Arch Linux user repository](https://aur.archlinux.org/packages/syng-server). The package is maintaned by *topas-rec* and not by the Syng.Rocks developers.
 
 ## Configuration
 
