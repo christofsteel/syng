@@ -1,58 +1,73 @@
+name: Build windows installer and binary
+
 on:
   # push:
   #   branches:
   #     - main
-  workflow_dispatch: {}
-
-env:
-  WINEPREFIX: /wineprefix
-  WINEDLLOVERRIDES: mshtml=
-  WINEARCH: win64
-  WINEDEBUG: -all
-  WINE_VERSION: 11.1
-  MPV_NIGHTLY: 20260122
-  MPV_HASH: 6e54aa3
-  FFMPEG_HASH: 0c3afc7e5
-  PYTHON_VERSION: 3.13.12
-  MONO_VERSION: 10.4.1
-  DENO_VERSION: 2.6.7
-  PYSIDE_VERSION: 6.9.2
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version tag'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'version tag'
+        required: true
+        type: string
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+      windows:
+        type: boolean
 
 
 jobs:
   build-msi:
     runs-on: ubuntu-latest
     steps:
+      - name: set env
+        run: |
+          echo "WINEPREFIX=/wineprefix" >> ${GITHUB_ENV}
+          echo "WINEDLLOVERRIDES=mshtml=" >> ${GITHUB_ENV}
+          echo "WINEARCH=win64" >> ${GITHUB_ENV}
+          echo "WINEDEBUG=-all" >> ${GITHUB_ENV}
+      - name: print inputs
+        run: |
+          echo "version: ${{ inputs.version}}"
+          echo "commit: ${{ inputs.commit}}"
       - name: Checkout code
         uses: actions/checkout@v4        
+        with:
+          ref: ${{inputs.commit}}
+
       - name: Get hash and version for cache
         run: |
-          echo "synghash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "syngversion=$(grep "^version = .*" pyproject.toml | sed "s/version = \"\(.*\)\"/\1/g")" >> $GITHUB_ENV
-          
+          echo "syngversion=${{ inputs.version }}" >> $GITHUB_ENV
       - name: Update Ubuntu Repo
-        run: apt update -y
+        run: apt-get update -y
       - name: Install dependencies
-        # uses: awalsh128/cache-apt-pkgs-action@latest
-        # uses: https://github.com/awalsh128/cache-apt-pkgs-action@latest
-        # with:
-        #   packages: xvfb 7zip
-        run: apt install -y xvfb 7zip
+        run: apt-get install -y xvfb 7zip
       - name: Create workdirs
         run: |
           mkdir -p wix
           mkdir -p work/dist
           mkdir -p downloads
           mkdir -p winedl
+      - name: Get latest versions for dependencies
+        # if: steps.cache-dl.outputs.cache-hit != 'true'
+        run: |
+          bash latest-win-deps.sh | tee >> ${GITHUB_ENV}
+        working-directory: resources/windows
       - name: Cache downloads
         id: cache-dl
         uses: actions/cache@v4
         with:
           path: |
             downloads
-            ${{ env.wineprefix }}
           key: downloads-wine${{ env.WINE_VERSION }}-mpv${{ env.MPV_NIGHTLY }}-python${{ env.PYTHON_VERSION }}-mono${{ env.MONO_VERSION }}-deno${{ env.DENO_VERSION }}
-
       - name: Download everything
         if: steps.cache-dl.outputs.cache-hit != 'true'
         run: |
@@ -61,8 +76,8 @@ jobs:
           rm wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/ffmpeg-x86_64-git-${{ env.FFMPEG_HASH }}.7z -O ffmpeg.7z
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/mpv-dev-x86_64-${{ env.MPV_NIGHTLY }}-git-${{ env.MPV_HASH }}.7z -O mpv.7z
-          7zz x ffmpeg.7z
-          7zz x mpv.7z
+          7z x ffmpeg.7z
+          7z x mpv.7z
           rm ffmpeg.7z mpv.7z
           wget https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-amd64.exe -O python-installer.exe
           wget https://github.com/wine-mono/wine-mono/releases/download/wine-mono-${{ env.MONO_VERSION }}/wine-mono-${{ env.MONO_VERSION }}-x86.msi -O wine-mono.msi
@@ -77,28 +92,19 @@ jobs:
       - name: Find Wine
         run: |
           WINECFG="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/winecfg"
-          echo "winecfg=$WINECFG" >> $GITHUB_ENV
           WINE="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/wine"
-          echo "wine=$WINE" >> $GITHUB_ENV
           MSIEXEC="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/msiexec"
+          echo "winecfg=$WINECFG" >> $GITHUB_ENV
+          echo "wine=$WINE" >> $GITHUB_ENV
           echo "msiexec=$MSIEXEC" >> $GITHUB_ENV
         working-directory: downloads
+
       - name: Create wineprefix
-        if: steps.cache-dl.outputs.cache-hit != 'true'
         run: ${{ env.winecfg }}
-
-      # - name: Cache syng build
-      #   id: cache-syng
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: work/dist
-      #     key: Xsyng-${{ env.synghash }}
-
-
       - name: Run python installer
-        # if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
-          xvfb-run ${{ env.wine }} python-installer.exe /quiet Include_pip=1
+          echo xvfb-run -a ${{ env.wine }} python-installer.exe /quiet Include_pip=1
+          xvfb-run -a ${{ env.wine }} python-installer.exe /quiet Include_pip=1
         working-directory: downloads
       - name: Find python
         run: |
@@ -107,7 +113,6 @@ jobs:
         working-directory: downloads
 
       - name: Install pyinstaller
-        # if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
           ${{ env.wine }} ${{ env.python }} -m pip install pyinstaller
       - name: Find pyinstaller
@@ -115,16 +120,13 @@ jobs:
           PYINSTALLER=$(find /wineprefix -iname "pyinstaller.exe" -exec readlink -f {} \;)
           echo "pyinstaller=$PYINSTALLER" >> $GITHUB_ENV
       - name: Install wine-mono
-        # if: steps.cache-dl.outputs.cache-hit != 'true'
         run: |
-          xvfb-run ${{ env.msiexec }} /i wine-mono.msi
+          xvfb-run -a ${{ env.msiexec }} /i wine-mono.msi
         working-directory: downloads
       - name: preparing workdir
-        # if: steps.cache-syng.outputs.cache-hit != 'true'
         run: |
           ls
           cp -r syng work/syng
-          # cp requirements-client.txt work/reqs.txt
           cp resources/icons/syng.ico work/
           cp syng/static/background.png work/
           cp syng/static/background20perc.png work/
@@ -135,18 +137,15 @@ jobs:
           cp resources/windows/dialog.bmp work/
           cp resources/windows/banner.bmp work/
           cp resources/windows/agpl-3.0.rtf work/
-      - name: prepare syng
-        run: |
-          sed -i "s/\"pyside6.*/\"pyside6==${PYSIDE_VERSION}\"/" pyproject.toml 
       - name: install syng
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
-        # if: steps.cache-syng.outputs.cache-hit != 'true'
         run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
       - name: run PyInstaller (standalone)
-        # if: steps.cache-syng.outputs.cache-hit != 'true'
-        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        run: |
+          ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+          mv dist/syng.exe dist/syng-${{env.syngversion}}-win64.exe
         working-directory: ./work
       - name: Find wix binaries
         run: |
@@ -163,7 +162,7 @@ jobs:
         working-directory: work
       - name: run candle
         run: |
-          cleared_syng_version=$(sed "s/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1.\2.\3/" <<< ${{env.syngversion}})
+          cleared_syng_version=$(sed "s/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1.\2.\3/" <<< "${{env.syngversion}}")
           echo $cleared_syng_version
           ls
           ${{ env.wine }} ${{ env.candle }} -dSource="dist\\syng\\_internal" InternalGroup.wxs
@@ -171,15 +170,16 @@ jobs:
         working-directory: work
       - name: run light
         run: |
-          ${{ env.wine }} ${{ env.light }} -ext WixUIExtension -sval -out syng-${{ env.syngversion }}.msi InternalGroup.wixobj syng.wixobj
+          ${{ env.wine }} ${{ env.light }} -ext WixUIExtension -sval -out syng-installer-${{ env.syngversion }}-win64.msi InternalGroup.wixobj syng.wixobj
+          ls -alh dist/
         working-directory: work
       - name: create portable app artifact
         uses: actions/upload-artifact@v3
         with:
-          name: syngapp
-          path: ./work/dist/syng.exe
+          name: syng-${{ env.syngversion }}-win64-exe
+          path: ./work/dist/syng-${{env.syngversion}}-win64.exe
       - name: create installer artifact
         uses: actions/upload-artifact@v3
         with:
-          name: synginstall-${{ env.syngversion }}
-          path: ./work/syng-${{ env.syngversion }}.msi
+          name: syng-installer-${{ env.syngversion }}-win64-msi
+          path: ./work/syng-installer-${{ env.syngversion }}-win64.msi

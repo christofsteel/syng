@@ -1,0 +1,36 @@
+name: Run external GitHub workflow
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        description: 'author/name of the external repo'
+        required: true
+        type: string
+      event:
+        description: 'name of the external event'
+        required: true
+        type: string
+      auth-token:
+        description: 'Auth Token'
+        required: true
+        type: string
+      payload:
+        description: 'parameters of the event as JSON'
+        required: false
+        default: "{}"
+        type: string
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: call
+        run: |
+          DATA='{"event_type": "${{ inputs.event }}", "client_payload": ${{inputs.payload}} }'
+          echo $DATA
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.token }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ inputs.repo }}/dispatches \
+          -d "$DATA"

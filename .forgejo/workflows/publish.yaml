@@ -1,0 +1,168 @@
+name: Publish artifacts
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'version tag'
+        required: true
+        type: string
+      release:
+        description: 'Type of Build'
+        required: true
+        type: string
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+      flatpak_repo:
+        required: true
+        type: string
+      flatpak_remote_pat:
+        type: string
+      repo_name:
+        required: true
+        type: string
+      gh_user:
+        type: string
+      codeberg_user:
+        type: string
+      gh_pat:
+        type: string
+      codeberg_pat:
+        type: string
+      windows:
+        type: boolean
+      flatpak:
+        required: true
+        type: boolean
+      docker:
+        type: boolean
+      docker_username:
+        type: string
+      docker_image_name:
+        type: string
+      docker_local_registry:
+        type: string
+      docker_remote_registry:
+        type: string
+      docker_local_key:
+        type: string
+      docker_remote_key:
+        type: string
+      pypi:
+        type: boolean
+      pypi_key:
+        type: string
+      pypi_publish_args:
+        type: string
+        
+
+jobs:
+  publish-docker:
+    if: ${{ inputs.docker }}
+    uses: ./.forgejo/workflows/docker.yaml
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.sha }}
+      push: "true"
+      release: ${{ inputs.type }}
+      docker: ${{ inputs.docker }}
+      username: ${{ inputs.docker_username }}
+      image_name: ${{ inputs.docker_image_name }}
+      local_registry: ${{ inputs.docker_local_registry }}
+      remote_registry: ${{ inputs.docker_remote_registry }}
+      local_key: ${{ inputs.docker_local_key }}
+      remote_key: ${{ inputs.docker_remote_key }}
+
+  publish-flathub:
+    if: ${{ inputs.flatpak }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://git.k-fortytwo.de/christofsteel/call-external-workflow@6c91450b5ed0b94da7d517441446c02208ede566
+        with:
+          auth-token: ${{ inputs.flatpak_remote_pat }}
+          repo: ${{ inputs.flatpak_repo }}
+          event: trigger-workflow
+          payload: |
+            {
+              "url":" https://git.k-fortytwo.de/${{ forgejo.repository }}/actions/runs/${{ forgejo.run_id }}/artifacts/flatpak-yaml-files"
+            }
+
+  publish-pypi:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.release == 'release' && inputs.pypi}}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.19"      
+      - name: Upload to pypi-test
+        run: |
+          uv build
+          uv publish ${{ inputs.pypi_publish_args }} --token ${{ inputs.pypi_key }}
+
+  publish-release:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.release == 'release' || inputs.release == 'prerelease' }}
+    steps:
+      - name: check out repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: ensure dist
+        run: |
+          mkdir dist/
+          echo "TODO Changelog" >> dist/CHANGELOG.md
+      - name: download artifact
+        if: ${{ inputs.windows || inputs.flatpak }}
+        uses: actions/download-artifact@v3
+        with:
+          path: dist
+      - name: clean and flatten
+        run: |
+          rm -rf dist/flatpak-yaml-files || true
+          mv dist/**/* dist/ || true
+          rmdir dist/* || true
+      - run: |
+          ls -alh dist/ >> /dev/stderr
+      - name: Make local release
+        uses: actions/forgejo-release@v2.13.4
+        with:
+          direction: upload
+          release-notes-assistant: true
+          tag: v${{ inputs.version }}
+          sha: ${{ inputs.commit }}
+          release-dir: dist
+          prerelease: ${{ inputs.release != 'release' }}
+          override: true
+          verbose: true
+      - name: Make Codeberg release
+        uses: actions/forgejo-release@v2.13.4
+        with:
+          url: https://codeberg.org
+          repo: ${{ inputs.codeberg_user }}/${{ inputs.repo_name }}
+          token: ${{ inputs.codeberg_pat }}
+          direction: upload
+          release-notes-assistant: true
+          tag: v${{ inputs.version }}
+          sha: ${{ inputs.commit }}
+          release-dir: dist
+          prerelease: ${{ inputs.release != 'release' }}
+          override: true
+          verbose: true
+      - name: Make Github release
+        uses: https://git.k-fortytwo.de/actions/gh-release@v1.1.5
+        with:
+          repo: ${{ inputs.gh_user }}/${{ inputs.repo_name }}
+          commitish: ${{ inputs.commit }}
+          auth-token: ${{ inputs.gh_pat }}
+          tag: v${{ inputs.version }}
+          release-dir: dist
+          prerelease: ${{ inputs.release != 'release' }}

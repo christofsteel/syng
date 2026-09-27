@@ -1,0 +1,117 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Type of Build'
+        required: true
+        type: choice
+        options:
+          - pr
+          - stable
+          - dev
+          - nightly
+      version:
+        description: 'version tag'
+        required: false
+        type: string
+      branch:
+        description: 'branch tag'
+        required: false
+        type: string
+      push:
+        description: 'push the image'
+        default: false
+        type: boolean
+
+  workflow_call:
+    inputs:
+      release:
+        description: 'One of pr/release/prerelease/dev'
+        required: true
+        type: string
+      version:
+        description: 'version tag'
+        required: false
+        type: string
+      image_name:
+        required: true
+        type: string
+      push:
+        description: 'push the image'
+        default: false
+        type: boolean
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+      docker:
+        type: boolean
+      username:
+        type: string
+      local_registry:
+        type: string
+      remote_registry:
+        type: string
+      local_key:
+        type: string
+      remote_key:
+        type: string
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: print inputs
+        run: echo "${{ tojson(inputs) }}" > /dev/stderr
+      - name: check out repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Get best tag
+        id: tagname
+        run: |
+          SHA="commit-${{inputs.commit}}"
+          case ${{ inputs.release }} in
+          release)
+          TAGS=(${SHA} $(echo ${{ inputs.version }} | sed "s/\([^\.]*\).\([^\.]*\).\(.*\)$/\1 \1.\2 \1.\2.\3 latest/"))
+            ;;
+          prerelease)
+          TAGS=(${SHA} $(echo ${{ inputs.version }} | sed "s/\(.*\)/\1 prerelease/"))          
+          ;;
+          pr)
+          TAGS=(${SHA} "pr-${{ inputs.commit }}")
+            ;;
+          dev)
+          TAGS=(${SHA} nightly)
+          ;;
+          esac
+          echo ${TAGS[@]}
+          FULL_TAGS=$(for tag in ${TAGS[@]}; do echo ${{ inputs.remote_registry }}/${{ inputs.image_name }}:${tag},${{ inputs.local_registry }}/${{ inputs.image_name }}:${tag}; done | tr '\n' ',' | sed s/,$//)
+          echo "TAGS=\"${FULL_TAGS}\"" >> "$GITHUB_OUTPUT"
+      - name: Print tags
+        run: echo ${{ steps.tagname.outputs.tags }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Docker login
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ inputs.local_registry }}
+          username: ${{ inputs.username }}
+          password: ${{ inputs.local_key }}
+      - name: Docker login (GH)
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ inputs.remote_registry }}
+          username: ${{ inputs.username }}
+          password: ${{ inputs.remote_key }}
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./resources/docker/Dockerfile
+          push: ${{ inputs.push }}
+          tags: ${{ steps.tagname.outputs.tags }}

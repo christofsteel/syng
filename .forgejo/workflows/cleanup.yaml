@@ -1,0 +1,86 @@
+name: cleanup after publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        required: true
+        type: string
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      release:
+        required: true
+        type: string
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+      version:
+        type: string
+      repo_name:
+        required: true
+        type: string
+      gh_user:
+        type: string
+      codeberg_user:
+        type: string
+      gh_pat:
+        type: string
+      codeberg_pat:
+        type: string
+
+jobs:
+  print-inputs-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ tojson(inputs) }}" > /dev/stderr
+
+  merge-and-bump:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.release == 'release' || inputs.release == 'prerelease' }}
+    steps:
+      - name: check out repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - name: set git credentials
+        run: |
+          git config --global user.name "Forgejo Action CI"
+          git config --global user.email "git@git.k-fortytwo.de"
+      - name: merge
+        run: |
+          echo git fetch origin main
+          git fetch origin main
+          echo git checkout main 
+          git checkout main 
+          echo git merge ${{ inputs.commit }} 
+          git merge ${{ inputs.commit }} 
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.19"      
+      - name: bump to next dev/patch
+        if: ${{ inputs.release == 'release' }}
+        run: uv version --bump dev --bump patch
+      - name: bump to next dev
+        if: ${{ inputs.release == 'prerelease' }}
+        run: uv version --bump dev
+      - name: delete release branch
+        if: ${{ inputs.release == 'release' || inputs.release == 'prerelease' }}
+        run: |
+          git remote add codeberg https://${{ inputs.codeberg_user }}:${{ inputs.codeberg_pat }}@codeberg.org/${{ inputs.codeberg_user }}/${{ inputs.repo_name }}
+          git remote add github https://${{ inputs.gh_pat }}@github.com/${{ inputs.gh_user }}/${{ inputs.repo_name }}
+
+          git push origin --delete "release-${{ inputs.version}}"
+          git push github --delete "release-${{ inputs.version }}"
+          git push codeberg --delete "release-${{ inputs.version}}"
+      - name: commit and push
+        run: |
+          git add pyproject.toml
+          git commit -m "Update to next dev"
+          git push origin main

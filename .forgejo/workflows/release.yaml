@@ -1,0 +1,158 @@
+name: Make a new Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Type of Release"
+        required: true
+        type: choice
+        options:
+          - release
+          - prerelease
+          - dev
+      flatpak:
+        description: "Build Flatpak"
+        required: false
+        type: boolean
+        default: true
+      windows:
+        description: "Build Windows"
+        required: false
+        type: boolean
+        default: true
+      docker:
+        description: "Build Docker"
+        required: false
+        type: boolean
+        default: true
+      pypi:
+        description: "Publish on PyPI"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  set_configuration:
+    runs-on: ubuntu-latest
+    outputs:
+      repo_name: syng
+      gh_user: christofsteel
+      codeberg_user: christofsteel
+      gh_pat: ${{ secrets.GH_SYNG_CONTENTS_WRITE }}
+      codeberg_pat: ${{ secrets.CODEBERG_SYNG_REPO_WRITE }}
+
+      docker_user: christofsteel
+      docker_image: christofsteel/syng
+      docker_local_registry: git.k-fortytwo.de
+      docker_local_key: ${{ secrets.FJCR_PUSH }}
+      docker_remote_registry: ghcr.io
+      docker_remote_key: ${{ secrets.GHCR_PUSH }}
+
+      flatpak_remote_repo: flathub/rocks.syng.Syng
+      flatpak_remote_pat: ${{ secrets.SYNG_FLATHUB_REPO }}
+
+      pypi_key: ${{ secrets.SYNG_PYPI }}
+      pypi_publish_args: ""
+
+    steps:
+      - run: echo "Setting configuration"
+
+  print-inputs-release:
+    needs: set_configuration
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ tojson(inputs) }}" > /dev/stderr
+      - run: echo "${{ tojson(needs.set_configuration.outputs) }}" >> /dev/stderr
+
+  prepare:
+    needs: set_configuration
+    uses: ./.forgejo/workflows/prepare.yaml
+    with:
+      release: ${{ inputs.release }}
+      flatpak: ${{ inputs.flatpak }}
+      repo_name: ${{ needs.set_configuration.outputs.repo_name }}
+      gh_user: ${{ needs.set_configuration.outputs.gh_user }}
+      gh_pat: ${{ needs.set_configuration.outputs.gh_pat }}
+      codeberg_user: ${{ needs.set_configuration.outputs.codeberg_user }}
+      codeberg_pat: ${{ needs.set_configuration.outputs.codeberg_pat }}
+
+  build:
+    needs: [set_configuration, prepare]
+    uses: ./.forgejo/workflows/build.yaml
+    with:
+      release: ${{ inputs.release }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit: ${{ needs.prepare.outputs.commit }}
+      flatpak: ${{ inputs.flatpak }}
+      windows: ${{ inputs.windows }}
+      docker: ${{ inputs.docker }}
+      docker_image_name: ${{ needs.set_configuration.outputs.docker_image }}
+      docker_username: ${{ needs.set_configuration.outputs.docker_user }}
+      docker_local_registry: ${{ needs.set_configuration.outputs.docker_local_registry }}
+      docker_remote_registry: ${{ needs.set_configuration.outputs.docker_remote_registry }}
+      docker_local_key: ${{ needs.set_configuration.outputs.docker_local_key }}
+      docker_remote_key: ${{ needs.set_configuration.outputs.docker_remote_key }}
+
+
+  publish:
+    needs: [build, prepare, set_configuration]
+    uses: ./.forgejo/workflows/publish.yaml
+    with:
+      release: ${{ inputs.release }}
+      version: ${{ needs.prepare.outputs.version }}
+      commit: ${{ needs.prepare.outputs.commit }}
+      flatpak: ${{ inputs.flatpak }}
+      docker: ${{ inputs.docker }}
+      docker_image_name: ${{ needs.set_configuration.outputs.docker_image }}
+      docker_username: ${{ needs.set_configuration.outputs.docker_user }}
+      docker_local_registry: ${{ needs.set_configuration.outputs.docker_local_registry }}
+      docker_local_key: ${{ needs.set_configuration.outputs.docker_local_key }}
+      docker_remote_registry: ${{ needs.set_configuration.outputs.docker_remote_registry }}
+      docker_remote_key: ${{ needs.set_configuration.outputs.docker_remote_key }}
+      pypi: ${{ inputs.pypi }}
+      windows: ${{ inputs.windows }}
+      flatpak_repo: ${{ needs.set_configuration.outputs.flatpak_remote_repo }}
+      flatpak_remote_pat: ${{ needs.set_configuration.outputs.flatpak_remote_pat }}
+      repo_name: ${{ needs.set_configuration.outputs.repo_name }}
+      gh_user: ${{ needs.set_configuration.outputs.gh_user }}
+      gh_pat: ${{ needs.set_configuration.outputs.gh_pat }}
+      codeberg_user: ${{ needs.set_configuration.outputs.codeberg_user }}
+      codeberg_pat: ${{ needs.set_configuration.outputs.codeberg_pat }}
+      pypi_publish_args: ${{ needs.set_configuration.outputs.pypi_publish_args }}
+      pypi_key: ${{ needs.set_configuration.outputs.pypi_key }}
+
+  cleanup:
+    needs: [prepare, publish, set_configuration]
+    uses: ./.forgejo/workflows/cleanup.yaml
+    with:
+      release: ${{ inputs.release }}
+      commit: ${{ needs.prepare.outputs.commit }}
+      flatpak: ${{ inputs.flatpak }}
+      version: ${{ needs.prepare.outputs.version }}
+      repo_name: ${{ needs.set_configuration.outputs.repo_name }}
+      gh_user: ${{ needs.set_configuration.outputs.gh_user }}
+      gh_pat: ${{ needs.set_configuration.outputs.gh_pat }}
+      codeberg_user: ${{ needs.set_configuration.outputs.codeberg_user }}
+      codeberg_pat: ${{ needs.set_configuration.outputs.codeberg_pat }}
+
+      
+
+  cleanup-fail:
+    needs: [prepare, publish, set_configuration]
+    runs-on: ubuntu-latest
+    if: ${{ failure() || cancelled() }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4        
+      - name: Remove Branch
+        run: |
+          git remote add codeberg https://${{ needs.set_configuration.outputs.codeberg_user }}:${{ needs.set_configuration.outputs.codeberg_pat }}@codeberg.org/${{ needs.set_configuration.outputs.codeberg_user }}/${{ needs.set_configuration.outputs.repo_name }}
+          git remote add github https://${{ needs.set_configuration.outputs.gh_pat }}@github.com/${{ needs.set_configuration.outputs.gh_user }}/${{ needs.set_configuration.outputs.repo_name }}
+
+          git push origin --delete release-${{needs.prepare.outputs.version}} || true
+          git push origin --delete v${{needs.prepare.outputs.version}} || true
+          git push github --delete release-${{needs.prepare.outputs.version}} || true
+          git push github --delete v${{needs.prepare.outputs.version}} || true
+          git push codeberg --delete release-${{needs.prepare.outputs.version}} || true
+          git push codeberg --delete v${{needs.prepare.outputs.version}} || true

@@ -1,0 +1,85 @@
+name: Build artifacts
+    
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'version tag'
+        required: true
+        type: string
+      release:
+        description: 'Type of Build'
+        required: true
+        type: string
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+      flatpak:
+        required: true
+        type: boolean
+      windows:
+        required: false
+        type: boolean
+      docker:
+        required: false
+        type: boolean
+      docker_username:
+        type: string
+      docker_image_name:
+        type: string
+      docker_local_registry:
+        type: string
+      docker_remote_registry:
+        type: string
+      docker_local_key:
+        type: string
+      docker_remote_key:
+        type: string
+        
+    outputs:
+      flatpak_yaml_artifact_url:
+        value: ${{ jobs.build-flatpak.outputs.artifact_url }}
+
+jobs:
+  print-inputs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ tojson(inputs) }}" > /dev/stderr
+
+  build-wine:
+    if: ${{ inputs.windows }}
+    uses: ./.forgejo/workflows/wix.yaml
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+      windows: ${{ inputs.windows }}
+
+  build-docker:
+    if: ${{ inputs.docker }}
+    uses: ./.forgejo/workflows/docker.yaml
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+      push: "false"
+      release: ${{ inputs.release }}
+      docker: ${{ inputs.docker }}
+      username: ${{ inputs.docker_username }}
+      image_name: ${{ inputs.docker_image_name }}
+      local_registry: ${{ inputs.docker_local_registry }}
+      remote_registry: ${{ inputs.docker_remote_registry }}
+      local_key: ${{ inputs.docker_local_key }}
+      remote_key: ${{ inputs.docker_remote_key }}
+
+  build-flatpak:
+    if: ${{ inputs.flatpak }}
+    uses: ./.forgejo/workflows/flatpak.yaml
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+      flatpak: ${{ inputs.flatpak }}
+  
+      

@@ -1,0 +1,110 @@
+name: Prepare repository for Releasing
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Type of release"
+        required: true
+        type: choice
+        options:
+          - release
+          - prerelease
+          - dev
+  workflow_call:
+    inputs:
+      release:
+        required: true
+        type: string
+      flatpak:
+        required: true
+        type: boolean
+      repo_name:
+        required: true
+        type: string
+      gh_user:
+        type: string
+      codeberg_user:
+        type: string
+      gh_pat:
+        type: string
+      codeberg_pat:
+        type: string
+    outputs:
+      version: 
+        value: ${{ jobs.update-version.outputs.version }}
+      commit: 
+        value: ${{ jobs.update-version.outputs.commit }}
+
+jobs:
+  print-inputs-prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ tojson(inputs) }}" > /dev/stderr
+
+  update-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      commit: ${{ steps.commit.outputs.commit }}
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.19"      
+      - name: check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for dev version
+        run: |
+          if [[ "$(uv version --short)" =~ ^[0-9]*\.[0-9]*\.[0-9]*$ ]]; then 
+            echo "This seems like an already released version"; false
+          else
+            echo "looking good"; true
+          fi
+      - name: set git credentials
+        run: |
+          git config --global user.name "Forgejo Action CI"
+          git config --global user.email "git@git.k-fortytwo.de"
+      - name: Bump to stable
+        if: ${{ inputs.release == 'release' }}
+        run: |
+          uv version --bump stable
+          git add pyproject.toml
+          git commit -m "Update to version: ${{steps.get-version.outputs.version}}"
+      - name: get current version
+        id: get-version
+        run: |
+          VERSION=$(uv version --short | sed 's/\.dev/-dev/')
+          echo "version=${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Create release-branch
+        if: ${{ inputs.release == 'release' || inputs.release == 'prerelease' }}
+        run: |
+          git remote add codeberg https://${{ inputs.codeberg_user }}:${{ inputs.codeberg_pat }}@codeberg.org/${{ inputs.codeberg_user }}/${{ inputs.repo_name }}
+          git remote add github https://${{ inputs.gh_pat }}@github.com/${{ inputs.gh_user }}/${{ inputs.repo_name }}
+
+          git checkout -b "release-${{steps.get-version.outputs.version}}"
+          git push origin "release-${{steps.get-version.outputs.version}}"
+          git push github "release-${{steps.get-version.outputs.version}}"
+          git push codeberg "release-${{steps.get-version.outputs.version}}"
+      - name: get commit hash
+        id: commit
+        run: |
+          echo "commit=$(git log -1 --format=%H)"
+          echo "commit=$(git log -1 --format=%H)" >> ${GITHUB_OUTPUT}
+
+  check-flatpak:
+    needs: update-version
+    if: ${{ inputs.flatpak }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: check version against manifest
+        if: ${{ inputs.release == 'release' }}
+        run: bash resources/flatpak/check-version.sh ${{ needs.update-version.outputs.version }} 
+

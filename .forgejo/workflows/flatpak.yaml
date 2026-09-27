@@ -1,0 +1,103 @@
+name: build flatpak
+on:
+  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      version:
+        description: 'version tag'
+        required: true
+        type: string
+      type:
+        description: 'Type of Build'
+        required: true
+        type: string
+      commit:
+        description: 'commit hash'
+        required: true
+        type: string
+      flatpak:
+        type: boolean
+
+jobs:
+  print-inputs-build-flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ tojson(inputs) }}" > /dev/stderr
+
+  prepare-yaml-files:
+    runs-on: privileged-ubuntu-latest
+    container: 
+      image: git.k-fortytwo.de/christofsteel/syng-flatpakbuilder:1.0.0
+    outputs:
+      artifact_url: ${{ steps.artifact_url.outputs.artifact_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Prepare Flatpak YAML files
+        run: |
+          chmod +x build_yaml.sh
+          dbus-daemon --system
+          xvfb-run -a -s "-screen 0 1024x768x24" -- \
+          dbus-run-session \
+          ./build_yaml.sh
+        working-directory: resources/flatpak
+      - uses: actions/upload-artifact@v3
+        with:
+          name: flatpak-yaml-files
+          path: resources/flatpak/dist
+      
+  build-flatpak:
+    needs: prepare-yaml-files
+    runs-on: privileged-ubuntu-latest
+    container: 
+      image: git.k-fortytwo.de/christofsteel/syng-flatpakbuilder:1.0.0
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: flatpak-yaml-files
+          path: .
+      - name: Create key for cache
+        run: echo "cachekey=$(cat * | md5sum)" >> $GITHUB_ENV
+      - name: Cache flatpak
+        id: cache-flatpak
+        uses: actions/cache@v4
+        with:
+          path: "*.flatpak"
+          key: ${{ env.cachekey }}
+
+      - name: Build Flatpak
+        if: steps.cache-flatpak.outputs.cache-hit != 'true'
+        run: |
+          dbus-daemon --system
+          xvfb-run -a -s "-screen 0 1024x768x24" -- \
+          dbus-run-session \
+          flatpak run --user --command=flathub-build org.flatpak.Builder --disable-rofiles-fuse --repo=repo rocks.syng.Syng.yaml
+
+      - name: Build Flatpak Artifact
+        if: steps.cache-flatpak.outputs.cache-hit != 'true'
+        run: |
+          flatpak build-bundle /workspace/${{ forgejo.repository }}/repo "rocks.syng.Syng.flatpak" "rocks.syng.Syng"
+          # flatpak build-bundle /repo "rocks.syng.Syng.flatpak" "rocks.syng.Syng"
+          mv rocks.syng.Syng.flatpak rocks.syng.Syng-${{ inputs.version }}-x86_64.flatpak
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: syng-${{inputs.version}}-x86_64-flatpak
+          path: "*.flatpak"
+
+  # call-flathub-build:
+  #   needs: prepare-yaml-files
+  #   uses: ./.forgejo/workflows/external.yaml
+  #   with:
+  #     repo: christofsteel/testrepo
+  #     event: trigger-workflow
+  #     # payload: '{"url": "${{ needs.prepare-yaml-files.outputs.artifact_url }}"}'
+  #     payload: |
+  #       {
+  #         "url": "${{ needs.prepare-yaml-files.outputs.artifact_url }}"
+  #       }
+  #   secrets:
+  #     token: ${{ secrets.GH_TESTREPO }}
