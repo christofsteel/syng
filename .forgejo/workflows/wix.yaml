@@ -144,11 +144,11 @@ jobs:
       - name: install syng
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
-        run: ${{ env.wine }} ${{ env.pyinstaller }} -i '.\syng.ico' resources/windows/syng.spec
+        run: ${{ env.wine }} ${{ env.pyinstaller }} resources/windows/syng.spec
         working-directory: ./work
       - name: run PyInstaller (standalone)
         run: |
-          ${{ env.wine }} ${{ env.pyinstaller }} -F -i '.\syng.ico' resources/windows/syng.spec
+          ${{ env.wine }} ${{ env.pyinstaller }} -F resources/windows/syng.spec
           mv dist/syng.exe dist/syng-${{env.syngversion}}-win64.exe
         working-directory: ./work
       - name: Find wix binaries
