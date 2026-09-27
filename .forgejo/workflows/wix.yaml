@@ -144,13 +144,11 @@ jobs:
       - name: install syng
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
-        # run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='syng.ico;.' --add-data='background.mp3;static/'--add-data='background.png;static/' --add-data='background20perc.png;static/' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         run: ${{ env.wine }} ${{ env.pyinstaller }} -i '.\syng.ico' resources/windows/syng.spec
         working-directory: ./work
       - name: run PyInstaller (standalone)
         run: |
-        run: ${{ env.wine }} ${{ env.pyinstaller }} -F -i '.\syng.ico' resources/windows/syng.spec
-          # ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.mp3;static' --add-data='.\background.png;static' --add-data='.\background20perc.png;static' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+          ${{ env.wine }} ${{ env.pyinstaller }} -F -i '.\syng.ico' resources/windows/syng.spec
           mv dist/syng.exe dist/syng-${{env.syngversion}}-win64.exe
         working-directory: ./work
       - name: Find wix binaries
