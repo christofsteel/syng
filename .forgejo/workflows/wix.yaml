@@ -150,7 +150,7 @@ jobs:
         working-directory: ./work
       - name: run PyInstaller (standalone)
         run: |
-          ${{ env.wine }} ${{ env.pyinstaller }} -F syng.spec
+          ${{ env.wine }} ${{ env.pyinstaller }} syng-onefile.spec
           mv dist/syng.exe dist/syng-${{env.syngversion}}-win64.exe
         working-directory: ./work
       - name: Find wix binaries
