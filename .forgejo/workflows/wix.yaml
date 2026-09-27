@@ -60,6 +60,7 @@ jobs:
         # if: steps.cache-dl.outputs.cache-hit != 'true'
         run: |
           bash latest-win-deps.sh | tee >> ${GITHUB_ENV}
+          echo "PYTHON_VERSION=3.13.15" >> ${GITHUB_ENV}
         working-directory: resources/windows
       - name: Cache downloads
         id: cache-dl
