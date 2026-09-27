@@ -77,9 +77,11 @@ jobs:
           rm wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/ffmpeg-x86_64-git-${{ env.FFMPEG_HASH }}.7z -O ffmpeg.7z
           wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/mpv-dev-x86_64-${{ env.MPV_NIGHTLY }}-git-${{ env.MPV_HASH }}.7z -O mpv.7z
+          wget https://github.com/mpv-player/mpv/releases/download/git-release/libmpv-v0.41.0-dev-ga1bf4b655-36252823533-x86_64-w64-mingw32-gpl.zip -O mpv.zip
           7z x ffmpeg.7z
-          7z x mpv.7z
-          rm ffmpeg.7z mpv.7z
+          # 7z x mpv.7z
+          unzip mpv.zip
+          rm ffmpeg.7z mpv.7z mpv.zip
           wget https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-amd64.exe -O python-installer.exe
           wget https://github.com/wine-mono/wine-mono/releases/download/wine-mono-${{ env.MONO_VERSION }}/wine-mono-${{ env.MONO_VERSION }}-x86.msi -O wine-mono.msi
           wget https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip
@@ -129,6 +131,7 @@ jobs:
           ls
           cp -r syng work/syng
           cp resources/icons/syng.ico work/
+          cp syng/static/background.mp3 work/
           cp syng/static/background.png work/
           cp syng/static/background20perc.png work/
           cp downloads/libmpv-2.dll work/
@@ -141,11 +144,11 @@ jobs:
       - name: install syng
         run: ${{ env.wine }} ${{ env.python }} -m pip install .[client]
       - name: run PyInstaller (folder)
-        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+        run: ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.mp3;static'--add-data='.\background.png;static' --add-data='.\background20perc.png;static' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
         working-directory: ./work
       - name: run PyInstaller (standalone)
         run: |
-          ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.png;.' --add-data='.\background20perc.png;.' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
+          ${{ env.wine }} ${{ env.pyinstaller }} -n "syng" -F -w -i'.\syng.ico' --add-data='.\syng.ico;.' --add-data='.\background.mp3;static' --add-data='.\background.png;static' --add-data='.\background20perc.png;static' --add-binary '.\deno.exe;.' --add-binary '.\libmpv-2.dll;.' --add-binary '.\ffmpeg.exe;.' syng/main.py
           mv dist/syng.exe dist/syng-${{env.syngversion}}-win64.exe
         working-directory: ./work
       - name: Find wix binaries
