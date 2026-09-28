@@ -27,7 +27,7 @@ jobs:
   prepare-yaml-files:
     runs-on: privileged-ubuntu-latest
     container: 
-      image: git.k-fortytwo.de/christofsteel/syng-flatpakbuilder:1.0.0
+      image: git.k-fortytwo.de/christofsteel/syng-flatpak-build-image:kde-6.11
     outputs:
       artifact_url: ${{ steps.artifact_url.outputs.artifact_url }}
     steps:
@@ -52,7 +52,7 @@ jobs:
     needs: prepare-yaml-files
     runs-on: privileged-ubuntu-latest
     container: 
-      image: git.k-fortytwo.de/christofsteel/syng-flatpakbuilder:1.0.0
+      image: git.k-fortytwo.de/christofsteel/syng-flatpak-build-image:kde-6.11
     steps:
       - uses: actions/download-artifact@v3
         with:
