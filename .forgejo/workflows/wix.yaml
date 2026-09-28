@@ -28,7 +28,7 @@ jobs:
   build-msi:
     runs-on: ubuntu-latest
     container:
-      image: git.k-fortytwo.de/christofsteel/syng-wine-build-image
+      image: git.k-fortytwo.de/christofsteel/syng-wine-build-image:dl-cache
     steps:
       - name: print inputs
         run: |
@@ -48,40 +48,40 @@ jobs:
           mkdir -p work/dist
           mkdir -p downloads
           mkdir -p winedl
-      - name: Find Wine
-        run: |
-          WINECFG="$PWD/wine-amd64-wow64/bin/winecfg"
-          WINE="$PWD/wine-amd64-wow64/bin/wine"
-          MSIEXEC="$PWD/wine-amd64-wow64/bin/msiexec"
-          echo "winecfg=$WINECFG" >> $GITHUB_ENV
-          echo "wine=$WINE" >> $GITHUB_ENV
-          echo "msiexec=$MSIEXEC" >> $GITHUB_ENV
-        working-directory: downloads
+      # - name: Find Wine
+      #   run: |
+      #     WINECFG="$PWD/wine-amd64-wow64/bin/winecfg"
+      #     WINE="$PWD/wine-amd64-wow64/bin/wine"
+      #     MSIEXEC="$PWD/wine-amd64-wow64/bin/msiexec"
+      #     echo "winecfg=$WINECFG" >> $GITHUB_ENV
+      #     echo "wine=$WINE" >> $GITHUB_ENV
+      #     echo "msiexec=$MSIEXEC" >> $GITHUB_ENV
+      #   working-directory: downloads
 
-      - name: Create wineprefix
-        run: ${{ env.winecfg }}
+      # - name: Create wineprefix
+      #   run: ${{ env.winecfg }}
       - name: Run python installer
         run: |
-          echo xvfb-run -a ${{ env.wine }} python-installer.exe /quiet Include_pip=1
-          xvfb-run -a ${{ env.wine }} python-installer.exe /quiet Include_pip=1
-        working-directory: downloads
+          echo xvfb-run -a wine python-installer.exe /quiet Include_pip=1
+          xvfb-run -a wine python-installer.exe /quiet Include_pip=1
+        working-directory: /workspace/downloads
       - name: Find python
         run: |
           PYTHON=$(find /wineprefix -iname "python.exe" -exec readlink -f {} \;)
           echo "python=$PYTHON" >> $GITHUB_ENV
-        working-directory: downloads
+        working-directory: /workspace/downloads
 
       - name: Install pyinstaller
         run: |
-          ${{ env.wine }} ${{ env.python }} -m pip install pyinstaller
+          wine ${{ env.python }} -m pip install pyinstaller
       - name: Find pyinstaller
         run: |
           PYINSTALLER=$(find /wineprefix -iname "pyinstaller.exe" -exec readlink -f {} \;)
           echo "pyinstaller=$PYINSTALLER" >> $GITHUB_ENV
       - name: Install wine-mono
         run: |
-          xvfb-run -a ${{ env.msiexec }} /i wine-mono.msi
-        working-directory: downloads
+          xvfb-run -a msiexec /i wine-mono.msi
+        working-directory: /workspace/downloads
       - name: preparing workdir
         run: |
           ls
@@ -90,9 +90,9 @@ jobs:
           cp syng/static/background.mp3 work/
           cp syng/static/background.png work/
           cp syng/static/background20perc.png work/
-          cp downloads/libmpv-2.dll work/
-          cp downloads/ffmpeg.exe work/
-          cp downloads/deno.exe work/
+          cp /workspace/downloads/libmpv-2.dll work/
+          cp /workspace/downloads/ffmpeg.exe work/
+          cp /workspace/downloads/deno.exe work/
           cp resources/windows/syng.wxs work/
           cp resources/windows/dialog.bmp work/
           cp resources/windows/banner.bmp work/
@@ -101,13 +101,13 @@ jobs:
           cp resources/windows/syng-onefile.spec work/
           ls -R work/ >> /dev/stderr
       - name: install syng
-        run: ${{ env.wine }} ${{ env.python }} -m pip install .[client,server]
+        run: wine ${{ env.python }} -m pip install .[client,server]
       - name: run PyInstaller (folder)
-        run: ${{ env.wine }} ${{ env.pyinstaller }} syng.spec
+        run: wine ${{ env.pyinstaller }} syng.spec
         working-directory: ./work
       - name: run PyInstaller (standalone)
         run: |
-          ${{ env.wine }} ${{ env.pyinstaller }} syng-onefile.spec
+          wine ${{ env.pyinstaller }} syng-onefile.spec
           mv dist/syng.exe dist/syng-${{env.syngversion}}-win64.exe
         working-directory: ./work
       - name: Find wix binaries
@@ -118,22 +118,22 @@ jobs:
           echo "candle=$CANDLE" >> $GITHUB_ENV
           LIGHT=$(find wix -iname "light.exe" -exec readlink -f {} \;)
           echo "light=$LIGHT" >> $GITHUB_ENV
-        working-directory: downloads
+        working-directory: /workspace/downloads
       - name: run heat
         run: |
-          ${{ env.wine }} ${{ env.heat }} dir dist/syng/_internal -var var.Source -dr INSTALLFOLDER -cg InternalGroup -gg -out InternalGroup.wxs
+          wine ${{ env.heat }} dir dist/syng/_internal -var var.Source -dr INSTALLFOLDER -cg InternalGroup -gg -out InternalGroup.wxs
         working-directory: work
       - name: run candle
         run: |
           cleared_syng_version=$(sed "s/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*/\1.\2.\3/" <<< "${{env.syngversion}}")
           echo $cleared_syng_version
           ls
-          ${{ env.wine }} ${{ env.candle }} -dSource="dist\\syng\\_internal" InternalGroup.wxs
-          ${{ env.wine }} ${{ env.candle }} -dSyngVersion="$cleared_syng_version" syng.wxs
+          wine ${{ env.candle }} -dSource="dist\\syng\\_internal" InternalGroup.wxs
+          wine ${{ env.candle }} -dSyngVersion="$cleared_syng_version" syng.wxs
         working-directory: work
       - name: run light
         run: |
-          ${{ env.wine }} ${{ env.light }} -ext WixUIExtension -sval -out syng-installer-${{ env.syngversion }}-win64.msi InternalGroup.wixobj syng.wixobj
+          wine ${{ env.light }} -ext WixUIExtension -sval -out syng-installer-${{ env.syngversion }}-win64.msi InternalGroup.wixobj syng.wixobj
           ls -alh dist/
         working-directory: work
       - name: create portable app artifact
