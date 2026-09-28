@@ -26,7 +26,8 @@ on:
 
 jobs:
   build-msi:
-    runs-on: git.k-fortytwo.de/christofsteel/syng-wine-build-image
+    runs-on: ubuntu-latest
+    image: git.k-fortytwo.de/christofsteel/syng-wine-build-image
     steps:
       - name: print inputs
         run: |
