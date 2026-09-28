@@ -58,8 +58,8 @@ jobs:
       #     echo "msiexec=$MSIEXEC" >> $GITHUB_ENV
       #   working-directory: downloads
 
-      # - name: Create wineprefix
-      #   run: ${{ env.winecfg }}
+      - name: Create wineprefix
+        run: winecfg
       - name: Run python installer
         run: |
           echo xvfb-run -a wine python-installer.exe /quiet Include_pip=1
