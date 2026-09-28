@@ -50,9 +50,9 @@ jobs:
           mkdir -p winedl
       - name: Find Wine
         run: |
-          WINECFG="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/winecfg"
-          WINE="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/wine"
-          MSIEXEC="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/msiexec"
+          WINECFG="$PWD/wine-amd64-wow64/bin/winecfg"
+          WINE="$PWD/wine-amd64-wow64/bin/wine"
+          MSIEXEC="$PWD/wine-amd64-wow64/bin/msiexec"
           echo "winecfg=$WINECFG" >> $GITHUB_ENV
           echo "wine=$WINE" >> $GITHUB_ENV
           echo "msiexec=$MSIEXEC" >> $GITHUB_ENV
