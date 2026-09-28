@@ -26,14 +26,8 @@ on:
 
 jobs:
   build-msi:
-    runs-on: ubuntu-latest
+    runs-on: git.k-fortytwo.de/christofsteel/syng-wine-build-image
     steps:
-      - name: set env
-        run: |
-          echo "WINEPREFIX=/wineprefix" >> ${GITHUB_ENV}
-          echo "WINEDLLOVERRIDES=mshtml=" >> ${GITHUB_ENV}
-          echo "WINEARCH=win64" >> ${GITHUB_ENV}
-          echo "WINEDEBUG=-all" >> ${GITHUB_ENV}
       - name: print inputs
         run: |
           echo "version: ${{ inputs.version}}"
@@ -46,52 +40,12 @@ jobs:
       - name: Get hash and version for cache
         run: |
           echo "syngversion=${{ inputs.version }}" >> $GITHUB_ENV
-      - name: Update Ubuntu Repo
-        run: apt-get update -y
-      - name: Install dependencies
-        run: apt-get install -y xvfb 7zip
       - name: Create workdirs
         run: |
           mkdir -p wix
           mkdir -p work/dist
           mkdir -p downloads
           mkdir -p winedl
-      - name: Get latest versions for dependencies
-        # if: steps.cache-dl.outputs.cache-hit != 'true'
-        run: |
-          bash latest-win-deps.sh | tee >> ${GITHUB_ENV}
-          echo "PYTHON_VERSION=3.13.15" >> ${GITHUB_ENV}
-        working-directory: resources/windows
-      - name: Cache downloads
-        id: cache-dl
-        uses: actions/cache@v4
-        with:
-          path: |
-            downloads
-          key: downloads-wine${{ env.WINE_VERSION }}-mpv${{ env.MPV_NIGHTLY }}-python${{ env.PYTHON_VERSION }}-mono${{ env.MONO_VERSION }}-deno${{ env.DENO_VERSION }}
-      - name: Download everything
-        if: steps.cache-dl.outputs.cache-hit != 'true'
-        run: |
-          wget https://github.com/Kron4ek/Wine-Builds/releases/download/${{ env.WINE_VERSION }}/wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
-          tar xvf wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
-          rm wine-${{ env.WINE_VERSION }}-amd64-wow64.tar.xz
-          wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/ffmpeg-x86_64-git-${{ env.FFMPEG_HASH }}.7z -O ffmpeg.7z
-          wget https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${{ env.MPV_NIGHTLY }}/mpv-dev-x86_64-${{ env.MPV_NIGHTLY }}-git-${{ env.MPV_HASH }}.7z -O mpv.7z
-          wget https://github.com/mpv-player/mpv/releases/download/git-release/libmpv-v0.41.0-dev-ga1bf4b655-36252823533-x86_64-w64-mingw32-gpl.zip -O mpv.zip
-          7z x ffmpeg.7z
-          # 7z x mpv.7z
-          unzip mpv.zip
-          rm ffmpeg.7z mpv.7z mpv.zip
-          wget https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/python-${{ env.PYTHON_VERSION }}-amd64.exe -O python-installer.exe
-          wget https://github.com/wine-mono/wine-mono/releases/download/wine-mono-${{ env.MONO_VERSION }}/wine-mono-${{ env.MONO_VERSION }}-x86.msi -O wine-mono.msi
-          wget https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip
-          unzip wix314-binaries.zip -d wix 
-          rm wix314-binaries.zip
-          wget https://github.com/denoland/deno/releases/download/v${{ env.DENO_VERSION }}/deno-x86_64-pc-windows-msvc.zip
-          unzip deno-x86_64-pc-windows-msvc.zip
-          rm deno-x86_64-pc-windows-msvc.zip
-        working-directory: downloads
-
       - name: Find Wine
         run: |
           WINECFG="$PWD/wine-${{ env.WINE_VERSION }}-amd64-wow64/bin/winecfg"
