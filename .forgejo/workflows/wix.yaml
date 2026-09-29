@@ -28,7 +28,7 @@ jobs:
   build-msi:
     runs-on: ubuntu-latest
     container:
-      image: git.k-fortytwo.de/christofsteel/syng-wine-build-image:dl-cache
+      image: git.k-fortytwo.de/christofsteel/syng-wine-build-image:dl-cache-mpv
     steps:
       - name: print inputs
         run: |
