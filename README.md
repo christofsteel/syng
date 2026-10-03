@@ -77,7 +77,7 @@ and then run via:
 
     syng server
 
-The server is also automatically available if you install the client. 
+The server is also automatically available if you install the client via FlatPak. 
 
 ## Docker
 
