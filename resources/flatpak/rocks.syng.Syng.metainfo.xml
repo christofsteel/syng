@@ -46,6 +46,21 @@
 
 
   <releases>
+    <release version="2.4.0" date="2026-10-03">
+      <description>
+        <p>
+          <em>Changes:</em>
+        </p>
+        <ul>
+          <li>Updated yt-dlp</li>
+          <li>Descriptions for each configuration option</li>
+          <li>Configurable pause music</li>
+          <li>Configurable background image</li>
+          <li>UI refinements</li>
+          <li>A <em>lot</em> of Changes under the hood</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.3.0" date="2026-01-29">
       <description>
         <p>
