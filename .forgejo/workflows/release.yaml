@@ -16,6 +16,16 @@ on:
         required: false
         type: boolean
         default: true
+      codeberg:
+        description: "Publish on Codeberg"
+        required: false
+        type: boolean
+        default: true
+      github:
+        description: "Publish on Github"
+        required: false
+        type: boolean
+        default: true
       windows:
         description: "Build Windows"
         required: false
@@ -99,6 +109,8 @@ jobs:
     needs: [build, prepare, set_configuration]
     uses: ./.forgejo/workflows/publish.yaml
     with:
+      codeberg: ${{ inputs.codeberg }}
+      github: ${{ inputs.github }}
       release: ${{ inputs.release }}
       version: ${{ needs.prepare.outputs.version }}
       commit: ${{ needs.prepare.outputs.commit }}

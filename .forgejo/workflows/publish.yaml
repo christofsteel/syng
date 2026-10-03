@@ -59,6 +59,10 @@ on:
         type: string
       pypi_publish_args:
         type: string
+      codeberg:
+        type: boolean
+      github:
+        type: boolean
         
 
 jobs:
@@ -144,6 +148,7 @@ jobs:
           override: true
           verbose: true
       - name: Make Codeberg release
+        if: ${{ inputs.codeberg }}
         uses: actions/forgejo-release@v2.13.4
         with:
           url: https://codeberg.org
@@ -158,6 +163,7 @@ jobs:
           override: true
           verbose: true
       - name: Make Github release
+        if: ${{ inputs.github }}
         uses: https://git.k-fortytwo.de/actions/gh-release@v1.1.5
         with:
           repo: ${{ inputs.gh_user }}/${{ inputs.repo_name }}
