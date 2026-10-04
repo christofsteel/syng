@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from traceback import print_exc
 from typing import Any
 
-from syng.config import SourceConfig
+from syng.config import SourceOptions
 from syng.entry import Entry
 from syng.log import logger
 from syng.result import Result
@@ -82,7 +82,7 @@ class Source(ABC):
 
     """
 
-    config: SourceConfig
+    config: SourceOptions
     source_name: str = ""
     display_name: str = ""
     build_index: bool = False

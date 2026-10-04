@@ -22,12 +22,12 @@ except ImportError:
 
 from syng.entry import Entry
 from syng.log import logger
-from syng.sources.filebased import FileBasedConfig, FileBasedSource
+from syng.sources.filebased import FileBasedOptions, FileBasedSource
 from syng.sources.source import available_sources
 
 
 @dataclass
-class S3Config(FileBasedConfig):
+class S3Options(FileBasedOptions):
     """Configuration class for S3 sources.
 
     Attributes:
@@ -97,7 +97,7 @@ class S3Source(FileBasedSource):
 
     """
 
-    config: S3Config
+    config: S3Options
     source_name: str = "s3"
     display_name: str = "S3 Bucket"
 

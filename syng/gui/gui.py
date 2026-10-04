@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 import packaging.version
 
-from syng.config import SourceConfig
+from syng.config import SourceOptions
 from syng.gui.background_threads import (
     SyngClientQueueWorker,
     SyngClientWorker,
@@ -540,7 +540,7 @@ class SyngGui(QMainWindow):
         Returns:
             Configuration object for Syng.
         """
-        sources: dict[str, SourceConfig] = {}
+        sources: dict[str, SourceOptions] = {}
 
         for source, tab in self.tabs.items():
             sources[source] = tab.config

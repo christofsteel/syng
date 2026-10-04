@@ -19,7 +19,7 @@ from platformdirs import user_cache_dir
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
-from syng.config import SourceConfig
+from syng.config import SourceOptions
 from syng.entry import Entry
 from syng.result import Result
 from syng.sources.source import (
@@ -159,7 +159,7 @@ class Resolution(enum.Enum):
 
 
 @dataclass
-class YouTubeConfig(SourceConfig):
+class YouTubeOptions(SourceOptions):
     """Configuration object for YouTubeSources.
 
     Attributes:
@@ -182,7 +182,7 @@ class YouTubeConfig(SourceConfig):
     """
 
     enabled: bool = field(
-        default=True, metadata=SourceConfig.__dataclass_fields__["enabled"].metadata
+        default=True, metadata=SourceOptions.__dataclass_fields__["enabled"].metadata
     )
 
     channels: list[str] = field(
@@ -251,7 +251,7 @@ class YoutubeSource(Source):
 
     """
 
-    config: YouTubeConfig
+    config: YouTubeOptions
 
     source_name: str = "youtube"
     display_name: str = "YouTube"

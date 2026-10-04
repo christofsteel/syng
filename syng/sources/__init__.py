@@ -5,7 +5,7 @@ Imports all sources, so that they add themselves to the ``available_sources`` di
 
 from typing import get_type_hints
 
-from syng.config import SourceConfig
+from syng.config import SourceOptions
 from syng.sources.files import FilesSource
 from syng.sources.s3 import S3Source
 from syng.sources.source import Source as Source
@@ -15,7 +15,7 @@ from syng.sources.youtube import YoutubeSource
 __all__ = ["FilesSource", "S3Source", "YoutubeSource"]
 
 
-def available_source_configs() -> dict[str, type[SourceConfig]]:
+def available_source_configs() -> dict[str, type[SourceOptions]]:
     """Config types for all sources.
 
     Returns:
@@ -28,7 +28,7 @@ def available_source_configs() -> dict[str, type[SourceConfig]]:
     }
 
 
-def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
+def get_source_config_type(source_type: type[Source]) -> type[SourceOptions]:
     """Config type for source type.
 
     Args:
@@ -38,18 +38,18 @@ def get_source_config_type(source_type: type[Source]) -> type[SourceConfig]:
         Config type for ``source_type``
 
     """
-    config_class: type[SourceConfig] = get_type_hints(source_type)["config"]
+    config_class: type[SourceOptions] = get_type_hints(source_type)["config"]
     return config_class
 
 
-def get_all_source_config_types() -> dict[str, type[SourceConfig]]:
+def get_all_source_config_types() -> dict[str, type[SourceOptions]]:
     return {
         source_name: get_source_config_type(source)
         for source_name, source in available_sources.items()
     }
 
 
-def configure_sources(configs: dict[str, SourceConfig]) -> dict[str, Source]:
+def configure_sources(configs: dict[str, SourceOptions]) -> dict[str, Source]:
     """Create a Source object for each entry in the given configs dictionary.
 
     Args:

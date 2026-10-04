@@ -337,7 +337,7 @@ class ClientConfig(Config):
 
 
 @dataclass
-class SourceConfig(Config):
+class SourceOptions(Config):
     """Base class for configuration for sources.
 
     Attributes:
@@ -365,7 +365,7 @@ class SyngConfig(Config):
     """
 
     config: ClientConfig
-    source_configs: dict[str, SourceConfig]
+    source_configs: dict[str, SourceOptions]
 
 
 type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None
@@ -636,7 +636,9 @@ def serialize_dataclass(config: Config) -> _Parsable:
     return output
 
 
-def load_config(filename: str, source_config_types: Mapping[str, type[SourceConfig]]) -> SyngConfig:
+def load_config(
+    filename: str, source_config_types: Mapping[str, type[SourceOptions]]
+) -> SyngConfig:
     """Load and deserialize a yaml file to a configuration.
 
     The config file should have a ``config`` and a ``sources`` section.
@@ -656,7 +658,7 @@ def load_config(filename: str, source_config_types: Mapping[str, type[SourceConf
         print("No config found, using default values")
         loaded_config = {"config": {}, "sources": {}}
 
-    sources_config: dict[str, SourceConfig] = {}
+    sources_config: dict[str, SourceOptions] = {}
 
     for source_name, source_config_type in source_config_types.items():
         source_config_dict = loaded_config.get("sources", {}).get(source_name, {})

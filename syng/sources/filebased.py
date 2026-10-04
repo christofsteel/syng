@@ -18,13 +18,13 @@ except ImportError:
         from pymediainfo import MediaInfo
     PYMEDIAINFO_AVAILABLE = False
 
-from syng.config import SourceConfig
+from syng.config import SourceOptions
 from syng.log import logger
 from syng.sources.source import Source
 
 
 @dataclass
-class FileBasedConfig(SourceConfig):
+class FileBasedOptions(SourceOptions):
     """(Base) Configuration object for filebased Sources.
 
     Attributes:
@@ -66,7 +66,7 @@ class FileBasedSource(Source, ABC):
 
     """
 
-    config: FileBasedConfig
+    config: FileBasedOptions
     build_index: bool = True
 
     def __post_init__(self) -> None:

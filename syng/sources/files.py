@@ -8,12 +8,12 @@ from typing import Any
 from platformdirs import user_videos_dir
 
 from syng.entry import Entry
-from syng.sources.filebased import FileBasedConfig, FileBasedSource
+from syng.sources.filebased import FileBasedOptions, FileBasedSource
 from syng.sources.source import available_sources
 
 
 @dataclass
-class FileSourceConfig(FileBasedConfig):
+class FileSourceOptions(FileBasedOptions):
     """Configuration object for ``FilesSource``.
 
     Attributes:
@@ -46,7 +46,7 @@ class FilesSource(FileBasedSource):
 
     """
 
-    config: FileSourceConfig
+    config: FileSourceOptions
     source_name: str = "files"
     display_name: str = "Local Folder"
 

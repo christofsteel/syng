@@ -5,14 +5,14 @@ from dataclasses import fields
 
 from PySide6.QtWidgets import QWidget
 
-from syng.config import GeneralConfig, SourceConfig, UIConfig
+from syng.config import GeneralConfig, SourceOptions, UIConfig
 from syng.gui.option_frame import OptionFrame
 
 
 class SourceTab(OptionFrame):
     """Configuration tab for a source configuration."""
 
-    config: SourceConfig
+    config: SourceOptions
 
 
 class UIConfigTab(OptionFrame):
