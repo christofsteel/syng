@@ -11,7 +11,7 @@ Client usage: syng client [-h] [--room ROOM] [--secret SECRET] \
                     [--config-file CONFIG_FILE] [--server SERVER]
 Server usage: syng server [-h] [--host HOST] [--port PORT] [--root-folder ROOT_FOLDER] \
                     [--registration-keyfile REGISTRATION_KEYFILE] [--private]
-GUI usage: syng gui
+GUI usage: syng gui [--config-file CONFIG_FILE]
 
 The config file for the client should be a yaml file in the following style::
 
@@ -79,7 +79,12 @@ def main() -> None:
     # client_parser.add_argument("--key", "-k", default=None)
     client_parser.add_argument("--server", "-S")
 
-    sub_parsers.add_parser("gui")
+    gui_parser = sub_parsers.add_parser("gui")
+    gui_parser.add_argument(
+        "--config-file",
+        "-c",
+        default=os.path.join(platformdirs.user_config_dir("syng"), "config.yaml"),
+    )
 
     root_path = os.path.join(os.path.dirname(__file__), "static")
     server_parser = sub_parsers.add_parser("server")
@@ -111,7 +116,7 @@ def main() -> None:
         from syng.gui import run_gui
 
         copy_static_files()
-        run_gui()
+        run_gui(args.config_file)
     else:
         from syng.gui import run_gui
 

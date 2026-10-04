@@ -426,8 +426,12 @@ class SyngGui(QMainWindow):
                 )
         self.version_label.setText(label_string)
 
-    def __init__(self) -> None:
-        """Initialize the GUI."""
+    def __init__(self, config_path: str) -> None:
+        """Initialize the GUI.
+
+        Args:
+            config_path: Path of the configuration file
+        """
         super().__init__()
         self.setWindowTitle("Syng.Rocks!")
 
@@ -436,7 +440,7 @@ class SyngGui(QMainWindow):
 
         self.pypi_version: str | None = None
 
-        self.configfile = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml")
+        self.configfile = config_path
 
         self.central_widget = QWidget(parent=self)
         self.central_layout = QVBoxLayout(self.central_widget)
@@ -749,8 +753,14 @@ class LoggingLabelHandler(logging.Handler):
         self._cleanup = True
 
 
-def run_gui() -> None:
-    """Load the configfile from the default location and run the gui."""
+def run_gui(
+    config_path: str = os.path.join(platformdirs.user_config_dir("syng"), "config.yaml"),
+) -> None:
+    """Load the configfile from the default location and run the gui.
+
+    Args:
+        config_path: Path of the configuration file
+    """
     os.makedirs(platformdirs.user_cache_dir("syng"), exist_ok=True)
     base_dir = os.path.dirname(__file__)
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
@@ -766,7 +776,7 @@ def run_gui() -> None:
         app.setWindowIcon(QIcon(":/icons/syng.ico"))
     app.setApplicationName("Syng.Rocks!")
     app.setDesktopFileName("rocks.syng.Syng")
-    window = SyngGui()
+    window = SyngGui(config_path)
     window.show()
     sys.exit(app.exec())
 
