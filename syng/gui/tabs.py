@@ -3,10 +3,11 @@
 from collections.abc import Callable
 from dataclasses import fields
 
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QMenu, QPushButton, QWidget
 
-from syng.config import GeneralConfig, SourceOptions, UIConfig
-from syng.gui.option_frame import OptionFrame
+from syng.config import GeneralConfig, SourcesConfig, UIConfig
+from syng.gui.option_frame import GridOptionFrame, RowOptionFrame
+from syng.sources import available_sources
 
 
 class SourceTab(OptionFrame):
@@ -15,13 +16,13 @@ class SourceTab(OptionFrame):
     config: SourceOptions
 
 
-class UIConfigTab(OptionFrame):
+class UIConfigTab(RowOptionFrame):
     """Configuration tab for the UI configuration."""
 
     config: UIConfig
 
 
-class GeneralConfigTab(OptionFrame):
+class GeneralConfigTab(RowOptionFrame):
     """Configuration widget for the general settings."""
 
     config: GeneralConfig

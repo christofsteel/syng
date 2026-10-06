@@ -5,7 +5,7 @@ Imports all sources, so that they add themselves to the ``available_sources`` di
 
 from typing import get_type_hints
 
-from syng.config import SourceOptions
+from syng.config import SourceOptions, SourcesConfig
 from syng.sources.files import FilesSource
 from syng.sources.s3 import S3Source
 from syng.sources.source import Source as Source
@@ -13,6 +13,12 @@ from syng.sources.source import available_sources as available_sources
 from syng.sources.youtube import YoutubeSource
 
 __all__ = ["FilesSource", "S3Source", "YoutubeSource"]
+
+
+def get_default_configs() -> SourcesConfig:
+    return SourcesConfig(
+        {source_name: option() for source_name, option in available_source_configs().items()}
+    )
 
 
 def available_source_configs() -> dict[str, type[SourceOptions]]:
@@ -49,7 +55,7 @@ def get_all_source_config_types() -> dict[str, type[SourceOptions]]:
     }
 
 
-def configure_sources(configs: dict[str, SourceOptions]) -> dict[str, Source]:
+def configure_sources(configs: SourcesConfig) -> dict[str, Source]:
     """Create a Source object for each entry in the given configs dictionary.
 
     Args:
@@ -63,11 +69,10 @@ def configure_sources(configs: dict[str, SourceOptions]) -> dict[str, Source]:
 
     """
     configured_sources = {}
-    for source, config in configs.items():
-        source_class = available_sources.get(source, None)
+    for source_title, config in configs.config.items():
+        source_class = available_sources.get(config.source_name, None)
         if source_class is None:
-            raise RuntimeError(f"Could not find source '{source}'")
+            raise RuntimeError(f"Could not find source '{config.source_name}'")
         config_object = config
-        if config_object.enabled:
-            configured_sources[source] = source_class(config_object)
+        configured_sources[source_title] = source_class(config_object)
     return configured_sources

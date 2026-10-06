@@ -5,7 +5,8 @@ from dataclasses import asdict
 from typing import Any
 from uuid import UUID
 
-from syng.config import Config, serialize_config
+from syng.config import Config
+from syng.config.serialize import serialize_config
 from syng.entry import Entry
 from syng.result import Result
 from syng.song_queue import Queue

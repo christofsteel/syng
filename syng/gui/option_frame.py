@@ -1,11 +1,12 @@
 """Windget, that hold options depending on the types of a configuration object."""
 
+from abc import abstractmethod
 from collections.abc import MutableMapping
 from dataclasses import _MISSING_TYPE, asdict, fields
 from enum import Enum
 from functools import partial
 from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin, get_type_hints
+from typing import Any, Union, cast, get_args, get_origin, get_type_hints, override
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from syng.config import Config
+from syng.gui.flowlayout.flowlayout import FlowLayout
 from syng.gui.row_widgets import (
     Boolean,
     RowWidget,
@@ -26,6 +28,39 @@ from syng.gui.row_widgets import (
 
 
 class OptionFrame(QWidget):
+    """Widget, holding a configuration object and building an interface for that object.
+
+    Attributes:
+        config: Configuration object
+    """
+
+    config: Config
+
+    def set_config_field(self, name: str, value: Any) -> None:
+        """Set a field of the configuration object, if it exists.
+
+        If the object does not have the attribute, nothing happens.
+
+        Args:
+            name: name of the attribute
+            value: value to set
+
+        """
+        if hasattr(self.config, name):
+            setattr(self.config, name, value)
+
+    @abstractmethod
+    def load_config(self, config: Config) -> None:
+        """Load and apply options to the widget.
+
+        Args:
+            config: Cofiguration object with values.
+
+        """
+
+
+
+class RowOptionFrame(OptionFrame):
     """Widget, holding a configuration object and building a form for that object.
 
     It supports adding rows to the form depending on the type of a configuration object. And updates
@@ -67,16 +102,12 @@ class OptionFrame(QWidget):
             if hidden:
                 continue
 
-            field_type = config_types[name]
+            field_type: type[Any] = config_types[name]
             value = values[name]
             optional = False
-            if get_origin(field_type) in (Union, UnionType):
-                args = get_args(field_type)
-                if NoneType in args:
-                    parts = [ty for ty in args if ty is not NoneType]
-                    if len(parts) == 1:
-                        field_type = parts[0]
-                        optional = True
+            if get_origin(field_type) in (Union, UnionType) and NoneType in get_args(field_type):
+                optional = True
+                field_type = self._parse_optional(field_type)
 
             if field_type is bool and isinstance(value, bool):
                 field_type = Boolean
@@ -85,18 +116,12 @@ class OptionFrame(QWidget):
                 field_type, name, description, value, semantic, optional, default, help
             )
 
-    def set_config_field(self, name: str, value: Any) -> None:
-        """Set a field of the configuration object, if it exists.
-
-        If the object does not have the attribute, nothing happens.
-
-        Args:
-            name: name of the attribute
-            value: value to set
-
-        """
-        if hasattr(self.config, name):
-            setattr(self.config, name, value)
+    @staticmethod
+    def _parse_optional[T: SupportedBaseType](field_type: type[T | None]) -> type[T]:
+        parts = [ty for ty in get_args(field_type) if ty is not NoneType]
+        if len(parts) == 1:
+            return cast(type[T], parts[0])
+        raise ValueError(f"Could not interpret type {field_type}")
 
     def add_config_row[T: SupportedBaseType | Enum](
         self,
@@ -184,13 +209,8 @@ class OptionFrame(QWidget):
         """
         return set(self.options.keys())
 
+    @override
     def load_config(self, config: Config) -> None:
-        """Load and apply options to the form.
-
-        Args:
-            config: Cofiguration object with values.
-
-        """
         config_dict = asdict(config)
 
         for name, form_row in self.options.items():

@@ -36,6 +36,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from syng.config import SourceOptions
+
 
 @dataclass(frozen=True)
 class Boolean:
@@ -47,7 +49,7 @@ class Boolean:
     value: bool
 
 
-type SupportedBaseType = Boolean | int | str | datetime | list[str] | None
+type SupportedBaseType = Boolean | int | str | datetime | list[str] | SourceOptions | None
 type SupportedType[T: Enum] = SupportedBaseType | T
 type MkInputWidget[T: SupportedBaseType | Enum] = Callable[[T, T], InputWidget[T]]
 type MkSupportedInputWidget[T: Enum] = (
@@ -113,6 +115,8 @@ def get_input_widget[T: Enum](
         return StrListInputWidget
     elif issubclass(ty, Enum):
         return partial(ComboBox, ty)
+    elif issubclass(ty, SourceOptions):
+        return lambda a, b: LineEdit("foo", "bar")
     raise TypeError(f"Type {ty} is not supported.")
 
 

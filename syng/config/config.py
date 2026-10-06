@@ -1,28 +1,18 @@
-"""Module for the configuration objects and serialization and deserialization."""
-
-from __future__ import annotations
+"""Module for the configuration objects."""
 
 import os
 import secrets
 import string
-from collections.abc import Mapping
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from types import UnionType
-from typing import (
-    Union,
-    get_args,
-    get_origin,
-    get_type_hints,
-    overload,
-    override,
-)
+from typing import override
 
 import platformdirs
-from yaml import Dumper, Loader, dump, load
 
 from syng.log import logger
+
+type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None
 
 
 @dataclass
@@ -338,20 +328,21 @@ class ClientConfig(Config):
 
 @dataclass
 class SourceOptions(Config):
-    """Base class for configuration for sources.
+    """Base class for configuration for sources."""
+
+    source_name: str = field(init=False)
+
+
+@dataclass
+class SourcesConfig(Config):
+    """Configuration for all sources.
 
     Attributes:
-        enabled: Wheather the source is enabled.
-
+        config: Mapping from a user defined source name to a source.
     """
 
-    enabled: bool = field(
-        default=False,
-        metadata={
-            "desc": "Enable this source",
-            "help": "This source will only be used if enabled.",
-        },
-    )
+    __help__ = """<h3>Configured Sources</h3>"""
+    config: dict[str, SourceOptions] = field(metadata={"flatten": True})
 
 
 @dataclass
@@ -365,322 +356,4 @@ class SyngConfig(Config):
     """
 
     config: ClientConfig
-    source_configs: dict[str, SourceOptions]
-
-
-type _Parsable = dict[str, "_Parsable"] | list["_Parsable"] | str | int | None
-
-
-def deserialize_dataclass[T: Config](clas: type[T], data: dict[str, _Parsable]) -> T:
-    """Deserialize a dataclass from a dict.
-
-    If a dataclass has an attribute, that is marked as `flatten` in the metadata, it will be
-    created using the data for the parent object.
-
-    Args:
-        clas: type of the class to deserialize
-        data: data to construct the object from
-
-    Returns:
-        Object of type `clas` with data from `data`.
-
-    Raises:
-        TypeError: When the clas is not a dataclass.
-
-    """
-    if not is_dataclass(clas):
-        raise TypeError(f"got '{data}' of type '{type(data)}, expected 'dict' to create '{clas}'")
-    field_types = get_type_hints(clas)
-    dataclass_arguments = {}
-
-    data = clas.migration(data)
-
-    for data_field in fields(clas):
-        if data_field.metadata.get("flatten", False):
-            dataclass_arguments[data_field.name] = deserialize_config(
-                field_types[data_field.name], data
-            )
-        else:
-            if data_field.name in data:
-                dataclass_arguments[data_field.name] = deserialize_config(
-                    field_types[data_field.name], data[data_field.name]
-                )
-
-    return clas(**dataclass_arguments)
-
-
-def deserialize_list[T](clas: type[T], data: list[_Parsable]) -> list[T]:
-    """Deserialize each element of a list to a list.
-
-    Args:
-        clas: The type of every element in the list.
-        data: List of data to deserialize
-
-    Returns:
-        list of objects of type `clas`.
-
-    """
-    return [deserialize_config(clas, item) for item in data]
-
-
-def deserialize_enum[T: Enum](clas: type[T], data: str | int) -> T:
-    """Deserialize an enum.
-
-    Deserialization is based on the values of each enum instance. If direct loading fails, the
-    data is first read as an integer, if that fails it is read as a string.
-    If both fail, a TypeError is raised.
-
-    Args:
-        clas: A subclass of type ``Enum``
-        data: data, representing a enum value.
-
-    Returns:
-        Enum value for type `class`
-
-    Raises:
-        TypeError: If `data` cannot be loaded.
-
-    """
-    try:
-        enum_value = clas(data)
-    except ValueError:
-        try:
-            enum_value = clas(int(data))
-        except ValueError:
-            try:
-                enum_value = clas(str(data))
-            except ValueError as e:
-                raise TypeError(
-                    f"could not match '{data}' for enum '{clas}'. "
-                    f"Possible values are '{list(clas.__members__.values())}'"
-                ) from e
-    return enum_value
-
-
-def deserialize_datetime_or_None(data: _Parsable) -> datetime | None:
-    """Deserialize a datetime object, or None.
-
-    Handles both deserialization of datetime and NoneType objects.
-
-    Args:
-        data: datetime as iso8601-string to parse, or None
-
-    Returns:
-        datetime object, if data is a valid iso8601-string, None, if data is None
-
-    Raises:
-        TypeError: if data is neither a string, nor None.
-
-    """
-    if type(data) is str:
-        return datetime.fromisoformat(data)
-    elif data is None:
-        return None
-    raise TypeError(f"cannot convert '{data}' of type '{type(data)}' to 'datetime | None'")
-
-
-@overload
-def deserialize_config(clas: type[datetime] | type[None], data: _Parsable) -> datetime | None: ...
-@overload
-def deserialize_config[T](clas: type[list[T]], data: _Parsable) -> list[T]: ...
-@overload
-def deserialize_config[T](clas: type[T], data: _Parsable) -> T: ...
-
-
-def deserialize_config[T](
-    clas: type[T], data: _Parsable
-) -> T | list[T] | int | str | datetime | None:
-    """Deserialize an Object from a dictionary or data.
-
-    This checks, that input data is of correct type according to `clas` and relays it to the
-    correct deserializer.
-
-    Currently the following objects can be deserialized:
-        - dataclasses (from dicts)
-        - lists (from lists)
-        - strings (directly)
-        - integers (directly)
-        - bools (directly)
-        - datetime | None (from iso8601-strings or None)
-        - Enums (from int or str)
-
-    Args:
-        clas: type to create from the data
-        data: data to deserialize to clas
-
-    Returns:
-        `clas` object
-
-    Raises:
-        TypeError: If data does not match to the desired outputclass
-
-    """
-    if isinstance(data, dict) and issubclass(clas, Config):
-        return deserialize_dataclass(clas, data)
-    if get_origin(clas) is list:
-        if not isinstance(data, list):
-            raise TypeError(
-                f"got '{data}' of type '{type(data)}, expected 'list' to create '{clas}'"
-            )
-        inner_class = get_args(clas)[0]
-        return deserialize_list(inner_class, data)
-    if any([clas is t for t in [str, int, bool]]):
-        if not isinstance(data, clas):
-            raise TypeError(f"got '{data}' of type '{type(data)}', expected '{clas}'")
-        return data
-    if get_origin(clas) in (Union, UnionType) and set(get_args(clas)) == set(
-        get_args(None | datetime)
-    ):
-        return deserialize_datetime_or_None(data)
-    if (
-        get_origin(clas) in (Union, UnionType)
-        and set(get_args(clas)) == set(get_args(None | int))
-        and (isinstance(data, int) or data is None)
-    ):
-        return data
-    if (
-        get_origin(clas) in (Union, UnionType)
-        and set(get_args(clas)) == set(get_args(None | str))
-        and (isinstance(data, str) or data is None)
-    ):
-        return data
-    if issubclass(clas, Enum):
-        if not isinstance(data, str) and not isinstance(data, int):
-            raise TypeError(
-                f"got '{data}' of type '{type(data)}, expected 'str' or 'int' to create {clas}"
-            )
-        return deserialize_enum(clas, data)
-
-    raise TypeError(f"unsupported field type '{clas}'")
-
-
-type _Serializable = Config | int | str | datetime | None | Enum | list[_Serializable]
-
-
-@overload
-def serialize_config(inp: Config) -> dict[str, _Parsable]: ...
-@overload
-def serialize_config(inp: datetime) -> str: ...
-@overload
-def serialize_config(inp: list[_Serializable]) -> list[_Parsable]: ...
-@overload
-def serialize_config(inp: str) -> str: ...
-@overload
-def serialize_config(inp: int) -> int: ...
-@overload
-def serialize_config(inp: None) -> None: ...
-@overload
-def serialize_config(inp: Enum) -> int: ...
-
-
-def serialize_config(inp: _Serializable) -> _Parsable:
-    """Serialize an object to dict or data.
-
-    The following types can be serialized:
-        - ``Config``-objects (to dict)
-        - datetime (to iso8601-strings)
-        - strings (directly)
-        - integer (directly)
-        - lists (to lists)
-        - None (directly)
-        - Enum (to string or integer value)
-
-    Args:
-        inp: Inputdata
-
-    Returns:
-        dict, list, string or int, depending on the input.
-
-    Raises:
-        ValueError: if a nonsupported object is given.
-
-    """
-    if isinstance(inp, Config):
-        return serialize_dataclass(inp)
-    if isinstance(inp, datetime):
-        return inp.isoformat()
-    if isinstance(inp, str):
-        return inp
-    if isinstance(inp, int):
-        return inp
-    if isinstance(inp, list):
-        return [serialize_config(element) for element in inp]
-    if inp is None:
-        return None
-    if isinstance(inp, Enum) and isinstance(inp.value, int):
-        return inp.value
-    if isinstance(inp, Enum) and isinstance(inp.value, str):
-        return inp.value
-    raise ValueError(f"Could not serialize {inp} of type {type(inp)}")
-
-
-def serialize_dataclass(config: Config) -> _Parsable:
-    """Serialize a Config object to a dict.
-
-    If a field is annotated as "flatten" in its metadata, its attributes are included in the parent
-    dict.
-
-    Args:
-        config: Config object to serialize.
-
-    Returns:
-        dictionary, mapping the fieldsnames to serialized data
-
-    """
-    output: dict[str, _Parsable] = {}
-    for data_field in fields(config):
-        if data_field.metadata.get("flatten", False):
-            output |= serialize_config(getattr(config, data_field.name))
-        else:
-            output[data_field.name] = serialize_config(getattr(config, data_field.name))
-    return output
-
-
-def load_config(
-    filename: str, source_config_types: Mapping[str, type[SourceOptions]]
-) -> SyngConfig:
-    """Load and deserialize a yaml file to a configuration.
-
-    The config file should have a ``config`` and a ``sources`` section.
-
-    Args:
-        filename: Path to the file
-        source_config_types: Mapping of the sources to load to their configuration type.
-
-    Returns:
-        A configuration object for Syng.
-
-    """
-    try:
-        with open(filename, encoding="utf8") as cfile:
-            loaded_config = load(cfile, Loader=Loader)
-    except FileNotFoundError:
-        print("No config found, using default values")
-        loaded_config = {"config": {}, "sources": {}}
-
-    sources_config: dict[str, SourceOptions] = {}
-
-    for source_name, source_config_type in source_config_types.items():
-        source_config_dict = loaded_config.get("sources", {}).get(source_name, {})
-        sources_config[source_name] = deserialize_config(source_config_type, source_config_dict)
-    client_config = deserialize_config(ClientConfig, loaded_config["config"])
-    return SyngConfig(client_config, sources_config)
-
-
-def save_config(filename: str, config: SyngConfig) -> None:
-    """Serialize and save the configuration to a file.
-
-    Args:
-        filename: Path to the file
-        config: Configuration object
-
-    """
-    general = serialize_dataclass(config.config)
-    sources = {
-        source_name: serialize_dataclass(source_config)
-        for source_name, source_config in config.source_configs.items()
-    }
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-    with open(filename, "w", encoding="utf-8") as f:
-        dump({"config": general, "sources": sources}, f, Dumper=Dumper)
+    sources: SourcesConfig

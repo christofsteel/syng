@@ -163,7 +163,6 @@ class YouTubeOptions(SourceOptions):
     """Configuration object for YouTubeSources.
 
     Attributes:
-        enabled: Enable this source
         channels: A list of all channel this source should search in.
             Examples are ``/c/CCKaraoke`` or ``/channel/UCwTRjvjVge51X-ILJ4i22ew``
         tmp_dir: The folder, where temporary files are stored. Default is ``${XDG_CACHE_DIR}/syng``.
@@ -180,10 +179,6 @@ class YouTubeOptions(SourceOptions):
     <p>YouTube offers a large collection of free karaoke songs.</p>
     <p>There are even some channels specialized on karaoke.</p>
     """
-
-    enabled: bool = field(
-        default=True, metadata=SourceOptions.__dataclass_fields__["enabled"].metadata
-    )
 
     channels: list[str] = field(
         default_factory=list,
@@ -240,6 +235,7 @@ class YouTubeOptions(SourceOptions):
             "server": True,
         },
     )
+    source_name: str = "youtube"
 
 
 @dataclass
@@ -253,7 +249,6 @@ class YoutubeSource(Source):
 
     config: YouTubeOptions
 
-    source_name: str = "youtube"
     display_name: str = "YouTube"
 
     def __post_init__(self) -> None:

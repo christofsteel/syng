@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, Any
 
 import packaging.version
 
-from syng.config import SourceOptions
+from syng.config import SourcesConfig
+from syng.config.deserialize import load_config
+from syng.config.serialize import save_config
 from syng.gui.background_threads import (
     SyngClientQueueWorker,
     SyngClientWorker,
@@ -59,11 +61,9 @@ from syng.config import (
     GeneralConfig,
     SyngConfig,
     UIConfig,
-    load_config,
-    save_config,
 )
 from syng.log import logger
-from syng.sources import available_source_configs, available_sources
+from syng.sources import available_source_configs, get_default_configs
 
 
 class SyngGui(QMainWindow):
@@ -325,18 +325,11 @@ class SyngGui(QMainWindow):
         self.ui_config = UIConfigTab(self, config)
         self.tabview.addTab(self.ui_config, self._colorize_icon(":icons/settings.svg"), "UI")
 
-    def add_source_tab(self, source_name: str, source_tab: SourceTab) -> None:
-        """Adds a source config tab.
-
-        Args:
-            source_name: Name of the source
-            source_tab: Initial configuration to show.
-
-        """
-        self.tabs[source_name] = source_tab
-        display_name = available_sources[source_name].display_name
+    def add_sources_tab(self, sources_config: SourcesConfig) -> None:
+        """TODO."""
+        self.sources_config = SourceTab(self, sources_config)
         self.tabview.addTab(
-            self.tabs[source_name], self._colorize_icon(":icons/source.svg"), f"{display_name}"
+            self.sources_config, self._colorize_icon(":icons/source.svg"), "Sources"
         )
 
     def add_log_tab(self) -> None:
@@ -454,10 +447,10 @@ class SyngGui(QMainWindow):
         self.add_general_config(config.config.general)
         self.add_ui_config(config.config.ui)
         self.add_qr(config.config.general.show_advanced)
-        self.tabs: dict[str, SourceTab] = {}
+        # self.tabs: dict[str, SourceTab] = {}
+        self.add_sources_tab(config.sources)
 
-        for source_name, source_config in config.source_configs.items():
-            self.add_source_tab(source_name, SourceTab(self, source_config))
+        # for source_name, source_config in config.source_configs.items():
 
         self.add_admin_tab()
         self.add_log_tab()
@@ -498,11 +491,7 @@ class SyngGui(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer == QMessageBox.StandardButton.Yes:
-            source_config_types = available_source_configs()
-            default_source_configs = {
-                source_name: config() for source_name, config in source_config_types.items()
-            }
-            self.update_config(SyngConfig(ClientConfig(), default_source_configs))
+            self.update_config(SyngConfig(ClientConfig(), get_default_configs()))
 
     def load_config(self, filename: str) -> SyngConfig:
         """Load a configuration from a file and return it.
@@ -525,8 +514,7 @@ class SyngGui(QMainWindow):
         """
         self.general_config.load_config(config.config.general)
         self.ui_config.load_config(config.config.ui)
-        for source_name, source_config in config.source_configs.items():
-            self.tabs[source_name].load_config(source_config)
+        self.sources_config.load_config(config.sources)
 
         self.update_qr()
 
@@ -540,17 +528,13 @@ class SyngGui(QMainWindow):
         Returns:
             Configuration object for Syng.
         """
-        sources: dict[str, SourceOptions] = {}
-
-        for source, tab in self.tabs.items():
-            sources[source] = tab.config
-
         general_config = self.general_config.config
         ui_config = self.ui_config.config
+        sources_config = self.sources_config.config
 
         client_config = ClientConfig(general_config, ui_config)
 
-        return SyngConfig(client_config, sources)
+        return SyngConfig(client_config, sources_config)
 
     def import_config(self) -> None:
         """Import a configuration from a file.

@@ -38,7 +38,8 @@ from qrcode.main import QRCode
 from socketio.exceptions import BadNamespaceError, ConnectionError
 
 from syng import SYNG_VERSION, jsonencoder
-from syng.config import ClientConfig, LogLevel, SyngConfig, load_config
+from syng.config import ClientConfig, LogLevel, SyngConfig
+from syng.config.deserialize import load_config
 from syng.entry import Entry
 from syng.log import logger
 from syng.player_libmpv import Player
@@ -106,7 +107,7 @@ class Client:
         self.config = config.config
 
         self.set_log_level(self.config.general.log_level)
-        self.sources = configure_sources(config.source_configs)
+        self.sources = configure_sources(config.sources)
         self.player = Player(
             self.config,
             self.quit_callback,
