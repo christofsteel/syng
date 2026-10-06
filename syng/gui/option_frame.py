@@ -12,6 +12,9 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFormLayout,
     QLabel,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -184,20 +187,32 @@ class RowOptionFrame(OptionFrame):
 
         """
         super().__init__(parent)
+        self.split_layout = QVBoxLayout(self)
+
         self.form_layout = QFormLayout(self)
-        self.setLayout(self.form_layout)
+        self.setLayout(self.split_layout)
         self.options: MutableMapping[str, RowWidget[Any]] = {}
         self.help_label: QLabel | None = None
 
         self.config = config
         if hasattr(self.config, "__help__") and self.config.__help__:
             self.help_label = QLabel(self.config.__help__, self)
-            self.form_layout.addRow(self.help_label)
+            self.help_label.setSizePolicy(
+                QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Minimum
+            )
             self.help_hover_label = QLabel(
                 "<p><b>Hint:</b> Hover over each option below for help.</p>"
             )
-            self.form_layout.addRow(self.help_hover_label)
+            self.help_label.setSizePolicy(
+                QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Minimum
+            )
+            # self.form_layout.addRow(self.help_hover_label)
+
+            self.split_layout.addWidget(self.help_label)
+            self.split_layout.addWidget(self.help_hover_label)
+        self.split_layout.addLayout(self.form_layout)
         self.add_rows_from_config(config)
+        self.split_layout.addStretch()
 
     @property
     def option_names(self) -> set[str]:
