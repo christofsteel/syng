@@ -46,6 +46,16 @@
 
 
   <releases>
+    <release version="2.4.2" date="2026-10-15">
+      <description>
+        <p>
+          <em>Changes:</em>
+        </p>
+        <ul>
+          <li>Bugfix: Included the server js and css files in distributions</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.4.1" date="2026-10-03">
       <description>
         <p>
