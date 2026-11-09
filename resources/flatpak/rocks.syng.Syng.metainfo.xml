@@ -46,6 +46,17 @@
 
 
   <releases>
+    <release version="2.4.3" date="2026-11-09">
+      <description>
+        <p>
+          <em>Changes:</em>
+        </p>
+        <ul>
+          <li>Updated to latest yt-dlp version</li>
+          <li>Fixed compatibilty error with Flatpak base image</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.4.2" date="2026-10-15">
       <description>
         <p>
