@@ -7,7 +7,7 @@ import secrets
 import string
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from types import UnionType
 from typing import (
@@ -108,8 +108,8 @@ class GeneralConfig(Config):
             "simple": True,
             "help": """<p>The URL of the server, hosting the Syng-Server.</p>
             <p>You can run your own, or just use the public server at
-            <a href="https://syng.rocks">https://syng.rocks</a>. 
-            If you are using a pre-release version of syng, you might want to connect to 
+            <a href="https://syng.rocks">https://syng.rocks</a>.
+            If you are using a pre-release version of syng, you might want to connect to
             <a href="https://beta.syng.rocks">https://beta.syng.rocks</a> instead.</p>""",
         },
     )
@@ -119,13 +119,13 @@ class GeneralConfig(Config):
             "update_qr": True,
             "desc": "Room",
             "simple": True,
-            "help": """<p>The server can host multiple karaoke sessions at once. Each session gets 
+            "help": """<p>The server can host multiple karaoke sessions at once. Each session gets
             an ID, called room</p><p>You can provide your own name, or take the randomly generated
             name.</p><p>Only one playback client can be connected to a session. If you want to
             connect to an existing session, the <i>Admin Passwords</i> must match.
 
-            <p><b>Note:</b> There is no mechanism to keep people from joining your session, 
-            if they know the room id, so keep this id only for the participants of your 
+            <p><b>Note:</b> There is no mechanism to keep people from joining your session,
+            if they know the room id, so keep this id only for the participants of your
             karaoke event.</p>
             """,
         },
@@ -138,8 +138,8 @@ class GeneralConfig(Config):
             "semantic": "password",
             "desc": "Admin Password",
             "simple": True,
-            "help": """<p>This is used to reconnect to a running session and to enter 
-            <i>admin mode</i> in the web ui</p> You can enter the admin mode by clicking 
+            "help": """<p>This is used to reconnect to a running session and to enter
+            <i>admin mode</i> in the web ui</p> You can enter the admin mode by clicking
             <b>Advanced</b> on the web client welcome screen and enter this password.
             There you can moderate the playlist</p>""",
         },
@@ -158,7 +158,7 @@ class GeneralConfig(Config):
         default=1,
         metadata={
             "desc": "Max. songs per person",
-            "help": """<p>To keep things fair, you can set a limit of how many songs each 
+            "help": """<p>To keep things fair, you can set a limit of how many songs each
             participant can have in the queue, so no single person can <i>hog</i> the queue.</p>
             <p>If a participant wants to add more songs, these are put in the <i>waiting room</i>.
             Once they have less song than this number, these songs will be added to the queue.
@@ -175,7 +175,7 @@ class GeneralConfig(Config):
             "desc": "Allow collaboration tags",
             "help": """<p>Sometimes people do not want to sing alone, but have no specific partner.
             </p><p>This enables collaboration tags, that can be included when adding a song to the
-            queue. The tags are:<br /> <i>Everyone can join</i>, <i>Looking for Singer</i> and 
+            queue. The tags are:<br /> <i>Everyone can join</i>, <i>Looking for Singer</i> and
             <i>Just me</i>""",
         },
     )
@@ -270,8 +270,8 @@ class UIConfig(Config):
         default=3,
         metadata={
             "desc": "Next Up Screen Duration",
-            "help": """<p>Between the songs, there is a pause of this length in seconds 
-            to switch out performers. During this pause, the next performers and song 
+            "help": """<p>Between the songs, there is a pause of this length in seconds
+            to switch out performers. During this pause, the next performers and song
             will previewed.</p>""",
         },
     )
@@ -280,7 +280,7 @@ class UIConfig(Config):
         metadata={
             "desc": "Next Up Box Duration",
             "help": """<p>During the last seconds of each performance, the next performance will be
-            announced by a small popup.</p><p>This option defines these amount of seconds, the 
+            announced by a small popup.</p><p>This option defines these amount of seconds, the
             popup is shown</p>""",
         },
     )
@@ -288,7 +288,7 @@ class UIConfig(Config):
         default=7,
         metadata={
             "desc": "QR Code Box Size",
-            "help": """<p>The number of pixels for every \"block\" of the qr code. This is used to 
+            "help": """<p>The number of pixels for every \"block\" of the qr code. This is used to
             size of the qr code, that is shown during performance to join.</p>""",
         },
     )
@@ -598,7 +598,8 @@ def serialize_config(inp: _Serializable) -> _Parsable:
     if isinstance(inp, Config):
         return serialize_dataclass(inp)
     if isinstance(inp, datetime):
-        return inp.isoformat()
+        local_timezone = datetime.now(UTC).astimezone().tzinfo
+        return inp.replace(tzinfo=local_timezone).isoformat()
     if isinstance(inp, str):
         return inp
     if isinstance(inp, int):

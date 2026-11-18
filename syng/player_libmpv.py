@@ -190,13 +190,14 @@ class Player:
         if e["event"] == b"shutdown":
             self.connection_state.set_mpv_state_no_lock(Lifecycle.ENDING)
             self.quit_callback()
-        elif e["event"] == b"file-loaded" and self.mpv is not None:
-            if self.callback_audio_load is not None:
-                with contextlib.suppress(
-                    SystemError
-                ):  # MPV is weird and sometimes this locks up...
-                    self.mpv.audio_add(self.callback_audio_load)
-                self.callback_audio_load = None
+        elif (
+            e["event"] == b"file-loaded"
+            and self.mpv is not None
+            and self.callback_audio_load is not None
+        ):
+            with contextlib.suppress(SystemError):  # MPV is weird and sometimes this locks up...
+                self.mpv.audio_add(self.callback_audio_load)
+            self.callback_audio_load = None
 
     def update_qr(self, qr_string: str) -> None:
         """Update the QR code.
@@ -231,7 +232,7 @@ class Player:
 
         # offset in pixels from the screen edge
         qr_code_offset = 10
-        
+
         # calculate the position based on the qr_code_offset
         match self.qr_position:
             case QRPosition.BOTTOM_RIGHT:
