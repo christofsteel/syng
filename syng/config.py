@@ -7,7 +7,7 @@ import secrets
 import string
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from types import UnionType
 from typing import (
