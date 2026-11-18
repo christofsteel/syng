@@ -1712,7 +1712,7 @@ wheels = [
 
 [[package]]
 name = "syng"
-version = "2.4.3.dev1"
+version = "2.4.4.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
