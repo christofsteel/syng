@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <component type="desktop-application">
   <id>rocks.syng.Syng</id>
 
@@ -19,33 +19,50 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng.png</image>
+      <image
+            >https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng.png</image>
       <caption>Configuration window</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_advanced.png</image>
+      <image
+            >https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_advanced.png</image>
       <caption>Configuration window (Advanced settings)</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_player_next_up.png</image>
+      <image
+            >https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_player_next_up.png</image>
       <caption>Next up screen</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_player_song.png</image>
+      <image
+            >https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_player_song.png</image>
       <caption>Player playing a song</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_mobile_search.png</image>
+      <image
+            >https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_mobile_search.png</image>
       <caption>Web Interface on Mobile</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_web2.png</image>
+      <image
+            >https://raw.githubusercontent.com/christofsteel/syng/efe134a7312bdea9ef42cae47c74dcb14cca44f3/resources/screenshots/syng_web2.png</image>
       <caption>Web interface</caption>
     </screenshot>
   </screenshots>
 
 
   <releases>
+    <release version="2.4.4" date="2026-11-18">
+        <description>
+        <p>
+            <em>Changes:</em>
+        </p>
+        <ul>
+            <li>Fixed wrongly assumed timezone for last song</li>
+            <li>Updated to latest yt-dlp version</li>
+        </ul>
+        </description>
+    </release>
     <release version="2.4.3" date="2026-11-09">
       <description>
         <p>
@@ -89,7 +106,8 @@
         </p>
         <ul>
           <li>Updated yt-dlp</li>
-          <li>Collaboration tags: Option to mark songs as "Only me", "Looking for additional Singers", "Everyone can join"</li>
+          <li
+                    >Collaboration tags: Option to mark songs as "Only me", "Looking for additional Singers", "Everyone can join"</li>
           <li>Improved layout of configuration window</li>
         </ul>
       </description>
@@ -159,7 +177,8 @@
           <em>Changes</em>:
         </p>
         <ul>
-          <li>Update to latest version of yt-dlp. Search issues should be resolved.</li>
+          <li
+                    >Update to latest version of yt-dlp. Search issues should be resolved.</li>
         </ul>
       </description>
     </release>
@@ -234,13 +253,16 @@
   <description>
     <p>
       Syng is an easy-to-use karaoke software. Just start the client and let your users connect via their web browser.
-      You can set up your own <em>Syng server</em> or simply use a publicly available one.
+      You can set up your own <em
+            >Syng server</em> or simply use a publicly available one.
     </p>
     <p>
-      Songs can be searched and played from <em>YouTube</em>, an <em>S3</em> storage or <em>your local machine</em>.
+      Songs can be searched and played from <em>YouTube</em>, an <em
+            >S3</em> storage or <em>your local machine</em>.
     </p>
     <p>
-      You can play a variety of file formats, such as <code>mp3+cdg</code>, <code>webm</code>, <code>mp4</code>, ...
+      You can play a variety of file formats, such as <code
+            >mp3+cdg</code>, <code>webm</code>, <code>mp4</code>, ...
     </p>
   </description>
 
